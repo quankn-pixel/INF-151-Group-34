@@ -1,0 +1,124 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Four Elements</title>
+<style>
+/* Layout: A Dark Room three-column: fading log | action buttons | bordered stores box */
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #7a7a7a;
+  --line: #111111;
+  --hover: #f0f0f0;
+  --serif: "Times New Roman", Times, "Liberation Serif", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #111111; --fg: #eeeeee; --muted: #8a8a8a; --line: #eeeeee; --hover: #222222; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #111111; --fg: #eeeeee; --muted: #8a8a8a; --line: #eeeeee; --hover: #222222; color-scheme: dark; }
+
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--serif); font-size: 16px; padding-block: 40px; padding-inline: 20px; }
+
+.wrap { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: 220px 1fr 180px; gap: 32px; align-items: start; }
+
+.log { position: relative; height: 360px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.log::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 60%; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+.log p { margin: 0; line-height: 1.35; animation: fadein .6s ease; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+.actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.actions h1 { font-size: 16px; font-weight: normal; margin: 0 0 8px; color: var(--muted); }
+button.el {
+  font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); padding: 4px 0; width: 120px; text-align: center; cursor: pointer;
+}
+button.el:hover { background: var(--hover); text-decoration: underline; }
+button.el:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+button.el:active { transform: translateY(1px); }
+
+.stores { position: relative; border: 1px solid var(--line); padding: 16px 12px 10px; }
+.stores .label { position: absolute; top: -10px; left: 8px; background: var(--bg); padding: 0 4px; }
+.row { display: flex; justify-content: space-between; gap: 12px; line-height: 1.6; }
+.row .n { font-variant-numeric: tabular-nums; }
+.row[hidden] { display: none; }
+.empty { color: var(--muted); font-style: italic; }
+
+@media (max-width: 640px) {
+  .wrap { grid-template-columns: 1fr; gap: 24px; }
+  .actions { order: 1; }
+  .stores { order: 2; }
+  .log { order: 3; height: 180px; }
+}
+@media (prefers-reduced-motion: reduce) { .log p { animation: none; } }
+</style>
+
+<div class="wrap">
+  <div class="log" id="log" aria-live="polite"></div>
+
+  <div class="actions">
+    <h1>the elements stir.</h1>
+    <button class="el" id="btn-air" data-el="air">air</button>
+    <button class="el" id="btn-water" data-el="water">water</button>
+    <button class="el" id="btn-earth" data-el="earth">earth</button>
+    <button class="el" id="btn-fire" data-el="fire">fire</button>
+  </div>
+
+  <div class="stores">
+    <span class="label">stores</span>
+    <div class="empty" id="empty">nothing yet.</div>
+    <div class="row" id="row-air" hidden><span>air</span><span class="n" id="n-air">0</span></div>
+    <div class="row" id="row-water" hidden><span>water</span><span class="n" id="n-water">0</span></div>
+    <div class="row" id="row-earth" hidden><span>earth</span><span class="n" id="n-earth">0</span></div>
+    <div class="row" id="row-fire" hidden><span>fire</span><span class="n" id="n-fire">0</span></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const counts = { air: 0, water: 0, earth: 0, fire: 0 };
+  const lines = {
+    air:   ["a breeze moves through.", "the air thins, then gathers.", "wind whispers."],
+    water: ["water pools at your feet.", "a drop falls.", "the sound of rain."],
+    earth: ["the ground holds firm.", "dust settles.", "stone, cold and patient."],
+    fire:  ["a spark catches.", "the fire is burning.", "warmth, for a moment."]
+  };
+  const log = document.getElementById('log');
+
+  function note(text) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    log.prepend(p);
+    while (log.children.length > 12) log.lastChild.remove();
+  }
+
+  function render() {
+    let any = false;
+    for (const k in counts) {
+      document.getElementById('n-' + k).textContent = counts[k];
+      document.getElementById('row-' + k).hidden = counts[k] === 0;
+      if (counts[k] > 0) any = true;
+    }
+    document.getElementById('empty').hidden = any;
+  }
+
+  function start(saved) {
+    Object.assign(counts, saved.counts || {});
+    render();
+    if (!saved.counts) note("four forces wait in the dark.");
+  }
+
+  document.querySelectorAll('button.el').forEach(b => {
+    b.addEventListener('click', () => {
+      const k = b.dataset.el;
+      counts[k] += 1;
+      render();
+      const pool = lines[k];
+      note(pool[Math.floor(Math.random() * pool.length)]);
+    });
+  });
+
+  window.claude?.hot?.snapshot?.(() => ({ counts }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
