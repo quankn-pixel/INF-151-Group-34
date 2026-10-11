@@ -1,0 +1,528 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Four Elements</title>
+<style>
+/* Layout: A Dark Room three-column: fading log | actions and build | bordered stores and works boxes; quiet footer of text links */
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #8a8a8a;
+  --line: #111111;
+  --hover: #f0f0f0;
+  --serif: "Times New Roman", Times, "Liberation Serif", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; color-scheme: dark; }
+
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--serif); font-size: var(--fs, 16px); padding-block: 40px; padding-inline: 20px; }
+
+.wrap { max-width: 780px; margin: 0 auto; display: grid; grid-template-columns: 14em 1fr 13em; gap: 32px; align-items: start; }
+
+.log { position: relative; height: 440px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.log::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 60%; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+.log p { margin: 0; line-height: 1.35; animation: fadein .6s ease; transform-origin: left center; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+.actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.actions h1, .actions h2 { font-size: 1em; font-weight: normal; margin: 0; color: var(--muted); }
+.actions h2 { margin-top: 16px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+
+button.el {
+  font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); padding: 4px 0; width: 7.5em; text-align: center; cursor: pointer;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+button.el:hover:not(:disabled) { background: var(--hover); text-decoration: underline; }
+button.el:focus-visible, button.link:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+button.el:active:not(:disabled) { transform: translateY(1px); }
+button.el:disabled { color: var(--muted); border-color: var(--muted); cursor: default; }
+.key { color: var(--muted); font-size: 0.8125em; margin-left: 4px; }
+
+.build { display: flex; flex-direction: column; gap: 3px; animation: fadein .8s ease; }
+.cost { font-size: 0.8125em; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
+.cost .have { color: var(--fg); }
+
+button.link {
+  font: inherit; font-size: inherit; color: var(--fg); background: none; border: 0; padding: 0;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+button.link:disabled { color: var(--muted); text-decoration: none; cursor: default; }
+
+.side { display: flex; flex-direction: column; gap: 28px; }
+.box { position: relative; border: 1px solid var(--line); padding: 16px 12px 10px; }
+.box .label { position: absolute; top: -10px; left: 8px; background: var(--bg); padding: 0 4px; }
+.row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; line-height: 1.6; }
+.row .n { font-variant-numeric: tabular-nums; text-align: right; }
+.row .rate { font-size: 0.8125em; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: right; }
+.works .row { grid-template-columns: 1fr auto; }
+.empty { color: var(--muted); font-style: italic; }
+.drops { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 10; }
+.drop { position: absolute; width: 1.5em; height: 1.5em; color: var(--fg); will-change: transform, opacity; }
+.drop svg { width: 100%; height: 100%; display: block; }
+.tray { max-width: 780px; margin: 40px auto 0; padding: 22px 14px 12px; }
+.bar { display: flex; height: 2.2em; border: 1px solid var(--line); overflow: hidden; }
+.bar span { display: block; height: 100%; width: 0; background: var(--fg); border-right: 1px solid var(--bg); transition: width .25s ease; }
+.bar span:last-child { border-right: 0; }
+.ticks { position: relative; height: 5px; }
+.ticks i { position: absolute; top: 0; height: 5px; border-left: 1px solid var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-top: 6px; }
+.legend .row { display: flex; gap: 8px; align-items: center; }
+.swatch { display: inline-block; width: 0.7em; height: 0.7em; border: 1px solid var(--line); background: var(--fg); }
+.skew { color: var(--muted); font-size: 0.8125em; margin-top: 6px; min-height: 1.3em; }
+
+.footer { max-width: 780px; margin: 24px auto 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 18px; font-size: 0.875em; color: var(--muted); }
+.footer .size { display: flex; gap: 10px; align-items: baseline; }
+.footer .size button { font-size: 1.15em; min-width: 1.2em; }
+.footer .confirm { color: var(--fg); display: flex; gap: 10px; }
+
+@media (max-width: 680px) {
+  .wrap { grid-template-columns: 1fr; gap: 24px; }
+  .actions { order: 1; }
+  .side { order: 2; }
+  .log { order: 3; height: 200px; }
+  .footer { justify-content: flex-start; }
+  .key { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .log p, .build { animation: none; } .bar span { transition: none; } }
+</style>
+
+<div class="drops" id="drops" aria-hidden="true"></div>
+
+<div class="wrap">
+  <div class="log" id="log" aria-live="polite"></div>
+
+  <div class="actions">
+    <h1>the elements stir.</h1>
+    <div class="stack" id="gather"></div>
+    <h2 id="build-head" hidden>build:</h2>
+    <div class="stack" id="builds"></div>
+  </div>
+
+  <div class="side">
+    <div class="box">
+      <span class="label">stores</span>
+      <div class="empty" id="empty">nothing yet.</div>
+      <div id="store-rows"></div>
+    </div>
+    <div class="box works" id="works-box" hidden>
+      <span class="label">works</span>
+      <div id="work-rows"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tray box" id="balance-box">
+  <span class="label">balance</span>
+  <div class="bar" id="bar" role="img" aria-label="Share of each element"></div>
+  <div class="ticks" aria-hidden="true"><i style="left:25%"></i><i style="left:50%"></i><i style="left:75%"></i></div>
+  <div class="legend" id="legend"></div>
+  <div class="skew" id="skew"></div>
+</div>
+
+<div class="footer">
+  <span class="size">text size
+    <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
+    <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
+  </span>
+  <span id="save-status">not saved yet.</span>
+  <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
+  <span class="confirm" id="restart-confirm" hidden>
+    <span>lose everything?</span>
+    <button class="link" id="restart-yes" type="button">yes.</button>
+    <button class="link" id="restart-no" type="button">no.</button>
+  </span>
+</div>
+
+<script>
+(function () {
+  // ---------------- data ----------------
+  const ELEMENTS = [
+    { id: 'air',   key: 'a' },
+    { id: 'water', key: 'w' },
+    { id: 'earth', key: 'e' },
+    { id: 'fire',  key: 'f' }
+  ];
+
+  // Automation unlocks. Each costs two OTHER elements; every pair is unique,
+  // and each element feeds exactly two builds. Tune numbers here.
+  const BUILDS = [
+    { id: 'hearth', name: 'hearth',     makes: 'fire',  rate: 1, cost: { earth: 10, air: 10 },
+      msg: 'stone ringed against the draft. the hearth keeps its own fire now.' },
+    { id: 'vent',   name: 'steam vent', makes: 'air',   rate: 1, cost: { fire: 10, water: 10 },
+      msg: 'water hisses on the coals. steam rises, and the air thickens on its own.' },
+    { id: 'silt',   name: 'silt bed',   makes: 'earth', rate: 1, cost: { water: 10, air: 10 },
+      msg: 'wind and water lay the silt down, layer on layer.' },
+    { id: 'spring', name: 'hot spring', makes: 'water', rate: 1, cost: { fire: 10, earth: 10 },
+      msg: 'the warm ground splits. a spring wells up and does not stop.' }
+  ];
+
+  const LINES = {
+    air:   ['a breeze moves through.', 'the air thins, then gathers.', 'wind whispers.'],
+    water: ['water pools at your feet.', 'a drop falls.', 'the sound of rain.'],
+    earth: ['the ground holds firm.', 'dust settles.', 'stone, cold and patient.'],
+    fire:  ['a spark catches.', 'the fire is burning.', 'warmth, for a moment.']
+  };
+
+  const SAVE_KEY = 'four-elements-save-v1';
+  const OFFLINE_CAP_S = 8 * 60 * 60;  // offline progress capped at 8 hours
+
+  // ---------------- state ----------------
+  function freshState() {
+    return {
+      counts: { air: 0, water: 0, earth: 0, fire: 0 },
+      built: {}, revealed: {},
+      clicked: {},          // element -> true after first manual gather
+      unlocked: false,      // true once any two different elements have been gathered
+      log: [],              // newest first, kept for save/restore
+      savedAt: 0
+    };
+  }
+  let state = freshState();
+
+  const $ = id => document.getElementById(id);
+
+  // ---------------- helpers ----------------
+  function fmt(n) {
+    n = Math.floor(n);
+    if (n < 10000) return n.toLocaleString('en-US');
+    const units = [['B', 1e9], ['M', 1e6], ['k', 1e3]];
+    for (const [u, v] of units) if (n >= v) return (n / v).toFixed(n / v < 100 ? 1 : 0) + u;
+    return String(n);
+  }
+  const affordable = b => Object.entries(b.cost).every(([k, v]) => state.counts[k] >= v);
+  const rateOf = el => BUILDS.reduce((s, b) => s + (state.built[b.id] && b.makes === el ? b.rate : 0), 0);
+
+  // ---------------- log ----------------
+  const logEl = $('log');
+  function drawLog() {
+    logEl.replaceChildren(...state.log.map(t => { const p = document.createElement('p'); p.textContent = t; return p; }));
+  }
+  function note(text) {
+    state.log.unshift(text);
+    if (state.log.length > 14) state.log.length = 14;
+    const p = document.createElement('p'); p.textContent = text;
+    logEl.prepend(p);
+    while (logEl.children.length > 14) logEl.lastChild.remove();
+  }
+
+  // ---------------- balance bar ----------------
+  const SHADE = { air: 0.25, water: 0.5, earth: 0.75, fire: 1 };   // fill strength tells segments apart without color
+  ELEMENTS.forEach(({ id }) => {
+    const seg = document.createElement('span');
+    seg.id = 'seg-' + id; seg.style.opacity = SHADE[id];
+    $('bar').appendChild(seg);
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="swatch" style="opacity:${SHADE[id]}"></span><span>${id}</span><span class="n" id="pct-${id}">0%</span>`;
+    $('legend').appendChild(row);
+  });
+
+  // ---------------- static DOM ----------------
+  ELEMENTS.forEach(({ id, key }) => {
+    const btn = document.createElement('button');
+    btn.className = 'el'; btn.id = 'btn-' + id; btn.type = 'button';
+    btn.innerHTML = `${id}<span class="key" aria-hidden="true">${key}</span>`;
+    btn.setAttribute('aria-keyshortcuts', key);
+    btn.addEventListener('click', () => gather(id));
+    $('gather').appendChild(btn);
+
+    const row = document.createElement('div');
+    row.className = 'row'; row.id = 'row-' + id; row.hidden = true;
+    row.innerHTML = `<span>${id}</span><span class="n" id="n-${id}">0</span><span class="rate" id="r-${id}"></span>`;
+    $('store-rows').appendChild(row);
+  });
+
+  BUILDS.forEach(b => {
+    const wrap = document.createElement('div');
+    wrap.className = 'build'; wrap.id = 'b-' + b.id; wrap.hidden = true;
+    const btn = document.createElement('button');
+    btn.className = 'el'; btn.id = 'btn-' + b.id; btn.type = 'button'; btn.textContent = b.name;
+    btn.addEventListener('click', () => buy(b));
+    const cost = document.createElement('div');
+    cost.className = 'cost'; cost.id = 'c-' + b.id;
+    const what = document.createElement('div');
+    what.className = 'cost'; what.textContent = `makes ${b.rate} ${b.makes} a second`;
+    wrap.append(btn, cost, what);
+    $('builds').appendChild(wrap);
+
+    const wrow = document.createElement('div');
+    wrow.className = 'row'; wrow.id = 'w-' + b.id; wrow.hidden = true;
+    wrow.innerHTML = `<span>${b.name}</span><span class="rate">+${b.rate} ${b.makes}/s</span>`;
+    $('work-rows').appendChild(wrow);
+  });
+
+
+  // ---------------- falling icons ----------------
+  const ICONS = {
+    air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    water: '<path d="M12 3C9 7.5 5.5 11 5.5 15a6.5 6.5 0 0 0 13 0C18.5 11 15 7.5 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 15.5a3 3 0 0 0 2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    earth: '<path d="M2.5 19.5 9 7.5l4 7 2.5-3.5 6 8.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 7.5l1.6 2.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    fire:  '<path d="M12 2.5c.6 3-1.8 4.6-3.4 7C7 12 6 13.5 6 15.5a6 6 0 0 0 12 0c0-2.6-1.3-4.2-2.6-5.7-.3 1.5-1 2.4-2 2.9.5-3.8-.3-7-1.4-10.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
+  };
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const MAX_DROPS = 40;
+  let liveDrops = 0;
+  function spawnDrop(k) {
+    if (reduceMotion.matches || liveDrops >= MAX_DROPS || document.hidden) return;
+    const btn = $('btn-' + k), bar = $('bar'), seg = $('seg-' + k);
+    if (!btn || !bar) return;
+    const r = btn.getBoundingClientRect(), br = bar.getBoundingClientRect(), sr = seg.getBoundingClientRect();
+    const size = parseFloat(getComputedStyle(btn).fontSize) * 1.5;
+    const el = document.createElement('span');
+    el.className = 'drop';
+    el.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[k]}</svg>`;
+    const x0 = r.left + r.width / 2 - size / 2 + (Math.random() - 0.5) * r.width * 0.5;
+    const y0 = r.top + r.height * 0.4;
+    // land inside the container, over this element's segment when it has one
+    const tx = (sr.width > 6 ? sr.left + sr.width * (0.2 + Math.random() * 0.6) : br.left + br.width / 2) - size / 2;
+    const ty = Math.min(br.top + br.height / 2, window.innerHeight - size) - size / 2;
+    const dx = tx - x0, dy = Math.max(ty - y0, size * 2);
+    el.style.left = x0 + 'px';
+    el.style.top = y0 + 'px';
+    $('drops').appendChild(el);
+    liveDrops++;
+    const anim = el.animate([
+      { transform: 'translate(0,0) rotate(0deg) scale(.6)', opacity: 0 },
+      { transform: `translate(${dx * 0.04}px,${dy * 0.04}px) rotate(8deg) scale(1)`, opacity: 1, offset: 0.1 },
+      { transform: `translate(${dx * 0.9}px,${dy * 0.9}px) rotate(${dx > 0 ? 25 : -25}deg) scale(1)`, opacity: 1, offset: 0.9 },
+      { transform: `translate(${dx}px,${dy}px) rotate(${dx > 0 ? 30 : -30}deg) scale(.35)`, opacity: 0 }
+    ], { duration: 450 + Math.sqrt(dy) * 28, easing: 'cubic-bezier(.4,0,.9,.55)' });
+    anim.onfinish = () => {
+      el.remove(); liveDrops--;
+      if (!reduceMotion.matches) bar.animate(
+        [{ transform: 'translateY(0)' }, { transform: 'translateY(2px)' }, { transform: 'translateY(0)' }],
+        { duration: 140 });
+    };
+    anim.oncancel = () => { el.remove(); liveDrops--; };
+  }
+
+  // ---------------- actions ----------------
+  // One log update per click. Repeated clicks on the same element merge into one line with a
+  // counter (so a spam never scrolls the log away), and that line animates on every click.
+  let lastGather = null;
+  const MERGE_MS = 1500, RAPID_MS = 300;
+  function gather(k) {
+    state.counts[k] += 1;
+    state.clicked[k] = true;
+    spawnDrop(k);
+
+    const now = performance.now();
+    const pool = LINES[k];
+    const top = logEl.firstChild;
+    if (lastGather && lastGather.k === k && lastGather.el === top && now - lastGather.t < MERGE_MS) {
+      lastGather.count += 1;
+      const base = pool[Math.floor(lastGather.count / 8) % pool.length];
+      const text = `${base} \u00d7${lastGather.count}`;
+      state.log[0] = text;
+      top.textContent = text;
+      const rapid = now - lastGather.t < RAPID_MS;
+      lastGather.t = now;
+      if (!reduceMotion.matches) {
+        top.animate(
+          rapid
+            ? [{ transform: 'translateX(0) scale(1)' }, { transform: 'translateX(5px) scale(1.06)' }, { transform: 'translateX(0) scale(1)' }]
+            : [{ transform: 'translateX(0)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(0)' }],
+          { duration: rapid ? 110 : 160, easing: 'ease-out' });
+      }
+    } else {
+      note(pool[0]);
+      lastGather = { k, el: logEl.firstChild, count: 1, t: now };
+    }
+    render();
+  }
+
+  function buy(b) {
+    if (state.built[b.id] || !affordable(b)) return;
+    for (const [k, v] of Object.entries(b.cost)) state.counts[k] -= v;
+    state.built[b.id] = true;
+    note(b.msg);
+    render(); save();
+  }
+
+
+  // ---------------- render ----------------
+  function render() {
+    let anyStore = false;
+    ELEMENTS.forEach(({ id }) => {
+      const n = state.counts[id], r = rateOf(id);
+      $('n-' + id).textContent = fmt(n);
+      $('r-' + id).textContent = r ? `+${r}/s` : '';
+      const show = n >= 1 || r > 0 || state.clicked[id];
+      $('row-' + id).hidden = !show;
+      if (show) anyStore = true;
+    });
+
+    const total = ELEMENTS.reduce((t, { id }) => t + Math.max(0, state.counts[id]), 0);
+    if (total >= 1) {
+      let hi = ELEMENTS[0].id, lo = ELEMENTS[0].id;
+      ELEMENTS.forEach(({ id }) => {
+        const share = Math.max(0, state.counts[id]) / total;
+        $('seg-' + id).style.width = (share * 100).toFixed(2) + '%';
+        $('pct-' + id).textContent = Math.round(share * 100) + '%';
+        if (state.counts[id] > state.counts[hi]) hi = id;
+        if (state.counts[id] < state.counts[lo]) lo = id;
+      });
+      const spread = (state.counts[hi] - state.counts[lo]) / total;
+      $('skew').textContent = spread < 0.1 ? 'even.' : `heavy on ${hi}, light on ${lo}.`;
+    } else {
+      ELEMENTS.forEach(({ id }) => { $('seg-' + id).style.width = '0'; $('pct-' + id).textContent = '0%'; });
+      $('skew').textContent = 'empty.';
+    }
+
+    // An upgrade appears once the player has touched both of its ingredients. The moment they have
+    // touched any two different elements, at least one upgrade is shown so the prompt never fails
+    // to appear (fire + air and water + earth have no upgrade of their own).
+    const has = k => !!(state.clicked[k] || state.counts[k] >= 1);
+    if (!state.unlocked) {
+      const touched = ELEMENTS.filter(({ id }) => has(id)).length;
+      if (touched >= 2) {
+        state.unlocked = true;
+        if (!BUILDS.some(b => Object.keys(b.cost).every(has))) {
+          const first = BUILDS.find(b => Object.keys(b.cost).some(has));
+          if (first) state.revealed[first.id] = true;
+        }
+        note('the elements could be put to work.');
+      }
+    }
+
+    let anyOpen = false, anyBuilt = false;
+    BUILDS.forEach(b => {
+      if (!state.revealed[b.id] && Object.keys(b.cost).every(has)) state.revealed[b.id] = true;
+      const done = !!state.built[b.id];
+      const open = state.revealed[b.id] && !done;
+      $('b-' + b.id).hidden = !open;
+      $('w-' + b.id).hidden = !done;
+      if (open) {
+        anyOpen = true;
+        $('btn-' + b.id).disabled = !affordable(b);
+        $('c-' + b.id).innerHTML = Object.entries(b.cost).map(([k, v]) =>
+          `<span class="${state.counts[k] >= v ? 'have' : ''}">${k} ${fmt(Math.min(state.counts[k], v))}/${v}</span>`
+        ).join('<span>·</span>');
+      }
+      if (done) anyBuilt = true;
+    });
+    $('build-head').hidden = !anyOpen;
+    $('works-box').hidden = !anyBuilt;
+
+    $('empty').hidden = anyStore;
+  }
+
+  // ---------------- save / load ----------------
+  function save() {
+    state.savedAt = Date.now();
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      $('save-status').textContent = 'saved.';
+    } catch (e) {
+      $('save-status').textContent = 'saving is off in this browser.';
+    }
+  }
+  function loadStored() {
+    try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; }
+    catch (e) { return null; }
+  }
+  function adopt(saved) {
+    const s = freshState();
+    for (const k of Object.keys(s)) {
+      if (saved[k] == null) continue;
+      s[k] = (typeof s[k] === 'object' && !Array.isArray(s[k])) ? Object.assign(s[k], saved[k]) : saved[k];
+    }
+    state = s;
+  }
+  function applyOffline(since) {
+    if (!since) return;
+    const away = Math.min((Date.now() - since) / 1000, OFFLINE_CAP_S);
+    if (away < 10) return;
+    const gains = [];
+    BUILDS.forEach(b => {
+      if (state.built[b.id]) { const g = b.rate * away; state.counts[b.makes] += g; gains.push(`${fmt(g)} ${b.makes}`); }
+    });
+    if (gains.length) note(`while you were away: ${gains.join(', ')}.`);
+  }
+
+  // ---------------- text size ----------------
+  const SIZE_KEY = 'four-elements-size-v1';
+  const SIZES = [12, 14, 16, 18, 20, 24, 28];
+  let sizeIdx = 2;
+  function applySize() {
+    document.documentElement.style.setProperty('--fs', SIZES[sizeIdx] + 'px');
+    $('size-down').disabled = sizeIdx === 0;
+    $('size-up').disabled = sizeIdx === SIZES.length - 1;
+    try { localStorage.setItem(SIZE_KEY, String(sizeIdx)); } catch (e) {}
+  }
+  try {
+    const v = parseInt(localStorage.getItem(SIZE_KEY), 10);
+    if (v >= 0 && v < SIZES.length) sizeIdx = v;
+  } catch (e) {}
+  $('size-down').addEventListener('click', () => { if (sizeIdx > 0) { sizeIdx--; applySize(); } });
+  $('size-up').addEventListener('click', () => { if (sizeIdx < SIZES.length - 1) { sizeIdx++; applySize(); } });
+  applySize();
+
+  // ---------------- restart ----------------
+  function showConfirm(on) {
+    $('restart-wrap').hidden = on;
+    $('restart-confirm').hidden = !on;
+    (on ? $('restart-no') : $('restart-btn')).focus();
+  }
+  $('restart-btn').addEventListener('click', () => showConfirm(true));
+  $('restart-no').addEventListener('click', () => showConfirm(false));
+  $('restart-yes').addEventListener('click', () => {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    state = freshState();
+    drawLog();
+    note('the dark settles. four forces wait again.');
+    render();
+    $('save-status').textContent = 'not saved yet.';
+    showConfirm(false);
+  });
+
+  // ---------------- keyboard ----------------
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if (e.target.closest && e.target.closest('input, textarea')) return;
+    const el = ELEMENTS.find(x => x.key === e.key.toLowerCase());
+    if (el) { e.preventDefault(); gather(el.id); }
+    if (e.key === 'Escape' && !$('restart-confirm').hidden) showConfirm(false);
+  });
+
+  // ---------------- loop ----------------
+  let last = performance.now();
+  let hiddenAt = 0;
+  setInterval(() => {
+    if (document.hidden) return;   // background time is credited on return instead
+    const now = performance.now();
+    const dt = Math.min((now - last) / 1000, 5); last = now;
+    let changed = false;
+    BUILDS.forEach(b => { if (state.built[b.id]) { state.counts[b.makes] += b.rate * dt; changed = true; } });
+    if (changed) render();
+  }, 250);
+  setInterval(() => { if (!document.hidden) save(); }, 5000);
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenAt = Date.now(); save(); }
+    else { applyOffline(hiddenAt); hiddenAt = 0; last = performance.now(); render(); save(); }
+  });
+
+  // ---------------- boot ----------------
+  function start(hot) {
+    const saved = (hot && hot.state) || loadStored();
+    if (saved) {
+      adopt(saved);
+      drawLog();
+      if (!(hot && hot.state)) applyOffline(state.savedAt);
+      $('save-status').textContent = 'saved.';
+    } else {
+      note('four forces wait in the dark.');
+    }
+    render();
+  }
+
+  window.claude?.hot?.snapshot?.(() => ({ state }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
