@@ -39,6 +39,8 @@
 
   // ---- keyboard: 1-4 pick an option; afterwards only 1 (the chosen element) does anything ----
   document.addEventListener('keydown', e => {
+    // a held Enter re-clicks the focused element button on every repeat; like the 1 key, one press is one gather
+    if (e.repeat && e.key === 'Enter' && e.target.closest && e.target.closest('button.pick')) { e.preventDefault(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     if (e.target.closest && e.target.closest('input, textarea')) return;
     const chosen = FE.state.chosen;

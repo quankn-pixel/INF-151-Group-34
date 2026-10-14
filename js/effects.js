@@ -31,7 +31,7 @@
   function makeNode(k, px, parent) {
     const el = document.createElement('span');
     el.className = 'drop';
-    el.style.color = `var(--${k})`;
+    el.style.color = `var(--${k}-ink)`;
     if (px) el.style.width = el.style.height = px + 'px';
     el.innerHTML = `<svg viewBox="0 0 24 24">${FE.ICONS[k]}</svg>`;
     (parent || $('drops')).appendChild(el);

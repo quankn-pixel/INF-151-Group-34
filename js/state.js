@@ -23,6 +23,7 @@
   FE.maxMultiplier = () => FE.BASE_MAX_MULT + FE.CRYSTAL_MAX_MULT * FE.state.crystals;
   FE.clickPower = () => Math.pow(2, FE.state.up.res);
   FE.resCost = () => FE.RES_BASE_COST * Math.pow(FE.RES_COST_GROWTH, FE.state.up.res);
+  FE.resMaxed = () => FE.resCost() >= FE.CAP;                  // holding that much means storage is full, which locks buying
   FE.structCost = () => FE.STRUCT_BASE_COST + FE.STRUCT_COST_STEP * FE.state.up.struct;
 
   FE.save = function () {
@@ -42,7 +43,8 @@
     const s = FE.freshState();
     for (const k of Object.keys(s)) {
       if (saved[k] == null) continue;
-      s[k] = (typeof s[k] === 'object' && !Array.isArray(s[k])) ? Object.assign(s[k], saved[k]) : saved[k];
+      const d = s[k];   // null defaults (chosen) are plain values: typeof null is 'object', but it can't be merged into
+      s[k] = (d && typeof d === 'object' && !Array.isArray(d)) ? Object.assign(d, saved[k]) : saved[k];
     }
     FE.state = s;
   };

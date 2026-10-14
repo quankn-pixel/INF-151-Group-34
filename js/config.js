@@ -48,10 +48,7 @@ window.FE = {};
 
   // resource values are kept to one decimal place
   FE.round1 = n => Math.round(n * 10) / 10;
-  FE.fmt = n => {
-    const r = FE.round1(n);
-    return Number.isInteger(r) ? r.toLocaleString('en-US') : r.toFixed(1);
-  };
+  FE.fmt = n => FE.round1(n).toLocaleString('en-US', { maximumFractionDigits: 1 });   // 12,345 and 12,345.6 alike
 
   // water text: every letter is its own span. --o = signed distance from the middle, --d = absolute distance
   FE.letters = t => {

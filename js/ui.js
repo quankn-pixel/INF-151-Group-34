@@ -1,7 +1,6 @@
 /* ui.js - building and drawing the page: choices, multiplier, stores, upgrades, balance bar. */
 (function (FE) {
   const $ = FE.$, { ELEMENTS, ICONS } = FE;
-  const ABBR = n => FE.fmt(n);
 
   // one-off: bar segments + legend (elements then emptiness), stores rows, upgrade buttons
   FE.buildStatic = function () {
@@ -37,7 +36,7 @@
     cr.innerHTML = `<span id="crystal-label">tier 1 crystal</span><span class="n" id="n-crystal">0</span>`;
     $('store-rows').appendChild(cr);
 
-    $('cond-note').textContent = `(+${FE.CRYSTAL_MAX_MULT}x max multiplier each)`;
+    $('cond-note').textContent = `(+${FE.CRYSTAL_MAX_MULT.toFixed(1)} max multiplier each)`;
     $('btn-res').addEventListener('click', () => FE.buyRes());
     $('btn-struct').addEventListener('click', () => FE.buyStruct());
     $('btn-cond').addEventListener('click', () => FE.condense());
@@ -46,6 +45,7 @@
   // four "Investigate" options at first; afterwards only the chosen element, bound to the 1 key
   FE.renderChoices = function () {
     const g = $('gather'), chosen = FE.state.chosen;
+    const hadFocus = g.contains(document.activeElement);       // keep keyboard focus when the buttons are rebuilt
     g.replaceChildren();
     ELEMENTS.filter(e => !chosen || e.id === chosen).forEach(({ id, key }) => {
       const shown = chosen ? '1' : key;
@@ -57,6 +57,7 @@
       btn.addEventListener('click', () => FE.act(id));
       g.appendChild(btn);
     });
+    if (hadFocus && g.firstChild) g.firstChild.focus();
   };
 
   // the multiplier readout and the structures' live rate change as icons come and go, so this runs on a timer
@@ -64,7 +65,7 @@
     const el = $('mult'), s = FE.state, chosen = s.chosen;
     if (!chosen) { el.hidden = true; return; }
     el.hidden = false;
-    el.style.setProperty('--c', `var(--${chosen})`);
+    el.style.setProperty('--c', `var(--${chosen}-ink)`);
     const m = FE.multiplier();
     const t = '×' + m.toFixed(1);
     if (el.textContent !== t) el.textContent = t;
@@ -82,18 +83,20 @@
     $('up-cond').hidden = !s.seen.cond;
     $('upgrades-box').hidden = !(s.seen.res || s.seen.struct || s.seen.cond);
     if (!c) return;
-    $('upgrades-box').style.setProperty('--c', `var(--${c})`);
+    $('upgrades-box').style.setProperty('--c', `var(--${c}-ink)`);
 
-    const rc = FE.resCost();
+    // costs only read as affordable while buying is actually possible (never while storage is full)
+    const rc = FE.resCost(), resMax = FE.resMaxed();
     $('btn-res').textContent = `${c} resonance`;
-    $('btn-res').disabled = locked || n < rc;
-    $('res-power').textContent = `click power ${ABBR(FE.clickPower())}`;
-    $('res-cost').innerHTML = `cost <span class="${n >= rc ? 'have' : ''}">${ABBR(rc)} ${c}</span> · doubles click power`;
+    $('btn-res').disabled = locked || resMax || n < rc;
+    $('res-power').textContent = `click power ${FE.fmt(FE.clickPower())}`;
+    $('res-cost').innerHTML = resMax ? 'maxed · the next level would cost more than storage can hold'
+      : `cost <span class="${n >= rc && !locked ? 'have' : ''}">${FE.fmt(rc)} ${c}</span> · doubles click power`;
 
     const sc = FE.structCost();
     $('btn-struct').textContent = FE.STRUCT_NAMES[c];
     $('btn-struct').disabled = locked || n < sc;
-    $('struct-cost').innerHTML = `cost <span class="${n >= sc ? 'have' : ''}">${ABBR(sc)} ${c}</span> · makes ${FE.STRUCT_RATE} ${c}/s each, scales with multiplier`;
+    $('struct-cost').innerHTML = `cost <span class="${n >= sc && !locked ? 'have' : ''}">${FE.fmt(sc)} ${c}</span> · makes ${FE.STRUCT_RATE} ${c}/s each, scales with multiplier`;
 
     $('btn-cond').textContent = `condense a tier 1 ${c} crystal`;
     $('btn-cond').disabled = !locked;
@@ -126,7 +129,7 @@
     // only your own element appears in the bar and legend; percentages round DOWN so it reads 0% until 1,000
     const shares = ELEMENTS.map(({ id }) => ({ id, share: Math.max(0, s.counts[id]) / denom }));
     shares.push({ id: 'void', share: empty / denom });
-    const pcts = {};
+    const pcts = {}, barW = $('bar').clientWidth;
     let used = 0;
     shares.forEach(({ id, share }) => { if (id !== 'void') { pcts[id] = Math.floor(share * 100 + 1e-9); used += pcts[id]; } });
     pcts.void = Math.max(0, 100 - used);                       // elements + emptiness always read as 100%
@@ -136,11 +139,12 @@
       seg.hidden = !mine;
       if (id !== 'void') $('leg-' + id).hidden = !mine;
       seg.style.width = (share * 100).toFixed(2) + '%';
-      seg.classList.toggle('narrow', share < 0.1);
       // thin divider only between two visible segments, so there are no stray dark edges
       seg.style.borderRightWidth = (share > 0 && shares.slice(i + 1).some(x => x.share > 0)) ? '1px' : '0';
       $('segpct-' + id).textContent = pcts[id] + '%';
       $('pct-' + id).textContent = pcts[id] + '%';
+      // hide the label (icon + %) whenever the segment is too thin to hold all of it, at any screen width
+      seg.classList.toggle('narrow', share * barW < seg.firstChild.offsetWidth + 8);
     });
     $('seg-void').classList.toggle('gone', empty <= 0);
     $('row-void').classList.toggle('gone', empty <= 0);

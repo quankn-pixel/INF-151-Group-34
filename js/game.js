@@ -75,8 +75,8 @@
       FE.adopt(saved);
       const s = FE.state, total = FE.totalCount();
       if (!s.chosen) s.chosen = FE.ELEMENTS.map(e => e.id).find(id => s.clicked[id]) || null;   // older saves
-      if (total < FE.BALANCE_AT) s.balanceShown = false;        // thresholds changed since older saves
-      if (total < FE.CAP) s.full = false;
+      // balanceShown stays as saved: once the box is shown it never hides, same as in a running session
+      if (total < FE.CAP && !s.crystals) s.full = false;        // older saves (CAP was raised); after condensing it stays set
       FE.$('save-status').textContent = 'saved.';
     }
     FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(0);

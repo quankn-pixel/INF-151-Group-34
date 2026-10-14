@@ -11,12 +11,14 @@ body { margin: 0; }
   --dim: #6a6a6a;
   --void: #cfcfcf;
   --air: #b9dcec; --water: #4a97e8; --earth: #b08050; --fire: #f2683a;
+  /* -ink: the element as text, borders and icons. The fills above are too light to read on white, so light mode darkens them */
+  --air-ink: #2a7f96; --water-ink: #2b78c8; --earth-ink: #946639; --fire-ink: #c94a1e;
   --serif: "Times New Roman", Times, "Liberation Serif", serif;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; --dim: #b4b4b4; --void: #2a2a2a; color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; --dim: #b4b4b4; --void: #2a2a2a; --air-ink: var(--air); --water-ink: var(--water); --earth-ink: var(--earth); --fire-ink: var(--fire); color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; --dim: #b4b4b4; --void: #2a2a2a; color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; --dim: #b4b4b4; --void: #2a2a2a; --air-ink: var(--air); --water-ink: var(--water); --earth-ink: var(--earth); --fire-ink: var(--fire); color-scheme: dark; }
 
 html, body { background: var(--bg); color: var(--fg); }
 body { font-family: var(--serif); font-size: var(--fs, 16px); padding-block: 40px; padding-inline: 20px; }
@@ -52,10 +54,10 @@ button.pick:disabled .w { opacity: .45; animation: none; text-shadow: none; }
 button.pick:disabled .ch { animation: none; }
 .hang { position: absolute; left: 0; top: 100%; width: 100%; height: 0; z-index: 20; pointer-events: none; }
 button.pick:hover:not(:disabled) { text-decoration: none; background: color-mix(in srgb, var(--c) 14%, var(--bg)); box-shadow: 0 0 14px -3px var(--c); }
-button.pick-air { --c: var(--air); } button.pick-water { --c: var(--water); }
-button.pick-earth { --c: var(--earth); border-bottom-width: 4px; } button.pick-fire { --c: var(--fire); }
+button.pick-air { --c: var(--air-ink); } button.pick-water { --c: var(--water-ink); }
+button.pick-earth { --c: var(--earth-ink); border-bottom-width: 4px; } button.pick-fire { --c: var(--fire-ink); }
 .w { color: var(--c); font-weight: bold; display: inline-block; text-shadow: 0 0 8px color-mix(in srgb, var(--c) 55%, transparent); }
-.w-air { --c: var(--air); } .w-water { --c: var(--water); } .w-earth { --c: var(--earth); } .w-fire { --c: var(--fire); }
+.w-air { --c: var(--air-ink); } .w-water { --c: var(--water-ink); } .w-earth { --c: var(--earth-ink); } .w-fire { --c: var(--fire-ink); }
 .w-air { animation: drift 3.2s ease-in-out infinite alternate; }
 .w-water { animation: ripple 2.6s ease-in-out infinite; }
 .w-fire { animation: flicker 1.3s steps(1, end) infinite; }
@@ -77,15 +79,16 @@ button.link {
 button.link:disabled { color: var(--muted); text-decoration: none; cursor: default; }
 
 .side { display: flex; flex-direction: column; gap: 28px; }
-.box { position: relative; border: 1px solid var(--line); padding: 16px 12px 10px; }
-.box .label { position: absolute; top: -10px; left: 8px; background: var(--bg); padding: 0 4px; }
+/* label and top padding scale with the text size, so the label stays centred on the border at every size */
+.box { position: relative; border: 1px solid var(--line); padding: 1em 12px 10px; }
+.box .label { position: absolute; top: 0; left: 8px; transform: translateY(-50%); line-height: 1.2; background: var(--bg); padding: 0 4px; }
 .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; line-height: 1.6; }
 .row .n { font-variant-numeric: tabular-nums; text-align: right; }
 .empty { color: var(--muted); font-style: italic; }
 .drops { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 10; }
 .drop { position: absolute; width: 1.5em; height: 1.5em; color: var(--fg); will-change: transform, opacity; }
 .drop svg { width: 100%; height: 100%; display: block; }
-.tray { box-sizing: border-box; margin: 40px max(0px, calc((100vw - 1400px) * 0.2)) 0; padding: 22px 14px 12px; animation: fadein 1.2s ease; }
+.tray { box-sizing: border-box; margin: 40px 0 0; padding: 1.375em 14px 12px; animation: fadein 1.2s ease; }
 .total { margin-bottom: 12px; color: var(--muted); }
 .total span { color: var(--fg); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .total .cap { color: var(--muted); }
@@ -109,7 +112,7 @@ button.link:disabled { color: var(--muted); text-decoration: none; cursor: defau
 .footer .size button { font-size: 1.15em; min-width: 1.2em; }
 .footer .confirm { color: var(--fg); display: flex; gap: 10px; }
 
-@media (prefers-reduced-motion: reduce) { .log p, .w, .ch, .up, .upgrades { animation: none; } .bar > span { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .log p, .w, .ch, .up, .upgrades, .tray { animation: none; } .bar > span { transition: none; } }
 
 /* multiplier above the chosen element */
 .mult { font-size: 3em; line-height: 1.05; font-weight: bold; font-variant-numeric: tabular-nums; color: var(--c, var(--fg)); text-shadow: 0 0 16px color-mix(in srgb, var(--c, var(--fg)) 45%, transparent); margin: 2px 0 6px; }
@@ -124,3 +127,21 @@ button.upbtn:disabled { border-color: color-mix(in srgb, var(--c) 40%, var(--bg)
 .up-note { color: var(--dim); font-variant-numeric: tabular-nums; }
 .up-sub { margin-top: 5px; font-size: 0.8125em; color: var(--muted); }
 .up-sub .have { color: var(--fg); }
+
+/* narrower screens: log above actions on the left, stores and upgrades on the right; buttons never wider than their column */
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "log side" "actions side"; gap: 24px 32px; }
+  .log { grid-area: log; height: 9em; }
+  .actions { grid-area: actions; }
+  .side { grid-area: side; }
+  .actions, .stack { max-width: 100%; }
+  button.pick:not(.solo) { min-width: 0; width: 17em; max-width: 100%; }
+  button.upbtn { white-space: normal; max-width: 100%; }
+}
+/* phones: one column */
+@media (max-width: 640px) {
+  body { padding-block: 24px; padding-inline: 16px; }
+  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "log" "actions" "side"; gap: 24px; }
+  .log { height: 6.5em; }                                    /* fixed, so new lines never push the button under your finger */
+  .tray { margin-top: 28px; }
+}
