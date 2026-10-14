@@ -1,4 +1,4 @@
-/* state.js - the game state and saving. Always read FE.state at call time (it is replaced on restart/load). */
+/* state.js - the game state, saving, and values derived from it. Always read FE.state at call time (it is replaced on restart/load). */
 (function (FE) {
   FE.freshState = function () {
     return {
@@ -7,6 +7,9 @@
       full: false,          // storage has been filled
       chosen: null,         // the one element the player picked first
       clicked: {},          // element -> true after first manual gather
+      up: { res: 0, struct: 0 },                      // upgrade levels / structures owned (reset by condensing)
+      seen: { res: false, struct: false, cond: false }, // which upgrades have faded in (kept when condensing)
+      crystals: 0,          // tier 1 crystals of the chosen element
       log: [{ h: 'The dark space stirs with <b>Four Elements</b>', c: 'title' }],   // newest first
       savedAt: 0
     };
@@ -14,6 +17,13 @@
   FE.state = FE.freshState();
 
   FE.totalCount = () => FE.round1(FE.ELEMENTS.reduce((t, { id }) => t + Math.max(0, FE.state.counts[id]), 0));
+
+  // derived values
+  FE.locked = () => FE.totalCount() >= FE.CAP;                 // storage full: only condensing is possible
+  FE.maxMultiplier = () => FE.BASE_MAX_MULT + FE.CRYSTAL_MAX_MULT * FE.state.crystals;
+  FE.clickPower = () => Math.pow(2, FE.state.up.res);
+  FE.resCost = () => FE.RES_BASE_COST * Math.pow(FE.RES_COST_GROWTH, FE.state.up.res);
+  FE.structCost = () => FE.STRUCT_BASE_COST + FE.STRUCT_COST_STEP * FE.state.up.struct;
 
   FE.save = function () {
     FE.state.savedAt = Date.now();

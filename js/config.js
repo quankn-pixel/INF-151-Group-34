@@ -10,9 +10,23 @@ window.FE = {};
     { id: 'fire',  key: '4' }
   ];
 
-  FE.CAP = 1000;          // total storage: elements + emptiness always add up to this
+  FE.CAP = 100000;        // total storage: elements + emptiness always add up to this
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
-  FE.MAX_ICONS = 10;      // icons alive at once, across everything
+
+  // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier
+  FE.MULT_PER_ICON = 0.1;
+  FE.BASE_MAX_MULT = 2;
+  FE.CRYSTAL_MAX_MULT = 2;      // each crystal raises the max multiplier by this much
+
+  // upgrades (all of them need the chosen element as payment)
+  FE.RES_AT = 100;              // resonance fades in at this many of your element
+  FE.RES_BASE_COST = 10;        // doubles click power; cost grows x10 each time
+  FE.RES_COST_GROWTH = 10;
+  FE.STRUCT_AT = 1000;          // structure fades in at this many of your element
+  FE.STRUCT_BASE_COST = 1000;   // cost grows by STRUCT_COST_STEP each time, no limit
+  FE.STRUCT_COST_STEP = 1000;
+  FE.STRUCT_RATE = 100;         // element per second each, scaled by the multiplier (not click power)
+  FE.STRUCT_NAMES = { air: 'windmill', water: 'stream', earth: 'boulder', fire: 'bonfire' };
   FE.SAVE_KEY = 'four-elements-save-v1';
   FE.SIZE_KEY = 'four-elements-size-v1';
 

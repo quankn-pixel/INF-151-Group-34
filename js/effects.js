@@ -4,7 +4,7 @@
  *   - `live`   : the LOGICAL icons, each just { end: timestamp }. The multiplier reads only this, so it never
  *                depends on the DOM, on animation events, or on whether the tab was throttled.
  *   - the DOM  : purely cosmetic nodes that try to match each logical icon's lifetime.
- * Max FE.MAX_ICONS logical icons exist at once. Nothing lives longer than ~18s.
+ * There is no limit on icons. Nothing lives longer than ~18s.
  */
 (function (FE) {
   const $ = FE.$;
@@ -18,8 +18,8 @@
 
   function prune() { const t = now(); live.forEach(i => { if (i.end <= t) live.delete(i); }); }
   FE.liveIcons = () => { prune(); return live.size; };
-  // 1.0x with nothing on screen, up to 2.0x with MAX_ICONS on screen (always in tenths)
-  FE.multiplier = () => FE.round1(1 + FE.liveIcons() / FE.MAX_ICONS);
+  // 1.0x with nothing on screen, +0.1 per icon (always in tenths) - but never above the max multiplier
+  FE.multiplier = () => Math.min(FE.maxMultiplier(), FE.round1(1 + FE.liveIcons() * FE.MULT_PER_ICON));
 
   FE.clearIcons = function () {
     live.clear();
@@ -28,13 +28,13 @@
     $('drops').replaceChildren();
   };
 
-  function makeNode(k, px) {
+  function makeNode(k, px, parent) {
     const el = document.createElement('span');
     el.className = 'drop';
     el.style.color = `var(--${k})`;
     if (px) el.style.width = el.style.height = px + 'px';
     el.innerHTML = `<svg viewBox="0 0 24 24">${FE.ICONS[k]}</svg>`;
-    $('drops').appendChild(el);
+    (parent || $('drops')).appendChild(el);
     return el;
   }
   function run(el, frames, opts) {
@@ -47,7 +47,7 @@
   // ---- earth: straight down, accelerating, off the bottom of the screen (shortest-lived) ----
   function earth(r, px) {
     const x0 = r.left + r.width / 2 - px / 2 + (Math.random() - 0.5) * r.width * 0.5;
-    const y0 = r.top + r.height * 0.4;
+    const y0 = r.bottom - px * 0.5;                              // emerges right at the bottom edge of the box
     const dist = Math.max(innerHeight - y0 + px, px * 2);
     const dur = 700 + Math.sqrt(dist) * 30;
     track(dur);
@@ -82,7 +82,8 @@
 
   // ---- fire: slow wandering embers drifting sideways across the page (longest-lived) ----
   function fire(r, px) {
-    const x0 = r.left + r.width / 2 - px / 2, y0 = r.top + r.height * 0.4;
+    const x0 = r.left + 4 + Math.random() * Math.max(0, r.width - px - 8);   // always starts inside the box
+    const y0 = r.top + (r.height - px) / 2;
     const s = side();
     const dist = (s < 0 ? x0 + px : innerWidth - x0 + px);
     const dur = Math.min(18000, Math.max(6000, dist / (70 + Math.random() * 20) * 1000));
@@ -93,10 +94,10 @@
     const p1 = Math.random() * 6, p2 = Math.random() * 6, N = 36, frames = [];
     for (let i = 0; i <= N; i++) {
       const f = i / N;
-      const x = s * dist * f + Math.sin(p1 + f * 9) * 18;
-      const y = Math.sin(p2 + f * 6) * 38 - f * 30;
+      const x = s * dist * f + (Math.sin(p1 + f * 9) - Math.sin(p1)) * 18;   // wander is zero at f=0
+      const y = (Math.sin(p2 + f * 6) - Math.sin(p2)) * 38 - f * 30;
       frames.push({
-        transform: `translate(${x}px,${y}px) rotate(${Math.sin(p1 + f * 14) * 10}deg) scale(${1 - 0.5 * f})`,
+        transform: `translate(${x}px,${y}px) rotate(${(Math.sin(p1 + f * 14) - Math.sin(p1)) * 10}deg) scale(${1 - 0.5 * f})`,
         opacity: i === 0 ? 0 : (i === N ? 0.4 : (i % 2 ? 0.65 : 1)),
         offset: f
       });
@@ -117,7 +118,7 @@
   }
   function release(g) {
     hanging.delete(g);
-    const dist = innerHeight - g.y + g.s * 2;
+    const dist = innerHeight - g.btn.getBoundingClientRect().bottom + g.s * 2;
     g.el.style.transition = 'none';
     run(g.el, [
       { transform: `translateY(0) scale(${g.scale})` },
@@ -134,12 +135,15 @@
     schedule(g, g.mass >= 3 ? 350 : Math.min(Math.max(0, g.fallAt - now()), 1100));
   }
 
-  function water(r, px) {
+  // Droplets are children of the button's .hang layer (just under its bottom edge), so they stay glued to the box
+  // wherever it goes. x is measured in the box's own coordinates. The tip of the drop sits on the box's bottom border.
+  function water(r, px, btn) {
     const s = px * 0.55;
     const hang = 2800 + Math.random() * 1800;
     const entry = track(hang + 1300);                           // refined by schedule()
-    if (!visuals()) return;
-    const left = r.left + r.width * 0.15, right = r.right - r.width * 0.15;
+    const layer = btn.querySelector('.hang');
+    if (!visuals() || !layer) return;
+    const left = btn.offsetWidth * 0.15, right = btn.offsetWidth * 0.85;
     const list = [...hanging];
     let x = left + Math.random() * (right - left);
     if (list.length && Math.random() < 0.6) {                   // often start next to an existing drop so they can join
@@ -150,10 +154,12 @@
     const near = list.find(g => Math.abs(g.x - x) < s * 1.1);
     if (near) { merge(near, entry); return; }
 
-    const el = makeNode('water', s);
-    const g = { el, x, y: r.bottom - 3, s, mass: 1, scale: 0.8, entries: [entry], timer: 0, fallAt: 0, dur: 0 };
-    el.style.left = (x - s / 2) + 'px'; el.style.top = g.y + 'px';
-    el.style.transformOrigin = '50% 0'; el.style.transform = 'scale(.3)'; el.style.opacity = '0';
+    const el = makeNode('water', s, layer);
+    const border = parseFloat(getComputedStyle(btn).borderBottomWidth) || 0;
+    const g = { el, btn, x, y: r.bottom, s, mass: 1, scale: 0.8, entries: [entry], timer: 0, fallAt: 0, dur: 0 };
+    el.style.left = (x - s / 2) + 'px'; el.style.top = (border - s * 0.125) + 'px';
+    el.style.transformOrigin = '50% 12.5%';                     // grow from the tip, so it stays attached
+    el.style.transform = 'scale(.3)'; el.style.opacity = '0';
     hanging.add(g);
     requestAnimationFrame(() => {
       el.style.transition = `transform ${hang}ms ease-out, opacity .3s ease`;
@@ -164,9 +170,8 @@
 
   const SPAWN = { air, water, earth, fire };
   FE.spawnIcon = function (k) {
-    if (FE.liveIcons() >= FE.MAX_ICONS) return;
     const btn = $('btn-' + k);
     if (!btn) return;
-    SPAWN[k](btn.getBoundingClientRect(), fontPx(btn) * 1.5);
+    SPAWN[k](btn.getBoundingClientRect(), fontPx(btn) * 1.5, btn);
   };
 })(window.FE);

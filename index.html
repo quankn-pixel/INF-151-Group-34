@@ -25,12 +25,28 @@
       <div class="empty" id="empty">nothing yet.</div>
       <div id="store-rows"></div>
     </div>
+
+    <div class="box upgrades" id="upgrades-box" hidden>
+      <span class="label">upgrades</span>
+      <div class="up" id="up-res" hidden>
+        <div class="up-head"><button class="el upbtn" id="btn-res" type="button"></button><span class="up-note" id="res-power"></span></div>
+        <div class="up-sub" id="res-cost"></div>
+      </div>
+      <div class="up" id="up-struct" hidden>
+        <div class="up-head"><button class="el upbtn" id="btn-struct" type="button"></button><span class="up-note" id="struct-info"></span></div>
+        <div class="up-sub" id="struct-cost"></div>
+      </div>
+      <div class="up" id="up-cond" hidden>
+        <div class="up-head"><button class="el upbtn" id="btn-cond" type="button"></button></div>
+        <div class="up-sub" id="cond-note"></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="tray box" id="balance-box" hidden>
   <span class="label">balance</span>
-  <div class="total">total stored <span id="total">0</span><span class="cap">/ 1000</span></div>
+  <div class="total">total stored <span id="total">0</span><span class="cap" id="cap"></span></div>
   <div class="bar" id="bar" role="img" aria-label="Share of each element"></div>
   <div class="ticks" aria-hidden="true"><i style="left:25%"></i><i style="left:50%"></i><i style="left:75%"></i></div>
   <div class="legend" id="legend"></div>
