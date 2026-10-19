@@ -1,6 +1,13 @@
-/* config.js - constants, text and tiny helpers. Every module hangs off the global FE object. */
-window.FE = {};
-(function (FE) {
+/* config.js - constants, text and tiny helpers. Every module hangs off the global FE object.
+ *
+ * Every file in js/ must wrap its code in FE.module(function (FE) { ... }). The wrapper records each file's
+ * source text, and that text is hashed into the build id (FE.BUILD, state.js). A save only loads into the
+ * build that wrote it, so any edit inside a wrapper clears old saves without bumping a version by hand.
+ * Code outside the wrapper is not part of the hash.
+ */
+window.FE = { code: [] };
+FE.module = function (fn) { FE.code.push(String(fn)); fn(FE); };
+FE.module(function (FE) {
   FE.$ = id => document.getElementById(id);
 
   FE.ELEMENTS = [
@@ -56,4 +63,4 @@ window.FE = {};
     return a.map((ch, i) => `<i class="ch" style="--o:${(i - mid).toFixed(2)};--d:${Math.abs(i - mid).toFixed(2)}">${ch}</i>`).join('');
   };
   FE.wordHTML = (k, t, fx) => `<span class="w${fx ? ' fx' : ''} w-${k}">${k === 'water' ? FE.letters(t) : t}</span>`;
-})(window.FE);
+});

@@ -6,7 +6,7 @@
  *   - the DOM  : purely cosmetic nodes that try to match each logical icon's lifetime.
  * There is no limit on icons. Nothing lives longer than ~18s.
  */
-(function (FE) {
+FE.module(function (FE) {
   const $ = FE.$;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const live = new Set();        // logical icons
@@ -174,4 +174,4 @@
     if (!btn) return;
     SPAWN[k](btn.getBoundingClientRect(), fontPx(btn) * 1.5, btn);
   };
-})(window.FE);
+});

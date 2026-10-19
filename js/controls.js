@@ -1,5 +1,5 @@
 /* controls.js - footer controls (text size, restart) and the keyboard. */
-(function (FE) {
+FE.module(function (FE) {
   const $ = FE.$;
 
   // ---- text size ----
@@ -48,4 +48,4 @@
     if (el) { e.preventDefault(); FE.act(el.id); }
     if (e.key === 'Escape' && !$('restart-confirm').hidden) showConfirm(false);
   });
-})(window.FE);
+});

@@ -1,5 +1,5 @@
 /* ui.js - building and drawing the page: choices, multiplier, stores, upgrades, balance bar. */
-(function (FE) {
+FE.module(function (FE) {
   const $ = FE.$, { ELEMENTS, ICONS } = FE;
 
   // one-off: bar segments + legend (elements then emptiness), stores rows, upgrade buttons
@@ -154,4 +154,4 @@
     renderUpgrades(total);
     FE.updateMult();
   };
-})(window.FE);
+});

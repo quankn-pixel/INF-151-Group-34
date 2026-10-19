@@ -1,5 +1,5 @@
 /* game.js - what a click does, upgrades, structures, the timers, and boot. Loaded last. */
-(function (FE) {
+FE.module(function (FE) {
   // Add to the chosen element, never past the cap. Announces the moment storage fills up.
   FE.addAmount = function (k, amount) {
     const s = FE.state;
@@ -68,18 +68,17 @@
     FE.render();
   }, 100);
 
-  function start(hot) {
+  function start() {
     FE.buildStatic();
-    const saved = (hot && hot.state) || FE.loadStored();
+    FE.BUILD = FE.computeBuild();   // game.js loads last, so every file has registered by now
+    const saved = FE.loadStored();
     if (saved) {
       FE.adopt(saved);
-      const s = FE.state, total = FE.totalCount();
-      if (!s.chosen) s.chosen = FE.ELEMENTS.map(e => e.id).find(id => s.clicked[id]) || null;   // older saves
       // balanceShown stays as saved: once the box is shown it never hides, same as in a running session
-      if (total < FE.CAP && !s.crystals) s.full = false;        // older saves (CAP was raised); after condensing it stays set
       FE.$('save-status').textContent = 'saved.';
     }
     FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(0);
+    if (FE.clearedOldSave) FE.note('The game was updated, so your old save was cleared.', 'dim');
     FE.render();
   }
 
@@ -92,6 +91,5 @@
     else { FE.render(); FE.save(); }
   });
 
-  window.claude?.hot?.snapshot?.(() => ({ state: FE.state }));
-  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
-})(window.FE);
+  start();
+});

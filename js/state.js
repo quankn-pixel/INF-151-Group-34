@@ -1,5 +1,5 @@
 /* state.js - the game state, saving, and values derived from it. Always read FE.state at call time (it is replaced on restart/load). */
-(function (FE) {
+FE.module(function (FE) {
   FE.freshState = function () {
     return {
       counts: { air: 0, water: 0, earth: 0, fire: 0 },
@@ -26,18 +26,38 @@
   FE.resMaxed = () => FE.resCost() >= FE.CAP;                  // holding that much means storage is full, which locks buying
   FE.structCost = () => FE.STRUCT_BASE_COST + FE.STRUCT_COST_STEP * FE.state.up.struct;
 
+  // ---- build id: a hash of every file's source (see config.js), so a save only loads into the build that wrote it ----
+  function hash(text) {   // FNV-1a, 32-bit, as base36
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+    return (h >>> 0).toString(36);
+  }
+  FE.BUILD = null;        // set by game.js once every file has registered
+  FE.computeBuild = () => hash(FE.code.join('\n'));
+
   FE.save = function () {
+    if (!FE.BUILD) return;
     FE.state.savedAt = Date.now();
     try {
-      localStorage.setItem(FE.SAVE_KEY, JSON.stringify(FE.state));
+      localStorage.setItem(FE.SAVE_KEY, JSON.stringify(Object.assign({ build: FE.BUILD }, FE.state)));
       FE.$('save-status').textContent = 'saved.';
     } catch (e) {
       FE.$('save-status').textContent = 'saving is off in this browser.';
     }
   };
+  // Saves from any other build (or from before builds existed, or unreadable ones) are deleted, not loaded.
   FE.loadStored = function () {
-    try { const raw = localStorage.getItem(FE.SAVE_KEY); return raw ? JSON.parse(raw) : null; }
-    catch (e) { return null; }
+    try {
+      const raw = localStorage.getItem(FE.SAVE_KEY);
+      if (raw == null) return null;
+      try {
+        const saved = JSON.parse(raw);
+        if (saved && saved.build === FE.BUILD) return saved;
+      } catch (e) {}
+      localStorage.removeItem(FE.SAVE_KEY);
+      FE.clearedOldSave = true;
+      return null;
+    } catch (e) { return null; }
   };
   FE.adopt = function (saved) {
     const s = FE.freshState();
@@ -48,4 +68,4 @@
     }
     FE.state = s;
   };
-})(window.FE);
+});

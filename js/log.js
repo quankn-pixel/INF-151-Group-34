@@ -1,5 +1,5 @@
 /* log.js - the fading text log on the left, plus the timed opening lines. */
-(function (FE) {
+FE.module(function (FE) {
   function lineEl(l) { const p = document.createElement('p'); if (l.c) p.className = l.c; p.innerHTML = l.h; return p; }
 
   FE.drawLog = function () { FE.$('log').replaceChildren(...FE.state.log.map(lineEl)); };
@@ -23,4 +23,4 @@
       }, Math.max(0, ms - (performance.now() - base))));
     });
   };
-})(window.FE);
+});
