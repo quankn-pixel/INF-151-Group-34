@@ -1,6 +1,6 @@
-/* game.js - what a click does, upgrades, structures, the timers, and boot. Loaded last. */
+/* game.js - what a click does, finding elements, builds, condensing, the timers, and boot. Loaded last. */
 FE.module(function (FE) {
-  // Add to the chosen element, never past the cap. Announces the moment storage fills up.
+  // Add to an element, never past the cap. Announces the moment storage first fills up.
   FE.addAmount = function (k, amount) {
     const s = FE.state;
     const room = FE.round1(FE.CAP - FE.totalCount());
@@ -8,64 +8,88 @@ FE.module(function (FE) {
     s.counts[k] = FE.round1(s.counts[k] + Math.min(amount, room));
     if (!s.full && FE.totalCount() >= FE.CAP) {
       s.full = true;
-      const top = FE.ELEMENTS.reduce((a, b) => s.counts[b.id] > s.counts[a] ? b.id : a, s.chosen || k);
+      const top = FE.majority() || k;
       FE.note(`Your ${FE.wordHTML(top, top, true)} has ${FE.FULL_VERB[top]} the other elements, but there is still not enough space in this <span class="fx-room">room</span>.`, 'note');
       FE.save();
     }
   };
 
-  // the first click only picks your path (it gives nothing); after that only that element can be gathered
+  // While choosing, a click investigates an element and makes it yours (that click gives nothing). After that it gathers.
   FE.act = function (k) {
     const s = FE.state;
-    if (!s.chosen) {
-      s.chosen = k;
-      FE.note(FE.FIRST_MSG[k], 'note');
-      FE.renderChoices();
-      FE.render();
-      FE.save();
-    } else if (k === s.chosen && !FE.locked()) {
-      FE.gather(k);
-    }
+    if (s.owned.includes(k)) { if (!FE.locked()) FE.gather(k); }
+    else if (s.picking) discover(k);
   };
 
-  FE.gather = function (k) {
+  function discover(k) {
     const s = FE.state;
-    const power = FE.round1(FE.clickPower() * FE.multiplier());  // read BEFORE this click's own icon exists
+    s.owned.push(k);
+    s.picking = false;
+    FE.note(FE.FIRST_MSG[k], 'note');
+    if (s.owned.length === 2) {
+      s.leaderIn = FE.LEADER_DELAY;
+      FE.note('With two elements you can conjure a spell: everything you hold, folded into one. Its element is whatever you hold most of.', 'note');
+    }
+    FE.renderChoices();
+    FE.render();
+    if (s.owned.length === 3) FE.showEnd();
+    FE.save();
+  }
+
+  FE.gather = function (k) {
+    const power = FE.round1(FE.clickPower(k) * FE.multiplier());  // read BEFORE this click's own icon exists
     FE.addAmount(k, power);
-    s.clicked[k] = true;
     FE.spawnIcon(k);
     FE.render();
   };
 
-  // ---- upgrades: paid for with your element; all locked while storage is full (only condensing works) ----
-  function spend(cost) {
+  // ---- builds: paid for with their own element; all locked while storage is full ----
+  function spend(k, cost) {
     const s = FE.state;
-    if (!s.chosen || FE.locked() || s.counts[s.chosen] < cost) return false;
-    s.counts[s.chosen] = FE.round1(s.counts[s.chosen] - cost);
+    if (!s.owned.includes(k) || FE.locked() || s.counts[k] < cost) return false;
+    s.counts[k] = FE.round1(s.counts[k] - cost);
     return true;
   }
-  FE.buyRes = function () { if (spend(FE.resCost())) { FE.state.up.res++; FE.render(); FE.save(); } };
-  FE.buyStruct = function () { if (spend(FE.structCost())) { FE.state.up.struct++; FE.render(); FE.save(); } };
+  FE.buyRes = function (k) { if (spend(k, FE.resCost(k))) { FE.state.up[k].res++; FE.render(); FE.save(); } };
+  FE.buyStruct = function (k) { if (spend(k, FE.structCost(k))) { FE.state.up[k].struct++; FE.render(); FE.save(); } };
 
-  // Condense: wipes progress and upgrades, keeps the crystal. Nothing is cleared on screen (bar, upgrades, icons stay).
+  // Condense: storage is full. Wipes every element and build, keeps the crystal. The first one also forms a planet,
+  // which opens the 2nd element; later ones only add a crystal.
   FE.condense = function () {
     const s = FE.state;
-    if (!s.chosen || !FE.locked()) return;
-    FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; });
-    s.up.res = 0; s.up.struct = 0;
+    if (!s.owned.length || !FE.locked()) return;
+    FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; s.up[id].res = 0; s.up[id].struct = 0; });
     s.crystals++;
+    if (!s.planets) {
+      s.planets = 1;
+      s.picking = true;
+      FE.note('The crystal pulls everything in and hardens into a small, dark planet.', 'dim');
+      FE.note('Something else stirs. Investigate it.', 'note');
+      FE.renderChoices();
+    } else {
+      FE.note('Another crystal settles into the planet.', 'dim');
+    }
     FE.render(); FE.save();
   };
 
-  // ---- structures: each makes STRUCT_RATE per second, scaled by the multiplier (not by click power) ----
-  let lastTick = performance.now();
+  // ---- every 100ms: structures make their element (scaled by the multiplier, not click power). The leader's approach,
+  // vagrants and the threat meter only move while the tab is visible, so nothing raids you while you're away. ----
+  let lastTick = performance.now(), wasVisible = !document.hidden;
   setInterval(() => {
     const t = performance.now(), dt = Math.min((t - lastTick) / 1000, 3600);
     lastTick = t;
-    const s = FE.state;
-    if (!s.chosen || s.up.struct <= 0 || FE.locked()) return;
-    FE.addAmount(s.chosen, s.up.struct * FE.STRUCT_RATE * FE.multiplier() * dt);
-    FE.render();
+    const s = FE.state, visible = !document.hidden;
+    let changed = false;
+    s.owned.forEach(k => {
+      if (s.up[k].struct > 0 && !FE.locked()) { FE.addAmount(k, FE.rate(k) * dt); changed = true; }
+    });
+    if (visible && wasVisible) {               // the first tick back counts nothing: dt may span the hidden time
+      const step = Math.min(dt, 1);
+      s.played += step;
+      if (FE.combatTick(step)) changed = true;
+    }
+    wasVisible = visible;
+    if (changed) FE.render();
   }, 100);
 
   function start() {

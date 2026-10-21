@@ -11,12 +11,30 @@
 <div class="drops" id="drops" aria-hidden="true"></div>
 
 <div class="wrap">
-  <div class="log" id="log" aria-live="polite"></div>
+  <div class="left">
+    <div class="log" id="log" aria-live="polite"></div>
 
-  <div class="actions">
-    <h1>the elements stir.</h1>
+    <div class="box encounter" id="enc-box" hidden>
+      <span class="label">vagrant</span>
+      <div class="foe" id="foe-name"></div>
+      <div class="meter" aria-hidden="true"><i id="foe-hp-fill"></i></div>
+      <div class="meter-note"><span id="foe-hp"></span><span>health</span></div>
+      <div class="meter time" aria-hidden="true"><i id="foe-time-fill"></i></div>
+      <div class="meter-note"><span id="foe-time"></span><span>until it raids</span></div>
+      <div class="foe-hint" id="foe-hint"></div>
+    </div>
+  </div>
+
+  <div class="center">
+    <h1 class="game-title">Four Elements</h1>
+    <p class="game-sub">the elements stir.</p>
     <div class="mult" id="mult" hidden>×1.0</div>
     <div class="stack" id="gather"></div>
+
+    <div class="box builds" id="builds-box" hidden>
+      <span class="label">builds</span>
+      <div class="cards" id="builds"></div>
+    </div>
   </div>
 
   <div class="side">
@@ -26,20 +44,17 @@
       <div id="store-rows"></div>
     </div>
 
-    <div class="box upgrades" id="upgrades-box" hidden>
-      <span class="label">upgrades</span>
-      <div class="up" id="up-res" hidden>
-        <div class="up-head"><button class="el upbtn" id="btn-res" type="button"></button><span class="up-note" id="res-power"></span></div>
-        <div class="up-sub" id="res-cost"></div>
-      </div>
-      <div class="up" id="up-struct" hidden>
-        <div class="up-head"><button class="el upbtn" id="btn-struct" type="button"></button><span class="up-note" id="struct-info"></span></div>
-        <div class="up-sub" id="struct-cost"></div>
-      </div>
-      <div class="up" id="up-cond" hidden>
-        <div class="up-head"><button class="el upbtn" id="btn-cond" type="button"></button></div>
-        <div class="up-sub" id="cond-note"></div>
-      </div>
+    <div class="box" id="works-box" hidden>
+      <span class="label">works</span>
+      <div id="works"></div>
+    </div>
+
+    <div class="box spells" id="spells-box" hidden>
+      <span class="label">spells</span>
+      <button class="el upbtn" id="btn-conjure" type="button"></button>
+      <div class="up-sub" id="conjure-note"></div>
+      <div class="spell-list" id="spell-list"></div>
+      <div class="empty" id="spells-empty">none yet.</div>
     </div>
   </div>
 </div>
@@ -48,8 +63,14 @@
   <span class="label">balance</span>
   <div class="total">total stored <span id="total">0</span><span class="cap" id="cap"></span></div>
   <div class="bar" id="bar" role="img" aria-label="Share of each element"></div>
-  <div class="ticks" aria-hidden="true"><i style="left:25%"></i><i style="left:50%"></i><i style="left:75%"></i></div>
   <div class="legend" id="legend"></div>
+  <div class="status" id="status"></div>
+  <div class="threat" id="threat-row" hidden>
+    <span>threat</span>
+    <div class="meter" aria-hidden="true"><i id="threat-fill"></i></div>
+    <span class="n" id="threat-pct">0%</span>
+  </div>
+  <div class="threat-note" id="threat-note" hidden></div>
 </div>
 
 <div class="footer">
@@ -66,12 +87,23 @@
   </span>
 </div>
 
+<div class="overlay" id="end-overlay" role="dialog" aria-modal="true" aria-labelledby="end-title" hidden>
+  <div class="box end-box">
+    <span class="label" id="end-title">end of prototype</span>
+    <p>Three elements answer to you now. The fourth world, Assiah, and the last element are still sealed.</p>
+    <p class="stats" id="end-stats"></p>
+    <p>Thanks for playing. Everything keeps running if you want to stay.</p>
+    <button class="el" id="end-close" type="button">keep playing.</button>
+  </div>
+</div>
+
 <!-- Plain scripts (no modules) so the game opens straight from the file system. Order matters. -->
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/log.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/combat.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/game.js"></script>
 </body>

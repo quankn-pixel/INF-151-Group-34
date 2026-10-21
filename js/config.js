@@ -11,13 +11,13 @@ FE.module(function (FE) {
   FE.$ = id => document.getElementById(id);
 
   FE.ELEMENTS = [
-    { id: 'air',   key: '1' },
-    { id: 'water', key: '2' },
-    { id: 'earth', key: '3' },
-    { id: 'fire',  key: '4' }
+    { id: 'air',   key: 'a' },
+    { id: 'water', key: 'w' },
+    { id: 'earth', key: 'e' },
+    { id: 'fire',  key: 'f' }
   ];
 
-  FE.CAP = 100000;        // total storage: elements + emptiness always add up to this
+  FE.CAP = 10000;         // total storage across all elements (prototype pacing: main uses 100,000)
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
 
   // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier
@@ -25,7 +25,7 @@ FE.module(function (FE) {
   FE.BASE_MAX_MULT = 2;
   FE.CRYSTAL_MAX_MULT = 2;      // each crystal raises the max multiplier by this much
 
-  // upgrades (all of them need the chosen element as payment)
+  // builds: every element has its own resonance and structure, paid for in that element
   FE.RES_AT = 100;              // resonance fades in at this many of your element
   FE.RES_BASE_COST = 10;        // doubles click power; cost grows x10 each time
   FE.RES_COST_GROWTH = 10;
@@ -45,6 +45,25 @@ FE.module(function (FE) {
     fire:  'The embers flicker weakly.'
   };
   FE.FULL_VERB = { air: 'smothered', water: 'drowned', earth: 'swallowed', fire: 'consumed' };
+  FE.FLAVOR = { air: 'restless winds', water: 'rising tides', earth: 'settling stone', fire: 'roaring flames' };   // balance status
+
+  // ---- spells and vagrants: they start once you hold two elements ----
+  FE.SPELLS = { air: 'Lightning', water: 'Hypnosis', earth: 'Binding', fire: 'Fireball' };
+  FE.BEATS = { water: 'fire', fire: 'air', air: 'earth', earth: 'water' };   // x beats BEATS[x]
+  FE.STRONG = 2;                // damage multiplier of a spell against the element it beats
+  FE.WEAK = 0.5;                // ...and against the element that beats it
+  FE.LEADER_DELAY = 30;         // seconds after the 2nd element before the scripted vagrant leader arrives
+  FE.LEADER_LINES = [[20, 'A vagrant settlement on the horizon.'], [10, 'The vagrants have seen you.']];   // [seconds left, story line]
+  FE.LEADER_HP = 1000;
+  FE.VAGRANT_TIME = 60;         // seconds any vagrant stays before it raids and leaves
+  FE.VAGRANT_HP_BASE = 0.15;    // later vagrants: this share of CAP, plus VAGRANT_HP_STEP per vagrant beaten, at most CAP
+  FE.VAGRANT_HP_STEP = 0.05;
+  FE.RAID_TAKE = 0.25;          // a raid takes this share of every stored element, plus one structure
+  // threat meter (0-100): a vagrant arrives when it fills. It gains, per second:
+  FE.THREAT_IMBALANCE = 2.5;    // x imbalance (0 = even, 1 = everything you hold is one element)
+  FE.THREAT_PER_WORK = 0.08;    // x structures owned
+  FE.THREAT_PER_RATE = 1 / 3000;   // x elements per second the structures make
+  FE.THREAT_LEADER = 1;         // flat, while the leader is still at large, so it always comes back
 
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',

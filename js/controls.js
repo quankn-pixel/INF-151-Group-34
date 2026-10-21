@@ -31,21 +31,26 @@ FE.module(function (FE) {
     try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {}
     FE.state = FE.freshState();
     FE.clearIcons();
+    FE.hideEnd();
     FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(performance.now());
     FE.render();
     $('save-status').textContent = 'not saved yet.';
     showConfirm(false);
   });
 
-  // ---- keyboard: 1-4 pick an option; afterwards only 1 (the chosen element) does anything ----
+  // ---- keyboard: a / w / e / f investigate or gather that element. Escape closes the end message or the restart question. ----
   document.addEventListener('keydown', e => {
-    // a held Enter re-clicks the focused element button on every repeat; like the 1 key, one press is one gather
+    // a held Enter re-clicks the focused element button on every repeat; like the letter keys, one press is one gather
     if (e.repeat && e.key === 'Enter' && e.target.closest && e.target.closest('button.pick')) { e.preventDefault(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     if (e.target.closest && e.target.closest('input, textarea')) return;
-    const chosen = FE.state.chosen;
-    const el = chosen ? (e.key === '1' ? { id: chosen } : null) : FE.ELEMENTS.find(x => x.key === e.key);
-    if (el) { e.preventDefault(); FE.act(el.id); }
-    if (e.key === 'Escape' && !$('restart-confirm').hidden) showConfirm(false);
+    if (e.key === 'Escape') {
+      if (!$('end-overlay').hidden) FE.hideEnd();
+      else if (!$('restart-confirm').hidden) showConfirm(false);
+      return;
+    }
+    if (!$('end-overlay').hidden) return;                     // while the end message is up, keys only close it
+    const el = FE.ELEMENTS.find(x => x.key === e.key.toLowerCase());
+    if (el && (FE.state.owned.includes(el.id) || FE.state.picking)) { e.preventDefault(); FE.act(el.id); }
   });
 });
