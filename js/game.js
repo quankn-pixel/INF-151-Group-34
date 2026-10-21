@@ -30,9 +30,13 @@ FE.module(function (FE) {
       s.leaderIn = FE.LEADER_DELAY;
       FE.note('With two elements you can conjure a spell: everything you hold, folded into one. Its element is whatever you hold most of.', 'note');
     }
+    if (s.owned.length === 3) {
+      FE.note('Where three elements meet, something like life begins.', 'dim');
+      FE.note('The elements can be worked into materials now. New builds wait on the next pages of builds.', 'note');
+      FE.showBuildsPage(1);
+    }
     FE.renderChoices();
     FE.render();
-    if (s.owned.length === 3) FE.showEnd();
     FE.save();
   }
 
@@ -43,22 +47,25 @@ FE.module(function (FE) {
     FE.render();
   };
 
-  // ---- builds: paid for with their own element; all locked while storage is full ----
+  // ---- builds: paid for with their own element; locked while storage is full until the first planet ----
   function spend(k, cost) {
     const s = FE.state;
-    if (!s.owned.includes(k) || FE.locked() || s.counts[k] < cost) return false;
+    if (!s.owned.includes(k) || FE.buyBlocked() || s.counts[k] < cost) return false;
     s.counts[k] = FE.round1(s.counts[k] - cost);
     return true;
   }
   FE.buyRes = function (k) { if (spend(k, FE.resCost(k))) { FE.state.up[k].res++; FE.render(); FE.save(); } };
   FE.buyStruct = function (k) { if (spend(k, FE.structCost(k))) { FE.state.up[k].struct++; FE.render(); FE.save(); } };
 
-  // Condense: storage is full. Wipes every element and build, keeps the crystal. The first one also forms a planet,
-  // which opens the 2nd element; later ones only add a crystal.
+  // Condense: storage is full. Wipes every element, build, material and upgrade, keeps the crystal. The first one also
+  // forms a planet, which opens the 2nd element; later ones only add a crystal.
   FE.condense = function () {
     const s = FE.state;
     if (!s.owned.length || !FE.locked()) return;
     FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; s.up[id].res = 0; s.up[id].struct = 0; });
+    FE.MATERIALS.forEach(m => { s.mats[m] = 0; });
+    FE.CONVERTERS.forEach(c => { s.conv[c.id] = 0; });
+    Object.assign(s, { off: {}, fit: {}, lenses: false, gilding: false, flask: false });
     s.crystals++;
     if (!s.planets) {
       s.planets = 1;
@@ -72,8 +79,9 @@ FE.module(function (FE) {
     FE.render(); FE.save();
   };
 
-  // ---- every 100ms: structures make their element (scaled by the multiplier, not click power). The leader's approach,
-  // vagrants and the threat meter only move while the tab is visible, so nothing raids you while you're away. ----
+  // ---- every 100ms: structures make their element (scaled by the multiplier, not click power), then converters run.
+  // The leader's approach, vagrants and the threat meter only move while the tab is visible, so nothing raids you
+  // while you're away. ----
   let lastTick = performance.now(), wasVisible = !document.hidden;
   setInterval(() => {
     const t = performance.now(), dt = Math.min((t - lastTick) / 1000, 3600);
@@ -83,6 +91,7 @@ FE.module(function (FE) {
     s.owned.forEach(k => {
       if (s.up[k].struct > 0 && !FE.locked()) { FE.addAmount(k, FE.rate(k) * dt); changed = true; }
     });
+    if (FE.craftTick(dt)) changed = true;
     if (visible && wasVisible) {               // the first tick back counts nothing: dt may span the hidden time
       const step = Math.min(dt, 1);
       s.played += step;

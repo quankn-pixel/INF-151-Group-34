@@ -28,12 +28,19 @@
   <div class="center">
     <h1 class="game-title">Four Elements</h1>
     <p class="game-sub">the elements stir.</p>
+    <p class="goal" id="goal" aria-live="polite" hidden></p>
     <div class="mult" id="mult" hidden>×1.0</div>
     <div class="stack" id="gather"></div>
 
     <div class="box builds" id="builds-box" hidden>
       <span class="label">builds</span>
       <div class="cards" id="builds"></div>
+      <div class="pager" id="pager" hidden>
+        <button class="link" id="pg-prev" type="button" aria-label="Previous page of builds">&#9664;</button>
+        <span class="dots" id="pg-dots"></span>
+        <span class="pg-name" id="pg-name"></span>
+        <button class="link" id="pg-next" type="button" aria-label="Next page of builds">&#9654;</button>
+      </div>
     </div>
   </div>
 
@@ -90,7 +97,7 @@
 <div class="overlay" id="end-overlay" role="dialog" aria-modal="true" aria-labelledby="end-title" hidden>
   <div class="box end-box">
     <span class="label" id="end-title">end of prototype</span>
-    <p>Three elements answer to you now. The fourth world, Assiah, and the last element are still sealed.</p>
+    <p>The Brewing Flask hums with three elements. Spell concoction comes next, and the fourth world, Assiah, is still sealed.</p>
     <p class="stats" id="end-stats"></p>
     <p>Thanks for playing. Everything keeps running if you want to stay.</p>
     <button class="el" id="end-close" type="button">keep playing.</button>
@@ -104,6 +111,7 @@
 <script src="js/effects.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/combat.js"></script>
+<script src="js/crafting.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/game.js"></script>
 </body>

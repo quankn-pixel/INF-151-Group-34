@@ -60,10 +60,35 @@ FE.module(function (FE) {
   FE.VAGRANT_HP_STEP = 0.05;
   FE.RAID_TAKE = 0.25;          // a raid takes this share of every stored element, plus one structure
   // threat meter (0-100): a vagrant arrives when it fills. It gains, per second:
-  FE.THREAT_IMBALANCE = 2.5;    // x imbalance (0 = even, 1 = everything you hold is one element)
-  FE.THREAT_PER_WORK = 0.08;    // x structures owned
+  FE.THREAT_IMBALANCE = 1.5;    // x imbalance (0 = even, 1 = everything you hold is one element)
+  FE.THREAT_PER_WORK = 0.08;    // x works running (structures and converters)
   FE.THREAT_PER_RATE = 1 / 3000;   // x elements per second the structures make
   FE.THREAT_LEADER = 1;         // flat, while the leader is still at large, so it always comes back
+  FE.SPELL_SLOTS = 3;           // conjuring is blocked while you hold this many spells
+
+  // ---- crafting: opens with the 3rd element ----
+  FE.MATERIALS = ['metal', 'sand', 'glass', 'gold'];
+  // Converters, per one owned and per second: `use` goes in and `make` comes out, only while `when` holds (that element's
+  // share of the balance bar must be above the number). The four element ones let you make the sealed 4th element.
+  // Each one costs `cost`, plus CONVERTER_COST_STEP of that again for every one you already own.
+  FE.CONVERTERS = [
+    { id: 'hearth',    name: 'Hearth',     use: { earth: 50, air: 50 },             make: { fire: 100 }, cost: { earth: 1000, air: 1000 } },
+    { id: 'steamvent', name: 'Steam Vent', use: { fire: 50, water: 50 },            make: { air: 100 },  cost: { fire: 1000, water: 1000 } },
+    { id: 'siltbed',   name: 'Silt Bed',   use: { water: 50, air: 50 },             make: { earth: 100 },cost: { water: 1000, air: 1000 } },
+    { id: 'hotspring', name: 'Hot Spring', use: { fire: 50, earth: 50 },            make: { water: 100 },cost: { fire: 1000, earth: 1000 } },
+    { id: 'sifter',    name: 'Sifter',     use: { earth: 20, air: 10 },             make: { sand: 2 },   cost: { earth: 1000, air: 500 },  when: ['earth', 0.5] },
+    { id: 'furnace',   name: 'Furnace',    use: { fire: 30, earth: 20, air: 10 },   make: { metal: 1 },  cost: { fire: 1500, earth: 500 }, when: ['fire', 0.8] },
+    { id: 'kiln',      name: 'Kiln',       use: { fire: 20, air: 10, sand: 2 },     make: { glass: 1 },  cost: { fire: 1000, sand: 20 },   when: ['fire', 0.6] },
+    { id: 'crucible',  name: 'Crucible',   use: { fire: 30, metal: 1 },             make: { gold: 1 },   cost: { fire: 1000, metal: 20 },  when: ['fire', 0.7] }
+  ];
+  FE.CONVERTER_COST_STEP = 0.5;
+  FE.FITTINGS_COST = { metal: 20 };     // per element: its structures make FITTINGS_BOOST times as much
+  FE.FITTINGS_BOOST = 2;
+  FE.LENSES_COST = { glass: 10 };       // every converter makes LENSES_BOOST times as much
+  FE.LENSES_BOOST = 1.5;
+  FE.GILDING_COST = { gold: 10 };       // works add GILDING_THREAT of their usual threat
+  FE.GILDING_THREAT = 0.5;
+  FE.FLASK_COST = { glass: 10, gold: 10 };   // the Brewing Flask ends the prototype
 
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',

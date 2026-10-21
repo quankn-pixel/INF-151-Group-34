@@ -38,6 +38,7 @@ body { font-family: var(--serif); font-size: var(--fs, 16px); padding-block: 40p
 
 .game-title { font-size: 1.6em; font-weight: normal; margin: 0; }
 .game-sub { margin: -8px 0 4px; color: var(--muted); font-size: 0.875em; }
+.goal { margin: -2px 0 2px; max-width: 30em; text-align: center; font-style: italic; line-height: 1.4; }
 .center h2 { font-size: 1em; font-weight: normal; margin: 8px 0 0; color: var(--muted); }
 .stack { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 
@@ -92,6 +93,12 @@ button.link:disabled { color: var(--muted); text-decoration: none; cursor: defau
 .row .n { font-variant-numeric: tabular-nums; text-align: right; }
 .row.store { grid-template-columns: 1fr auto 5.5em; }
 .row .per { color: var(--muted); text-align: right; font-size: 0.8125em; font-variant-numeric: tabular-nums; }
+/* works: name, what it makes (or why it's idle), on/off switch */
+.row.work { grid-template-columns: minmax(0, 1fr) auto 2em; align-items: baseline; }
+.row.work button.link { justify-self: end; font-size: 0.8125em; color: var(--muted); }
+.row.work button.link[aria-pressed="true"] { color: var(--fg); }
+.idle { color: var(--muted); font-style: italic; }
+.blocked { color: var(--fire-ink); font-size: 0.875em; }
 .ink-air { color: var(--air-ink); } .ink-water { color: var(--water-ink); } .ink-earth { color: var(--earth-ink); } .ink-fire { color: var(--fire-ink); }
 .empty { color: var(--muted); font-style: italic; }
 .drops { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 10; }
@@ -152,6 +159,17 @@ button.upbtn:disabled { border-color: color-mix(in srgb, var(--c) 40%, var(--bg)
 .card-cost .have { color: var(--fg); }
 .card.lock { cursor: default; color: var(--muted); border-color: color-mix(in srgb, var(--muted) 55%, var(--bg)); }
 .card.lock svg { width: 1.5em; height: 1.5em; }
+.card.done { border-style: dashed; }
+.card.done .card-cost { color: var(--fg); }
+/* pages of builds: arrows, a dot per page, and the page's name */
+.pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; color: var(--muted); }
+.pager button.link { text-decoration: none; font-size: 0.9em; padding: 2px 4px; }
+.pager button.link:disabled { opacity: .35; }
+.dots { display: flex; gap: 8px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--fg); background: none; padding: 0; cursor: pointer; }
+.dot.on { background: var(--fg); }
+.dot:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.pg-name { font-size: 0.8125em; min-width: 6em; text-align: center; }
 
 /* spells: conjure, then the spells you hold. They only become buttons while a vagrant is here. */
 .spell-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; margin-top: 12px; }

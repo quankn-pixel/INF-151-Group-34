@@ -21,7 +21,8 @@ FE.module(function (FE) {
   FE.threatRate = function () {
     const s = FE.state;
     const imbalance = FE.THREAT_IMBALANCE * FE.imbalance();
-    const works = FE.THREAT_PER_WORK * FE.works() + FE.THREAT_PER_RATE * s.owned.reduce((t, k) => t + FE.rate(k), 0);
+    const works = (FE.THREAT_PER_WORK * FE.runningWorks() + FE.THREAT_PER_RATE * s.owned.reduce((t, k) => t + FE.rate(k), 0))
+      * (s.gilding ? FE.GILDING_THREAT : 1);
     const leader = s.leaderBeaten ? 0 : FE.THREAT_LEADER;
     return { imbalance, works, leader, total: imbalance + works + leader };
   };
@@ -77,7 +78,7 @@ FE.module(function (FE) {
       s.counts[k] = FE.round1(s.counts[k] - t);
       took += t;
     });
-    let lost = null, r = Math.floor(Math.random() * FE.works());
+    let lost = null, r = Math.floor(Math.random() * FE.structures());
     for (const k of s.owned) {
       if (r < s.up[k].struct) { lost = k; break; }
       r -= s.up[k].struct;
@@ -112,10 +113,11 @@ FE.module(function (FE) {
     if (s.kills + s.raids === 1) FE.note('More vagrants will come while your elements are out of balance, and as your works grow.', 'note');
   }
 
-  // Everything you hold folds into one spell of the element you hold most of. Works even when storage is full.
+  // Everything you hold folds into one spell of the element you hold most of. Works even when storage is full, but not
+  // while every spell slot is taken.
   FE.conjure = function () {
     const s = FE.state, total = FE.totalCount();
-    if (s.owned.length < 2 || total < 1) return;
+    if (s.owned.length < 2 || total < 1 || s.spells.length >= FE.SPELL_SLOTS) return;
     const el = FE.majority(), power = Math.round(total);
     s.spells.push({ el, power });
     FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; });
@@ -141,12 +143,13 @@ FE.module(function (FE) {
     const s = FE.state, e = s.enemy;
     $('spells-box').hidden = s.owned.length < 2;
     if (s.owned.length >= 2) {
-      const top = FE.majority(), btn = $('btn-conjure');
+      const top = FE.majority(), btn = $('btn-conjure'), full = s.spells.length >= FE.SPELL_SLOTS;
       btn.style.setProperty('--c', `var(--${top}-ink)`);
       put(btn, `conjure ${FE.SPELLS[top]}`);
-      btn.disabled = total < 1;
-      put($('conjure-note'), total < 1 ? 'hold something to conjure from.'
-        : `uses all ${FE.fmt(total)} you hold · power ${FE.fmt(Math.round(total))}`);
+      btn.disabled = total < 1 || full;
+      put($('conjure-note'), (full ? 'every slot is full: cast a spell first.'
+        : total < 1 ? 'hold something to conjure from.'
+        : `uses all ${FE.fmt(total)} you hold · power ${FE.fmt(Math.round(total))}`) + ` · slots ${s.spells.length} / ${FE.SPELL_SLOTS}`);
       // the list is rebuilt only when the spells or the target change, so a button never vanishes mid-click
       const sig = s.spells.map(sp => sp.el + sp.power).join() + '|' + (e ? e.el : '');
       if (sig !== listSig) {

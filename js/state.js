@@ -22,6 +22,13 @@ FE.module(function (FE) {
       kills: 0,
       raids: 0,
       conjured: 0,
+      mats: Object.fromEntries(FE.MATERIALS.map(m => [m, 0])),          // materials: outside storage and the balance bar
+      conv: Object.fromEntries(FE.CONVERTERS.map(c => [c.id, 0])),      // converters owned
+      off: {},              // works switched off in the works box: 'struct-air', 'hearth', ... -> true
+      fit: {},              // element -> true once its structures have fittings
+      lenses: false,
+      gilding: false,
+      flask: false,         // the Brewing Flask is built
       ended: false,         // the end-of-prototype message has been shown
       played: 0,            // seconds played with the tab visible
       log: [{ h: 'The dark space stirs with <b>Four Elements</b>', c: 'title' }],   // newest first
@@ -33,24 +40,38 @@ FE.module(function (FE) {
   FE.totalCount = () => FE.round1(FE.ELEMENTS.reduce((t, { id }) => t + Math.max(0, FE.state.counts[id]), 0));
 
   // derived values (k is an element id)
-  FE.locked = () => FE.totalCount() >= FE.CAP;                 // storage full: no gathering or buying, only condensing or conjuring
+  FE.locked = () => FE.totalCount() >= FE.CAP;                 // storage full: no gathering
+  // Before the first planet a full storage also blocks buying, so condensing is the only way on. After it, spending
+  // is how you make room, so buying stays open.
+  FE.buyBlocked = () => FE.locked() && !FE.state.planets;
   FE.maxMultiplier = () => FE.BASE_MAX_MULT + FE.CRYSTAL_MAX_MULT * FE.state.crystals;
   FE.clickPower = k => Math.pow(2, FE.state.up[k].res);
   FE.resCost = k => FE.RES_BASE_COST * Math.pow(FE.RES_COST_GROWTH, FE.state.up[k].res);
-  FE.resMaxed = k => FE.resCost(k) >= FE.CAP;                  // holding that much means storage is full, which locks buying
+  FE.resMaxed = k => FE.resCost(k) >= FE.CAP;                  // the next level would cost all of storage: this is the top
   FE.structCost = k => FE.STRUCT_BASE_COST + FE.STRUCT_COST_STEP * FE.state.up[k].struct;
-  FE.rate = k => FE.state.up[k].struct * FE.STRUCT_RATE * FE.multiplier();   // per second, right now
-  FE.works = () => FE.state.owned.reduce((t, k) => t + FE.state.up[k].struct, 0);
+  // what an element's structures make per second right now (nothing while switched off in works)
+  FE.rate = function (k) {
+    const s = FE.state;
+    if (s.off['struct-' + k]) return 0;
+    return s.up[k].struct * FE.STRUCT_RATE * FE.multiplier() * (s.fit[k] ? FE.FITTINGS_BOOST : 1);
+  };
+  FE.structures = () => FE.state.owned.reduce((t, k) => t + FE.state.up[k].struct, 0);
+  // elements in play: the ones you found, then any other you hold (a converter can make the sealed 4th)
+  FE.present = function () {
+    const s = FE.state;
+    return s.owned.concat(FE.ELEMENTS.map(e => e.id).filter(k => !s.owned.includes(k) && s.counts[k] > 0));
+  };
+  FE.share = k => { const total = FE.totalCount(); return total > 0 ? Math.max(0, FE.state.counts[k]) / total : 0; };
   // the element you hold most of decides the next spell (ties go to the one found first)
   FE.majority = function () {
-    const s = FE.state;
-    return s.owned.reduce((a, b) => s.counts[b] > s.counts[a] ? b : a, s.owned[0]);
+    const s = FE.state, ks = FE.present();
+    return ks.reduce((a, b) => s.counts[b] > s.counts[a] ? b : a, ks[0]);
   };
   // 0 when your elements are even, 1 when everything you hold is one element. Ramps in over the first BALANCE_AT held.
   FE.imbalance = function () {
-    const s = FE.state, n = s.owned.length, total = FE.totalCount();
+    const s = FE.state, ks = FE.present(), n = ks.length, total = FE.totalCount();
     if (n < 2 || total <= 0) return 0;
-    const top = Math.max(...s.owned.map(k => Math.max(0, s.counts[k]))) / total;
+    const top = Math.max(...ks.map(k => Math.max(0, s.counts[k]))) / total;
     return Math.min(1, total / FE.BALANCE_AT) * (top - 1 / n) / (1 - 1 / n);
   };
 
