@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Elements</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="drops" id="drops" aria-hidden="true"></div>
+
+<div class="wrap">
+  <div class="left">
+    <div class="log" id="log" aria-live="polite"></div>
+
+    <div class="box encounter" id="enc-box" hidden>
+      <span class="label">vagrant</span>
+      <div class="foe" id="foe-name"></div>
+      <div class="meter" aria-hidden="true"><i id="foe-hp-fill"></i></div>
+      <div class="meter-note"><span id="foe-hp"></span><span>health</span></div>
+      <div class="meter time" aria-hidden="true"><i id="foe-time-fill"></i></div>
+      <div class="meter-note"><span id="foe-time"></span><span>until it raids</span></div>
+      <div class="foe-hint" id="foe-hint"></div>
+    </div>
+  </div>
+
+  <div class="center">
+    <h1 class="game-title">Four Elements</h1>
+    <p class="game-sub">the elements stir.</p>
+    <p class="goal" id="goal" aria-live="polite" hidden></p>
+    <div class="mult" id="mult" hidden>×1.0</div>
+    <div class="stack" id="gather"></div>
+
+    <div class="box builds" id="builds-box" hidden>
+      <span class="label">builds</span>
+      <div class="cards" id="builds"></div>
+      <div class="pager" id="pager" hidden>
+        <button class="link" id="pg-prev" type="button" aria-label="Previous page of builds">&#9664;</button>
+        <span class="dots" id="pg-dots"></span>
+        <span class="pg-name" id="pg-name"></span>
+        <button class="link" id="pg-next" type="button" aria-label="Next page of builds">&#9654;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="box">
+      <span class="label">stores</span>
+      <div class="empty" id="empty">nothing yet.</div>
+      <div id="store-rows"></div>
+    </div>
+
+    <div class="box" id="works-box" hidden>
+      <span class="label">works</span>
+      <div id="works"></div>
+    </div>
+
+    <div class="box spells" id="spells-box" hidden>
+      <span class="label">spells</span>
+      <button class="el upbtn" id="btn-conjure" type="button"></button>
+      <div class="up-sub" id="conjure-note"></div>
+      <div class="spell-list" id="spell-list"></div>
+      <div class="empty" id="spells-empty">none yet.</div>
+    </div>
+  </div>
+</div>
+
+<div class="tray box" id="balance-box" hidden>
+  <span class="label">balance</span>
+  <div class="total">total stored <span id="total">0</span><span class="cap" id="cap"></span></div>
+  <div class="bar" id="bar" role="img" aria-label="Share of each element"></div>
+  <div class="legend" id="legend"></div>
+  <div class="status" id="status"></div>
+  <div class="threat" id="threat-row" hidden>
+    <span>threat</span>
+    <div class="meter" aria-hidden="true"><i id="threat-fill"></i></div>
+    <span class="n" id="threat-pct">0%</span>
+  </div>
+  <div class="threat-note" id="threat-note" hidden></div>
+</div>
+
+<div class="footer">
+  <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
+  <span class="size">text size
+    <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
+    <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
+  </span>
+  <span id="save-status">not saved yet.</span>
+  <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
+  <span class="confirm" id="restart-confirm" hidden>
+    <span>lose everything?</span>
+    <button class="link" id="restart-yes" type="button">yes.</button>
+    <button class="link" id="restart-no" type="button">no.</button>
+  </span>
+</div>
+
+<div class="overlay" id="end-overlay" role="dialog" aria-modal="true" aria-labelledby="end-title" hidden>
+  <div class="box end-box">
+    <span class="label" id="end-title">end of prototype</span>
+    <p>The Brewing Flask hums with three elements. Spell concoction comes next, and the fourth world, Assiah, is still sealed.</p>
+    <p class="stats" id="end-stats"></p>
+    <p>Thanks for playing. Everything keeps running if you want to stay.</p>
+    <button class="el" id="end-close" type="button">keep playing.</button>
+  </div>
+</div>
+
+<!-- Plain scripts (no modules) so the game opens straight from the file system. Order matters. -->
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/log.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/crafting.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

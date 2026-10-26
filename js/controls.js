@@ -1,6 +1,12 @@
-/* controls.js - footer controls (text size, restart) and the keyboard. */
+/* controls.js - footer controls (back, text size, restart) and the keyboard. */
 FE.module(function (FE) {
   const $ = FE.$;
+
+  // ---- back: save, then return to the home page ----
+  $('back-btn').addEventListener('click', () => {
+    FE.save();
+    window.location.href = 'index.html';
+  });
 
   // ---- text size ----
   const SIZES = [12, 14, 16, 18, 20, 24, 28];
