@@ -13,7 +13,7 @@ structures to automate, and condense into a crystal to find a second element. Wi
 spells and fight the vagrants who come when your elements fall out of balance. Beat their leader for a third
 element, craft materials, and build the Brewing Flask to finish the slice.
 
-Progress saves to the browser automatically. The footer has sound on/off, text size, and restart.
+Progress saves to the browser automatically. The footer has music and sound on/off, text size, and restart.
 
 ## Files
 
@@ -21,11 +21,14 @@ Progress saves to the browser automatically. The footer has sound on/off, text s
 - `game.html`: the game
 - `js/`: game code (`config.js` holds every tuning number, text, and the sound list)
 - `css/style.css`: styles, with light and dark mode
-- `audio/`: sound effects
+- `audio/`: music and sound effects
 
 ## Credits
 
 Henry Bao, Jaden Nguyen, Quan Nguyen and Jerry Chen.
+
+Music: ["Cathedral in the forest"](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop)
+by congusbongus, CC0.
 
 Sound effects from Kenney's [Interface Sounds](https://kenney.nl/assets/interface-sounds) and
 [Impact Sounds](https://kenney.nl/assets/impact-sounds), CC0.

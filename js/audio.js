@@ -1,4 +1,4 @@
-/* audio.js - sound effects and the sound on/off switch in the footer.
+/* audio.js - sound effects, background music, and their on/off switches in the footer.
  *
  * Plain <audio> elements rather than Web Audio, because they also play when the game is opened straight from the file
  * system. Each file keeps up to COPIES of itself, so quick repeats (gathering) overlap instead of cutting each other off.
@@ -31,14 +31,47 @@ FE.module(function (FE) {
     if (p) p.catch(() => {});   // before the first click on the page the browser may refuse: just stay quiet
   };
 
-  // ---- sound on/off, remembered like the text size ----
+  // ---- background music: loops, fades in, and pauses while the tab is hidden. Browsers only allow it to start after
+  // the player's first click or key press on the page, so it also tries again then. ----
+  const music = new Audio(FE.MUSIC.file);
+  music.loop = true;
+  music.preload = 'auto';
+  let musicOn = true, fade = 0;
+  try { musicOn = localStorage.getItem(FE.MUSIC_KEY) !== 'off'; } catch (e) {}
+
+  function playMusic() {
+    if (!musicOn || document.hidden || !music.paused) return;
+    clearInterval(fade);
+    music.volume = 0;
+    const p = music.play();
+    if (p) p.catch(() => {});
+    const step = FE.MUSIC.vol / (FE.MUSIC.fadeIn * 10);
+    fade = setInterval(() => {
+      music.volume = Math.min(FE.MUSIC.vol, music.volume + step);
+      if (music.volume >= FE.MUSIC.vol) clearInterval(fade);
+    }, 100);
+  }
+  function stopMusic() { clearInterval(fade); music.pause(); }
+  ['pointerdown', 'keydown'].forEach(t => document.addEventListener(t, playMusic));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopMusic(); else playMusic(); });
+  playMusic();
+
+  // ---- sound and music on/off, remembered like the text size ----
   function label() {
     $('sound-btn').textContent = on ? 'sound on.' : 'sound off.';
     $('sound-btn').setAttribute('aria-pressed', String(on));
+    $('music-btn').textContent = musicOn ? 'music on.' : 'music off.';
+    $('music-btn').setAttribute('aria-pressed', String(musicOn));
   }
   $('sound-btn').addEventListener('click', () => {
     on = !on;
     try { localStorage.setItem(FE.SOUND_KEY, on ? 'on' : 'off'); } catch (e) {}
+    label();
+  });
+  $('music-btn').addEventListener('click', () => {
+    musicOn = !musicOn;
+    try { localStorage.setItem(FE.MUSIC_KEY, musicOn ? 'on' : 'off'); } catch (e) {}
+    if (musicOn) playMusic(); else stopMusic();
     label();
   });
   label();

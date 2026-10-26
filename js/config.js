@@ -37,6 +37,7 @@ FE.module(function (FE) {
   FE.SAVE_KEY = 'four-elements-save-v1';
   FE.SIZE_KEY = 'four-elements-size-v1';
   FE.SOUND_KEY = 'four-elements-sound-v1';
+  FE.MUSIC_KEY = 'four-elements-music-v1';
 
   FE.OPTIONS = { air: 'Breeze', water: 'Puddle', earth: 'Patch of Dirt', fire: 'Embers' };
   FE.FIRST_MSG = {
@@ -107,6 +108,8 @@ FE.module(function (FE) {
     end:      { files: ['end'], vol: 0.7 },               // the Brewing Flask
     ui:       { files: ['ui'], vol: 0.25 }                // footer links, the builds pager, works switches
   };
+  // background music: "Cathedral in the forest" by congusbongus (OpenGameArt, CC0), a seamless loop
+  FE.MUSIC = { file: 'audio/music.mp3', vol: 0.3, fadeIn: 3 };   // fadeIn in seconds
 
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
