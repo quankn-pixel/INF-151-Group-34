@@ -29,7 +29,7 @@ FE.module(function (FE) {
       lenses: false,
       gilding: false,
       flask: false,         // the Brewing Flask is built
-      ended: false,         // the end-of-prototype message has been shown
+      ended: false,         // the end message has been shown
       played: 0,            // seconds played with the tab visible
       log: [{ h: 'The dark space stirs with <b>Four Elements</b>', c: 'title' }],   // newest first
       savedAt: 0

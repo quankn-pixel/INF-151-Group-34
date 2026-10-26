@@ -10,6 +10,7 @@ FE.module(function (FE) {
       s.full = true;
       const top = FE.majority() || k;
       FE.note(`Your ${FE.wordHTML(top, top, true)} has ${FE.FULL_VERB[top]} the other elements, but there is still not enough space in this <span class="fx-room">room</span>.`, 'note');
+      FE.sfx('full');
       FE.save();
     }
   };
@@ -25,6 +26,7 @@ FE.module(function (FE) {
     const s = FE.state;
     s.owned.push(k);
     s.picking = false;
+    FE.sfx('discover');
     FE.note(FE.FIRST_MSG[k], 'note');
     if (s.owned.length === 2) {
       s.leaderIn = FE.LEADER_DELAY;
@@ -44,6 +46,7 @@ FE.module(function (FE) {
     const power = FE.round1(FE.clickPower(k) * FE.multiplier());  // read BEFORE this click's own icon exists
     FE.addAmount(k, power);
     FE.spawnIcon(k);
+    FE.sfx('gather');
     FE.render();
   };
 
@@ -54,8 +57,8 @@ FE.module(function (FE) {
     s.counts[k] = FE.round1(s.counts[k] - cost);
     return true;
   }
-  FE.buyRes = function (k) { if (spend(k, FE.resCost(k))) { FE.state.up[k].res++; FE.render(); FE.save(); } };
-  FE.buyStruct = function (k) { if (spend(k, FE.structCost(k))) { FE.state.up[k].struct++; FE.render(); FE.save(); } };
+  FE.buyRes = function (k) { if (spend(k, FE.resCost(k))) { FE.state.up[k].res++; FE.sfx('build'); FE.render(); FE.save(); } };
+  FE.buyStruct = function (k) { if (spend(k, FE.structCost(k))) { FE.state.up[k].struct++; FE.sfx('build'); FE.render(); FE.save(); } };
 
   // Condense: storage is full. Wipes every element, build, material and upgrade, keeps the crystal. The first one also
   // forms a planet, which opens the 2nd element; later ones only add a crystal.
@@ -67,6 +70,7 @@ FE.module(function (FE) {
     FE.CONVERTERS.forEach(c => { s.conv[c.id] = 0; });
     Object.assign(s, { off: {}, fit: {}, lenses: false, gilding: false, flask: false });
     s.crystals++;
+    FE.sfx('condense');
     if (!s.planets) {
       s.planets = 1;
       s.picking = true;

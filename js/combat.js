@@ -58,6 +58,7 @@ FE.module(function (FE) {
       : Math.min(FE.CAP, Math.round(FE.CAP * (FE.VAGRANT_HP_BASE + FE.VAGRANT_HP_STEP * s.kills)));
     s.enemy = { el, hp: max, max, left: FE.VAGRANT_TIME, time: FE.VAGRANT_TIME, leader };
     s.threatOn = true;
+    FE.sfx('arrive');
     const weak = weakTo(el);
     if (leader && first) FE.note('A leader steps out of the vagrant crowd. It is not here to talk.', 'dim');
     FE.note(leader
@@ -72,6 +73,7 @@ FE.module(function (FE) {
     const s = FE.state, e = s.enemy;
     s.enemy = null;
     s.raids++;
+    FE.sfx('raid');
     let took = 0;
     s.owned.forEach(k => {
       const t = FE.round1(Math.max(0, s.counts[k]) * FE.RAID_TAKE);
@@ -95,6 +97,7 @@ FE.module(function (FE) {
     const s = FE.state, e = s.enemy;
     s.enemy = null;
     s.kills++;
+    FE.sfx('defeat');
     if (e.leader) {
       s.leaderBeaten = true;
       s.picking = true;
@@ -122,6 +125,7 @@ FE.module(function (FE) {
     s.spells.push({ el, power });
     FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; });
     s.conjured++;
+    FE.sfx('conjure');
     FE.note(`Everything you held folds into one ${spellHTML(el)}, power ${FE.fmt(power)}.`, 'note');
     FE.render(); FE.save();
   };
@@ -131,6 +135,7 @@ FE.module(function (FE) {
     if (!e || !sp) return;
     const m = FE.effect(sp.el, e.el), dmg = FE.round1(sp.power * m);
     s.spells.splice(i, 1);
+    FE.sfx('cast');
     e.hp = FE.round1(Math.max(0, e.hp - dmg));
     FE.note(`${spellHTML(sp.el)} hits for ${FE.fmt(dmg)}.${m > 1 ? ' It is weak to that.' : m < 1 ? ' It shrugs off half.' : ''}`, 'note');
     if (e.hp <= 0) defeat();

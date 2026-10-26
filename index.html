@@ -7,25 +7,64 @@
 <link rel="stylesheet" href="css/style.css">
 <style>
   /* launch page: reuses the game's colours and fonts so light/dark mode match */
-  body { min-height: 100vh; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .home { display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; }
+  body { min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+  .home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; text-align: center; }
   .home h1 { margin: 0; font-size: 2.6em; font-weight: normal; letter-spacing: .02em; }
   .home .sub { margin: -16px 0 0; color: var(--muted); font-size: 0.95em; }
-  a.play {
+  .menu { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .play {
     font: inherit; color: var(--fg); background: var(--bg); text-decoration: none;
     border: 1px solid var(--line); padding: 8px 0; width: 9em; text-align: center; cursor: pointer;
     transition: box-shadow .2s ease, background .2s ease;
   }
-  a.play:hover { background: var(--hover); text-decoration: underline; box-shadow: 0 0 14px -3px var(--fg); }
-  a.play:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
-  a.play:active { transform: translateY(1px); }
+  .play.quiet { border-color: color-mix(in srgb, var(--line) 40%, var(--bg)); color: var(--dim); }
+  .play:hover { background: var(--hover); text-decoration: underline; box-shadow: 0 0 14px -3px var(--fg); }
+  .play:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .play:active { transform: translateY(1px); }
+  .saved { margin: 0; color: var(--muted); font-size: 0.8125em; }
+  .menu .confirm { display: flex; gap: 10px; align-items: baseline; font-size: 0.875em; }
+  .hint { margin: 0; color: var(--muted); font-size: 0.875em; max-width: 26em; line-height: 1.5; }
+  .credits { margin: 0; color: var(--muted); font-size: 0.8125em; text-align: center; line-height: 1.5; }
 </style>
 </head>
 <body>
   <main class="home">
     <h1>Four Elements</h1>
     <p class="sub">the elements stir.</p>
-    <a class="play" id="play" href="game.html">play.</a>
+    <div class="menu">
+      <a class="play" id="play" href="game.html">play.</a>
+      <p class="saved" id="saved" hidden></p>
+      <button class="play quiet" id="new" type="button" hidden>new game.</button>
+      <span class="confirm" id="new-confirm" hidden>
+        <span>lose everything?</span>
+        <button class="link" id="new-yes" type="button">yes.</button>
+        <button class="link" id="new-no" type="button">no.</button>
+      </span>
+    </div>
+    <p class="hint">Gather the elements, keep them in balance, and fend off the vagrants. Click an element to gather it, or press a, w, e or f. Progress saves as you play.</p>
   </main>
+  <p class="credits">INF 151 · Group 34 · Henry Bao, Jaden Nguyen, Quan Nguyen and Jerry Chen<br>sounds by Kenney (CC0)</p>
+
+<script src="js/config.js"></script>
+<script>
+  // With a save, "play." becomes "continue." and a new game is offered (after a confirm, like restart in the game).
+  (function () {
+    const $ = FE.$;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(FE.SAVE_KEY)); } catch (e) {}
+    if (!saved || !saved.owned || !saved.owned.length) return;
+    const sec = Math.floor(saved.played || 0);
+    $('play').textContent = 'continue.';
+    $('saved').textContent = `${saved.owned.join(', ')} · ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} played`;
+    $('saved').hidden = $('new').hidden = false;
+    const ask = on => { $('new').hidden = on; $('new-confirm').hidden = !on; (on ? $('new-no') : $('new')).focus(); };
+    $('new').addEventListener('click', () => ask(true));
+    $('new-no').addEventListener('click', () => ask(false));
+    $('new-yes').addEventListener('click', () => {
+      try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {}
+      window.location.href = 'game.html';
+    });
+  })();
+</script>
 </body>
 </html>

@@ -338,7 +338,7 @@ FE.module(function (FE) {
     FE.updateMult();
   };
 
-  // ---- end of the prototype: shown once, when the Brewing Flask is built. The game keeps running behind it. ----
+  // ---- the end message: shown once, when the Brewing Flask is built. The game keeps running behind it. ----
   const clock = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   FE.showEnd = function () {

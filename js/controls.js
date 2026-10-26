@@ -1,12 +1,11 @@
-/* controls.js - footer controls (back, text size, restart) and the keyboard. */
+/* controls.js - footer controls (back, text size, restart), the end message's return to title, and the keyboard. */
 FE.module(function (FE) {
   const $ = FE.$;
 
-  // ---- back: save, then return to the home page ----
-  $('back-btn').addEventListener('click', () => {
-    FE.save();
-    window.location.href = 'index.html';
-  });
+  // ---- back, and return to title on the end message: save, then go to the home page ----
+  const toTitle = () => { FE.save(); window.location.href = 'index.html'; };
+  $('back-btn').addEventListener('click', toTitle);
+  $('end-home').addEventListener('click', toTitle);
 
   // ---- text size ----
   const SIZES = [12, 14, 16, 18, 20, 24, 28];

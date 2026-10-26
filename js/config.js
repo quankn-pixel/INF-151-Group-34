@@ -17,7 +17,7 @@ FE.module(function (FE) {
     { id: 'fire',  key: 'f' }
   ];
 
-  FE.CAP = 10000;         // total storage across all elements (prototype pacing: main uses 100,000)
+  FE.CAP = 10000;         // total storage across all elements
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
 
   // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier
@@ -36,6 +36,7 @@ FE.module(function (FE) {
   FE.STRUCT_NAMES = { air: 'windmill', water: 'stream', earth: 'boulder', fire: 'bonfire' };
   FE.SAVE_KEY = 'four-elements-save-v1';
   FE.SIZE_KEY = 'four-elements-size-v1';
+  FE.SOUND_KEY = 'four-elements-sound-v1';
 
   FE.OPTIONS = { air: 'Breeze', water: 'Puddle', earth: 'Patch of Dirt', fire: 'Embers' };
   FE.FIRST_MSG = {
@@ -88,7 +89,24 @@ FE.module(function (FE) {
   FE.LENSES_BOOST = 1.5;
   FE.GILDING_COST = { gold: 10 };       // works add GILDING_THREAT of their usual threat
   FE.GILDING_THREAT = 0.5;
-  FE.FLASK_COST = { glass: 10, gold: 10 };   // the Brewing Flask ends the prototype
+  FE.FLASK_COST = { glass: 10, gold: 10 };   // the Brewing Flask ends the slice
+
+  // ---- sound effects: Kenney's Interface Sounds and Impact Sounds (CC0), as audio/<file>.wav. vol is 0-1. A sound
+  // with several files plays one of them at random. ----
+  FE.SOUNDS = {
+    gather:   { files: ['gather1', 'gather2', 'gather3'], vol: 0.2 },
+    discover: { files: ['discover'], vol: 0.5 },          // a new element
+    build:    { files: ['build1', 'build2'], vol: 0.6 },  // any build or upgrade
+    full:     { files: ['full'], vol: 0.4 },              // storage fills up
+    condense: { files: ['condense'], vol: 0.6 },
+    conjure:  { files: ['conjure'], vol: 0.5 },
+    cast:     { files: ['cast'], vol: 0.45 },
+    arrive:   { files: ['arrive'], vol: 0.45 },           // a vagrant
+    raid:     { files: ['raid'], vol: 0.6 },
+    defeat:   { files: ['defeat'], vol: 0.3 },            // a vagrant falls
+    end:      { files: ['end'], vol: 0.7 },               // the Brewing Flask
+    ui:       { files: ['ui'], vol: 0.25 }                // footer links, the builds pager, works switches
+  };
 
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',

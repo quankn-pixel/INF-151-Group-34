@@ -27,6 +27,7 @@ FE.module(function (FE) {
     if (!FE.canBuy(cost)) return false;
     Object.entries(cost).forEach(([r, v]) => take(r, v));
     apply();
+    FE.sfx('build');
     if (line) FE.note(line, 'note');
     FE.render(); FE.save();
     return true;
@@ -44,6 +45,7 @@ FE.module(function (FE) {
   };
   FE.buildFlask = function () {
     if (FE.state.flask || !buy(FE.FLASK_COST, () => { FE.state.flask = true; })) return;
+    FE.sfx('end');
     FE.note('The Brewing Flask hums. Everything you hold leans toward it.', 'dim');
     if (!FE.state.ended) FE.showEnd();
     FE.save();

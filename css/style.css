@@ -203,7 +203,9 @@ button.spell:disabled { cursor: default; }
 .end-box { box-sizing: border-box; width: min(32em, 100%); background: var(--bg); padding: 1.5em 20px 18px; display: flex; flex-direction: column; gap: 12px; }
 .end-box p { margin: 0; line-height: 1.45; }
 .end-box .stats { color: var(--muted); font-size: 0.875em; }
-.end-box button.el { align-self: flex-start; width: auto; padding: 4px 16px; }
+.end-box button.el { width: auto; padding: 4px 16px; }
+.end-box .end-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.end-box .credits { color: var(--muted); font-size: 0.8125em; }
 
 @media (prefers-reduced-motion: reduce) { .log p, .w, .ch, .tray, .builds, .card, .encounter, .overlay { animation: none; } .bar > span { transition: none; } }
 
