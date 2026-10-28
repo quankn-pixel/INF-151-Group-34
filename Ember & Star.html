@@ -105,6 +105,8 @@ function shave(fn){const t=tierOf(S.growth),g0=gps();fn();const g1=gps();if(t>=5
  const rem=CUM[t]-S.growth,sec=rem/g0-rem/g1;if(sec<.5)return;
  const d=document.createElement('div');d.className='shave';d.textContent='−'+fmtS(sec);d.onanimationend=()=>d.remove();$('etaw').appendChild(d)}
 
+// Only touch a button's contents when its text actually changes; rebuilding it every tick can swallow clicks.
+['u1','u2','u3','cond'].forEach(id=>{const el=$(id),d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');let last;Object.defineProperty(el,'innerHTML',{set(v){if(v!==last){last=v;d.set.call(el,v)}},get(){return d.get.call(el)}})});
 let armT=0;
 $('reset').onclick=function(){
  if(!this.classList.contains('arm')){this.classList.add('arm');this.textContent='Click again to erase everything';armT=setTimeout(()=>{this.classList.remove('arm');this.textContent='Reset all progress'},3000);return}
