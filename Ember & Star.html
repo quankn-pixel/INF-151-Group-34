@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ember &amp; Star</title>
+<style>
+:root{--bg:#050303;--panel:#0d0707;--line:#3a0f0c;--fire:#ff3b1f;--ember:#ff7a3c;--text:#f3d9d2;--dim:#8a5d55;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif}
+#app{display:flex;height:100%}
+.side{flex:1 1 50%;min-width:0;display:flex;flex-direction:column;padding:24px;overflow:auto}
+#left{border-right:1px solid var(--line);background:var(--panel)}
+#right{overflow-x:hidden;align-items:center;background:radial-gradient(ellipse at 50% 45%,#1a0505 0%,var(--bg) 70%)}
+.res{display:flex;align-items:center;gap:14px}
+.res svg{width:52px;height:64px;flex:none;filter:drop-shadow(0 0 10px #ff3b1f99)}
+.big{font-size:50px;line-height:1;color:var(--fire);font-variant-numeric:tabular-nums}
+.sub{color:var(--dim);font-size:19px;margin-top:4px}
+h3{margin:28px 0 10px;font-weight:normal;font-size:19px;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px}
+.up{display:block;width:100%;text-align:left;margin:0 0 10px;padding:12px 14px;background:#000;color:var(--text);
+border:1px solid var(--line);border-radius:4px;font:inherit;font-size:18px;cursor:pointer}
+.up.info{cursor:default;border-color:#5a1510}
+.up b{display:block;color:var(--fire);font-weight:normal;font-size:20px;margin-bottom:2px}
+.up span{color:var(--dim);font-size:16px}
+button.up:hover:not(:disabled){border-color:var(--fire)}
+button.up:disabled{opacity:.45;cursor:not-allowed}
+button.up:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+#cond{margin-top:auto;border-color:#7a1a10;background:linear-gradient(180deg,#1a0504,#000)}
+#cond:not(:disabled){border-color:var(--fire);box-shadow:0 0 18px #ff3b1f40}
+.hide{display:none!important}
+#reset{align-self:flex-start;margin-top:12px;padding:8px 14px;background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:16px;cursor:pointer}
+#cond.hide+#reset{margin-top:auto}
+#reset:hover{color:var(--text);border-color:var(--fire)}
+#reset.arm{color:#fff;background:#7a1208;border-color:var(--fire)}
+#stats{display:flex;flex-direction:column;align-items:center}
+#stats .res svg{width:48px;height:48px;filter:drop-shadow(0 0 10px #ff3b1fb0)}
+#stats .row{display:flex;gap:28px;justify-content:center;margin-top:10px;font-size:23px;color:var(--dim)}
+#stats .row b{color:var(--ember);font-weight:normal}
+#stats .sub b{color:var(--ember);font-weight:normal}
+#wrap{flex:1;width:100%;min-height:420px;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+#prog{width:min(460px,100%);margin-top:8px;text-align:center}
+#eta{font-size:68px;line-height:1;color:var(--fire);text-shadow:0 0 22px #ff3b1fcc;font-variant-numeric:tabular-nums;margin:6px 0 14px}
+#bar{height:16px;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#fill{height:100%;width:0;background:linear-gradient(90deg,#7a1208,var(--fire),var(--ember))}
+#pl{font-size:21px;color:var(--dim)}
+#etaw{position:relative;display:inline-block}
+.shave{position:absolute;left:100%;top:8px;margin-left:16px;white-space:nowrap;pointer-events:none;z-index:5;font-size:46px;font-weight:bold;line-height:1;color:#ffd27a;text-shadow:0 0 6px #fff4,0 0 16px #ff9a2e,0 0 34px #ff3b1f;animation:shave 2.6s ease-out forwards}
+@keyframes shave{0%{opacity:0;transform:translateY(10px) scale(.6)}10%{opacity:1;transform:translateY(0) scale(1.3)}30%{opacity:1;transform:translateY(-40px) scale(1.1)}100%{opacity:0;transform:translateY(-420px) scale(1)}}
+@media(max-width:700px){#app{flex-direction:column}.side{flex-basis:auto}#left{border-right:0;border-bottom:1px solid var(--line)}#right{min-height:780px}}
+@media(prefers-reduced-motion:reduce){button.up{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+ <section class="side" id="left">
+  <div class="res">
+   <svg viewBox="0 0 40 50"><path d="M20 2C22 14 34 20 34 34a14 14 0 0 1-28 0c0-8 5-12 8-16 1 5 3 7 5 8C18 18 17 10 20 2z" fill="#ff3b1f"/><path d="M20 24c1 6 8 9 8 16a8 8 0 0 1-16 0c0-4 3-6 5-9 1 3 2 4 3 4-1-4-1-8 0-11z" fill="#ffa23c"/></svg>
+   <div><div class="big" id="fire">0</div><div class="sub"><span id="fps">2</span> fire / second</div></div>
+  </div>
+  <h3>Upgrades</h3>
+  <button class="up" id="u1"></button>
+  <div class="up info hide" id="u2"></div>
+  <button class="up hide" id="u3"></button>
+  <button class="up hide" id="cond"></button>
+  <button id="reset">Reset all progress</button>
+ </section>
+ <section class="side" id="right">
+  <div id="stats">
+   <div class="res"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="8" fill="#ff3b1f"/><path d="M20 1v8M20 31v8M1 20h8M31 20h8M7 7l6 6M27 27l6 6M33 7l-6 6M13 27l-6 6" stroke="#ff7a3c" stroke-width="2.5" stroke-linecap="round"/></svg><div><div class="big" id="growth">0</div><div class="sub"><span id="gps">0</span> star growth / second</div></div></div>
+   <div class="row"><span><b id="cry">0</b> Fire Crystals</span><span>Tier <b id="tier">0</b></span></div>
+  </div>
+  <div id="wrap"><canvas id="cv" aria-label="Your star"></canvas></div>
+  <div id="prog">
+   <div id="pl">Tier 0 to Tier 1</div><div id="etaw"><div id="eta">--:--</div></div><div id="bar"><div id="fill"></div></div>
+   
+  </div>
+ </section>
+</div>
+<script>
+// ---------- state ----------
+const CUM=[10,100,500,2000,10000]; // total growth needed to reach each tier
+
+let S={fire:0,lvl:0,starUp:false,gLvl:0,crystals:0,growth:0,unlocked:false};
+try{const s=JSON.parse(localStorage.getItem('emberstar')||'null');if(s)S=Object.assign(S,s)}catch(e){}
+const $=id=>document.getElementById(id);
+const tierOf=g=>{let t=0;while(t<5&&g>=CUM[t])t++;return t};
+const upCost=()=>10+5*S.lvl*(S.lvl+1);
+const gCost=()=>1000*Math.pow(10,S.gLvl);
+
+const base=()=>2+2*S.lvl;
+const fps=()=>base()*Math.pow(2,tierOf(S.growth));
+const gps=()=>S.crystals*Math.pow(2,S.gLvl);
+function fmt(n){if(n>=1e9)return n.toExponential(2).replace('e+','e');return n<1000&&n%1?n.toFixed(1):Math.floor(n).toLocaleString('en-US')}
+const crystalsPending=()=>S.fire>=1000?Math.floor(S.fire/1000):(S.crystals===0&&S.fire>=200?1:0);
+
+// ---------- actions ----------
+$('u1').onclick=()=>{if(S.fire>=upCost()){S.fire-=upCost();S.lvl++}};
+
+$('u3').onclick=()=>{if(S.fire>=gCost()){S.fire-=gCost();shave(()=>S.gLvl++)}};
+$('cond').onclick=()=>{const n=crystalsPending();if(!n)return;shave(()=>S.crystals+=n);S.fire=0;S.lvl=0;S.starUp=false};
+function fmtS(s){s=Math.round(s);return s>=60?Math.floor(s/60)+':'+String(s%60).padStart(2,'0'):s+'s'}
+function shave(fn){const t=tierOf(S.growth),g0=gps();fn();const g1=gps();if(t>=5||g0<=0||g1<=g0)return;
+ const rem=CUM[t]-S.growth,sec=rem/g0-rem/g1;if(sec<.5)return;
+ const d=document.createElement('div');d.className='shave';d.textContent='−'+fmtS(sec);d.onanimationend=()=>d.remove();$('etaw').appendChild(d)}
+
+let armT=0;
+$('reset').onclick=function(){
+ if(!this.classList.contains('arm')){this.classList.add('arm');this.textContent='Click again to erase everything';armT=setTimeout(()=>{this.classList.remove('arm');this.textContent='Reset all progress'},3000);return}
+ clearTimeout(armT);this.classList.remove('arm');this.textContent='Reset all progress';
+ S={fire:0,lvl:0,starUp:false,gLvl:0,crystals:0,growth:0,unlocked:false};flashAt=-9;
+ try{localStorage.removeItem('emberstar')}catch(e){}
+};
+// ---------- UI ----------
+function ui(){
+ const t=tierOf(S.growth);
+ if(S.fire>=100)S.unlocked=true;
+ $('fire').textContent=fmt(S.fire);$('fps').textContent=fmt(fps());
+ $('u1').innerHTML=`<b>Kindle (level ${S.lvl})</b><span>+2 fire/s (current: ${fmt(base())}/s) · cost ${fmt(upCost())}</span>`;
+ $('u1').disabled=S.fire<upCost();
+ $('u2').classList.toggle('hide',t<1);
+ $('u2').innerHTML=`<b>Starfire (free)</b><span>Fire ×${Math.pow(2,t)} from your Tier ${t} star</span>`;
+ 
+ $('u3').classList.toggle('hide',t<2);
+ $('u3').innerHTML=`<b>Crystal Resonance (level ${S.gLvl})</b><span>Permanent · each crystal makes ${Math.pow(2,S.gLvl)}/s → ${Math.pow(2,S.gLvl+1)}/s growth · cost ${fmt(gCost())}</span>`;
+ $('u3').disabled=S.fire<gCost();
+ $('cond').classList.toggle('hide',!S.unlocked);
+ const n=crystalsPending();
+ $('cond').innerHTML=n>1?`<b>Condense ×${n} Fire Crystals</b><span>Resets only your fire and Kindle</span>`:S.crystals===0?`<b>Condense your First Fire Crystal</b><span>Costs only 200 fire · resets only your fire and Kindle</span>`:`<b>Condense a Fire Crystal</b><span>Costs 1,000 fire · resets only your fire and Kindle</span>`;
+ $('cond').disabled=n<1;
+ $('growth').textContent=fmt(Math.floor(S.growth));$('cry').textContent=fmt(S.crystals);$('gps').textContent=fmt(gps());$('tier').textContent=t;
+ if(t>=5){$('fill').style.width='100%';$('pl').textContent='Tier 5 · maximum';$('eta').textContent='';}
+ else{
+  const base=t?CUM[t-1]:0,p=(S.growth-base)/(CUM[t]-base);
+  $('fill').style.width=Math.min(100,p*100)+'%';
+  $('pl').textContent=`Tier ${t} to Tier ${t+1}`;
+  const g=gps(),sec=g>0?Math.ceil((CUM[t]-S.growth)/g):-1;
+  $('eta').textContent=sec<0?'--:--':String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+ }
+}
+
+// ---------- star rendering ----------
+const cv=$('cv'),cx=cv.getContext('2d');let W=0,H=0,dpr=1;
+function size(){const r=$('wrap').getBoundingClientRect();dpr=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',size);size();
+const R=[0,10,18,32,54,84];          // star radius per tier
+const dust=Array.from({length:70},()=>({a:Math.random()*6.28,d:20+Math.random()*70,s:.05+Math.random()*.12,z:.6+Math.random()*1.4,o:.2+Math.random()*.4}));
+const sparks=Array.from({length:60},()=>({a:Math.random()*6.28,d:Math.random(),v:.15+Math.random()*.3}));
+const rays=Array.from({length:40},(_,i)=>({ph:Math.random()*6.28,sp:.6+Math.random()*1.4,len:.6+Math.random()*.8,w:.05+Math.random()*.07}));
+let dustSpin=0,lastT=0,flashAt=-9,prevTier=-1;
+function drawStar(time){
+ dustSpin+=Math.min(.1,Math.max(0,time-lastT))*(1+8*Math.min(1,S.growth/10));lastT=time;
+ cx.clearRect(0,0,W,H);
+ const t=tierOf(S.growth),X=W/2,Y=H/2,ext=t?R[t]*(1.5+.28*t)+14:100,half=Math.min(W,H)/2,sc=Math.min(1,half*.94/ext),ig=Math.min(1,S.growth/10);
+ if(prevTier===0&&t===1)flashAt=time;prevTier=t;
+ cx.save();cx.translate(X,Y);cx.scale(sc,sc);
+ cx.globalCompositeOperation='lighter';
+ if(t===0){ // slow cloud of dust
+  for(const p of dust){const a=p.a+dustSpin*p.s*.3,rr=p.d*(1+.06*Math.sin(time*.5+p.a*3))*(1-.9*Math.pow(ig,1.5));
+   const x=Math.cos(a)*rr,y=Math.sin(a)*rr*(.7+.3*ig);
+   cx.fillStyle=`rgba(${190+65*ig|0},${90+80*ig|0},${70+10*ig|0},${Math.min(1,p.o*(.7+.3*Math.sin(time+p.a*5))*(1+1.5*ig))})`;cx.beginPath();cx.arc(x,y,p.z*(1+.6*ig),0,6.28);cx.fill()}
+  const gR=60-35*ig,g=cx.createRadialGradient(0,0,0,0,0,gR);g.addColorStop(0,`rgba(${120+135*ig|0},${30+60*ig|0},${20+10*ig|0},${.18+.7*ig*ig})`);g.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=g;cx.beginPath();cx.arc(0,0,gR,0,6.28);cx.fill();
+  if(ig>.5){const k=(ig-.5)*2,cr=R[1]*k*k*k+.01,c=cx.createRadialGradient(0,0,0,0,0,cr);c.addColorStop(0,`rgba(255,150,80,${k})`);c.addColorStop(1,'rgba(255,50,20,0)');cx.fillStyle=c;cx.beginPath();cx.arc(0,0,cr,0,6.28);cx.fill()}
+ }else{
+  const r=R[t],pulse=1+.04*Math.sin(time*2.2);
+  // escalating outer glow
+  const gr=Math.min(r*(2+t*.8)*pulse,half/sc),ga=.22+t*.08;
+  let g=cx.createRadialGradient(0,0,r*.6,0,0,gr);
+  g.addColorStop(0,`rgba(255,59,31,${ga+.2})`);g.addColorStop(.35,`rgba(200,25,10,${ga*.5})`);g.addColorStop(1,'rgba(80,0,0,0)');
+  cx.fillStyle=g;cx.beginPath();cx.arc(0,0,gr,0,6.28);cx.fill();
+  // corona rays: more and longer with tier
+  const n=8+t*7,spin=time*(.12+.03*t);
+  for(let i=0;i<n;i++){const q=rays[i%rays.length],a=spin+i/n*6.28+q.ph*.05;
+   const L=r*(.5+t*.28)*q.len*(.65+.35*Math.sin(time*q.sp+q.ph)),w=q.w*(1+t*.08);
+   cx.save();cx.rotate(a);
+   const lg=cx.createLinearGradient(r*.8,0,r+L,0);lg.addColorStop(0,`rgba(255,${90+t*18},40,${.5+.05*t})`);lg.addColorStop(1,'rgba(255,40,20,0)');
+   cx.fillStyle=lg;cx.beginPath();cx.moveTo(r*.8,-r*w*2.2);cx.lineTo(r+L,0);cx.lineTo(r*.8,r*w*2.2);cx.closePath();cx.fill();cx.restore()}
+  // counter-rotating thin corona ring (tier 3+)
+  if(t>=3){cx.strokeStyle=`rgba(255,80,40,${.12+.03*t})`;cx.lineWidth=1.5;
+   for(let k=0;k<t-1;k++){cx.beginPath();cx.ellipse(0,0,r*(1.5+k*.45),r*(1.5+k*.45)*(.55+.1*k),-time*.15*(k%2?-1:1)+k,0,6.28);cx.stroke()}}
+  // prominences / arcs (tier 4+)
+  if(t>=4){cx.strokeStyle='rgba(255,120,50,.55)';cx.lineWidth=2+t*.4;
+   for(let k=0;k<3+t;k++){const a=time*.1+k*6.28/(3+t),h=r*(.35+.25*Math.abs(Math.sin(time*.7+k*2)));
+    cx.beginPath();cx.arc(Math.cos(a)*r,Math.sin(a)*r,h,a-1.5,a+1.5);cx.stroke()}}
+  // ejected sparks (tier 3+)
+  if(t>=3)for(const s of sparks){s.d+=s.v*.004*(1+t*.3);if(s.d>1){s.d=0;s.a=Math.random()*6.28}
+   const d=r*(1+s.d*(2+t*.6));cx.fillStyle=`rgba(255,${150+t*15},80,${(1-s.d)*.8})`;cx.fillRect(Math.cos(s.a)*d,Math.sin(s.a)*d,2,2)}
+  // star body: hot core, red limb
+  g=cx.createRadialGradient(0,0,0,0,0,r*pulse);
+  const hot=Math.min(255,150+t*35);
+  g.addColorStop(0,`rgb(255,${hot},${t>=4?200:90})`);g.addColorStop(.55,'rgb(255,70,30)');g.addColorStop(1,'rgb(200,20,10)');
+  cx.globalCompositeOperation='source-over';
+  cx.shadowColor='#ff2a10';cx.shadowBlur=8+t*10;
+  cx.fillStyle=g;cx.beginPath();cx.arc(0,0,r*pulse,0,6.28);cx.fill();cx.shadowBlur=0;
+  // surface granulation
+  if(t>=2){cx.globalCompositeOperation='lighter';cx.fillStyle='rgba(255,200,120,.12)';
+   for(let k=0;k<4+t*3;k++){const a=k*2.4+time*.2*(k%2?1:-1),d=r*.55*Math.abs(Math.sin(k*1.7+time*.3));
+    cx.beginPath();cx.arc(Math.cos(a)*d,Math.sin(a)*d,r*.18,0,6.28);cx.fill()}}
+  const f=(time-flashAt)/1.8;
+  if(f>=0&&f<1){cx.globalCompositeOperation='lighter';const fr=r*(3+f*14),fg=cx.createRadialGradient(0,0,0,0,0,fr);fg.addColorStop(0,`rgba(255,210,150,${.9*(1-f)})`);fg.addColorStop(.4,`rgba(255,80,30,${.4*(1-f)})`);fg.addColorStop(1,'rgba(255,40,10,0)');cx.fillStyle=fg;cx.beginPath();cx.arc(0,0,fr,0,6.28);cx.fill();cx.strokeStyle=`rgba(255,160,90,${.7*(1-f)})`;cx.lineWidth=3;cx.beginPath();cx.arc(0,0,r*(1+f*10),0,6.28);cx.stroke()}
+ }
+ cx.restore();
+}
+
+// ---------- loop ----------
+let last=performance.now(),acc=0,saveT=0;
+function frame(now){
+ const dt=Math.min(.25,(now-last)/1000);last=now;
+ S.fire+=fps()*dt;S.growth+=gps()*dt;
+ drawStar(now/1000);
+ acc+=dt;if(acc>.1){acc=0;ui()}
+ saveT+=dt;if(saveT>3){saveT=0;try{localStorage.setItem('emberstar',JSON.stringify(S))}catch(e){}}
+ requestAnimationFrame(frame);
+}
+ui();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
