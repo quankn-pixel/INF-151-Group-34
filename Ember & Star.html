@@ -20,7 +20,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
 h3{margin:28px 0 10px;font-weight:normal;font-size:19px;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px}
 .up{display:block;width:100%;text-align:left;margin:0 0 10px;padding:12px 14px;background:#000;color:var(--text);
 border:1px solid var(--line);border-radius:4px;font:inherit;font-size:18px;cursor:pointer}
-.up.info{cursor:default;border-color:#5a1510}
+.up.info{cursor:default;border-color:#5a1510;border-style:dashed;background:transparent}
 .up b{display:block;color:var(--fire);font-weight:normal;font-size:20px;margin-bottom:2px}
 .up span{color:var(--dim);font-size:16px}
 button.up:hover:not(:disabled){border-color:var(--fire)}
@@ -61,9 +61,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
   </div>
   <h3>Upgrades</h3>
   <button class="up" id="u1"></button>
-  <div class="up info hide" id="u2"></div>
+  
   <button class="up hide" id="u3"></button>
+  <div style="flex:1"></div>
   <button class="up hide" id="cond"></button>
+  <div class="up info hide" id="u2"></div>
   <button id="reset">Reset all progress</button>
  </section>
  <section class="side" id="right">
@@ -90,8 +92,9 @@ const upCost=()=>10+5*S.lvl*(S.lvl+1);
 const gCost=()=>1000*Math.pow(10,S.gLvl);
 
 const base=()=>2+2*S.lvl;
-const fps=()=>base()*Math.pow(2,tierOf(S.growth));
-const gps=()=>S.crystals*Math.pow(2,S.gLvl);
+const TEST_MULT=2; // hidden testing multiplier applied to all base resources (fire and growth)
+const fps=()=>base()*TEST_MULT*Math.pow(2,tierOf(S.growth));
+const gps=()=>S.crystals*Math.pow(2,S.gLvl)*TEST_MULT;
 function fmt(n){if(n>=1e9)return n.toExponential(2).replace('e+','e');return n<1000&&n%1?n.toFixed(1):Math.floor(n).toLocaleString('en-US')}
 const crystalsPending=()=>S.fire>=1000?Math.floor(S.fire/1000):(S.crystals===0&&S.fire>=200?1:0);
 
@@ -122,7 +125,7 @@ function ui(){
  $('u1').innerHTML=`<b>Kindle (level ${S.lvl})</b><span>+2 fire/s (current: ${fmt(base())}/s) · cost ${fmt(upCost())}</span>`;
  $('u1').disabled=S.fire<upCost();
  $('u2').classList.toggle('hide',t<1);
- $('u2').innerHTML=`<b>Starfire (free)</b><span>Fire ×${Math.pow(2,t)} from your Tier ${t} star</span>`;
+ $('u2').innerHTML=`<b>Starfire (passive)</b><span>Fire ×${Math.pow(2,t)} from your Tier ${t} star</span>`;
  
  $('u3').classList.toggle('hide',t<2);
  $('u3').innerHTML=`<b>Crystal Resonance (level ${S.gLvl})</b><span>Permanent · each crystal makes ${Math.pow(2,S.gLvl)}/s → ${Math.pow(2,S.gLvl+1)}/s growth · cost ${fmt(gCost())}</span>`;
