@@ -21,7 +21,7 @@ FE.module(function (FE) {
   FE.threatRate = function () {
     const s = FE.state;
     const imbalance = FE.THREAT_IMBALANCE * FE.imbalance();
-    const works = (FE.THREAT_PER_WORK * FE.runningWorks() + FE.THREAT_PER_RATE * s.owned.reduce((t, k) => t + FE.rate(k), 0))
+    const works = (FE.THREAT_PER_WORK * FE.runningWorks() + FE.THREAT_PER_RATE / (FE.capacity() / FE.CAP) * s.owned.reduce((t, k) => t + FE.rate(k), 0))
       * (s.gilding ? FE.GILDING_THREAT : 1);
     const leader = s.leaderBeaten ? 0 : FE.THREAT_LEADER;
     return { imbalance, works, leader, total: imbalance + works + leader };
@@ -30,6 +30,7 @@ FE.module(function (FE) {
   // dt in seconds. Returns true when something on screen changed.
   FE.combatTick = function (dt) {
     const s = FE.state;
+    if (!s.forge) return false;                    // no spells and no vagrants until the Spellforge is built
     if (s.leaderIn != null) {
       const before = s.leaderIn;
       s.leaderIn = Math.max(0, before - dt);
@@ -55,7 +56,7 @@ FE.module(function (FE) {
     // the leader is attuned to the element your first one beats, so your oldest element is the lesson
     const el = leader ? FE.BEATS[s.owned[0]] : ids[Math.floor(Math.random() * ids.length)];
     const max = leader ? FE.LEADER_HP
-      : Math.min(FE.CAP, Math.round(FE.CAP * (FE.VAGRANT_HP_BASE + FE.VAGRANT_HP_STEP * s.kills)));
+      : Math.min(FE.capacity(), Math.round(FE.capacity() * (FE.VAGRANT_HP_BASE + FE.VAGRANT_HP_STEP * s.kills)));
     s.enemy = { el, hp: max, max, left: FE.VAGRANT_TIME, time: FE.VAGRANT_TIME, leader };
     s.threatOn = true;
     const weak = weakTo(el);
@@ -73,7 +74,7 @@ FE.module(function (FE) {
     s.enemy = null;
     s.raids++;
     let took = 0;
-    s.owned.forEach(k => {
+    FE.present().forEach(k => {
       const t = FE.round1(Math.max(0, s.counts[k]) * FE.RAID_TAKE);
       s.counts[k] = FE.round1(s.counts[k] - t);
       took += t;
@@ -97,10 +98,7 @@ FE.module(function (FE) {
     s.kills++;
     if (e.leader) {
       s.leaderBeaten = true;
-      s.picking = true;
       FE.note('The leader falls, and the crowd scatters.', 'dim');
-      FE.note('Something else stirs. Investigate it.', 'note');
-      FE.renderChoices();
     } else {
       FE.note('The vagrant falls.', 'note');
     }
@@ -117,7 +115,7 @@ FE.module(function (FE) {
   // while every spell slot is taken.
   FE.conjure = function () {
     const s = FE.state, total = FE.totalCount();
-    if (s.owned.length < 2 || total < 1 || s.spells.length >= FE.SPELL_SLOTS) return;
+    if (!s.forge || total < 1 || s.spells.length >= FE.SPELL_SLOTS) return;
     const el = FE.majority(), power = Math.round(total);
     s.spells.push({ el, power });
     FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; });
@@ -141,8 +139,8 @@ FE.module(function (FE) {
   let listSig = null;
   FE.renderCombat = function (total) {
     const s = FE.state, e = s.enemy;
-    $('spells-box').hidden = s.owned.length < 2;
-    if (s.owned.length >= 2) {
+    $('spells-box').hidden = !s.forge;
+    if (s.forge) {
       const top = FE.majority(), btn = $('btn-conjure'), full = s.spells.length >= FE.SPELL_SLOTS;
       btn.style.setProperty('--c', `var(--${top}-ink)`);
       put(btn, `conjure ${FE.SPELLS[top]}`);

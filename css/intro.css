@@ -1,0 +1,69 @@
+/* intro.css - the opening sequence. Reuses the game's colours and fonts (css/style.css) so light/dark mode match. */
+html, body { height: 100%; overflow: hidden; }
+body { position: fixed; inset: 0; padding: 0; touch-action: manipulation; }
+
+canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+#fae { z-index: 1; transition: opacity .5s ease; }
+#sigil { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; transition: opacity .9s ease; }
+#sigil.out { opacity: 0; }
+#fx { z-index: 5; }
+#flood { z-index: 40; }
+
+/* ---- title ---- */
+.home { position: fixed; left: 0; right: 0; top: clamp(24px, 9vh, 90px); z-index: 3; text-align: center; pointer-events: none; transition: opacity .5s ease; }
+.home h1 { margin: 0; font-size: 2.6em; font-weight: normal; letter-spacing: .02em; }
+.home .sub { margin: 8px 0 0; color: var(--muted); font-size: .95em; }
+body.fading .home, body.fading #fae { opacity: 0; }
+
+/* ---- the magic circle (the play button) ---- */
+.circle-btn { position: fixed; z-index: 4; left: 50%; top: 60%; width: 200px; height: 200px; transform: translate(-50%, -50%); padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; font: inherit; color: var(--fg); display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
+.circle-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+.circle-btn .lbl { font-size: .95em; text-shadow: 0 0 10px color-mix(in srgb, var(--water-ink) 60%, transparent); transition: opacity .5s ease; }
+.circle-btn:hover .lbl { text-decoration: underline; }
+body.fading .circle-btn .lbl { opacity: 0; }
+
+#sigil .ln, #sigil .gl { fill: none; stroke: url(#sg); stroke-linecap: round; stroke-linejoin: round; }
+#sigil .disc { fill: color-mix(in srgb, var(--fg) 4%, var(--bg)); }
+#sigil .holefill { fill: var(--bg); }
+
+/* ---- dialog bubble, centred in the hole ---- */
+.dialog { position: fixed; inset: 0; z-index: 7; display: grid; place-items: center; pointer-events: none; }
+.bubble { --c: var(--fg); font: inherit; font-size: clamp(1.05rem, 2.6vw, 1.9rem); color: var(--fg); background: var(--bg); border: 1px solid var(--c); border-radius: 999px; padding: .65em 1.4em; max-width: min(86vw, 22em); cursor: pointer; opacity: 0; pointer-events: none; box-shadow: 0 0 24px -6px var(--c); -webkit-tap-highlight-color: transparent; }
+.bubble:hover { background: color-mix(in srgb, var(--c) 14%, var(--bg)); }
+.bubble:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+.bubble.show { opacity: 1; pointer-events: auto; animation: pop .5s ease-out, bob 3.6s ease-in-out .5s infinite; }
+.bubble.show.burst { pointer-events: none; animation: burst .7s ease-out forwards; }
+@keyframes pop { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes burst { 0% { opacity: 1; transform: scale(1); } 30% { opacity: 1; transform: scale(1.12); box-shadow: 0 0 44px 4px var(--c); } 100% { opacity: 0; transform: scale(1.5); } }
+
+/* ---- the four elements, one per hole ---- */
+#stage { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+.elbtn { --c: var(--fg); position: fixed; left: 0; top: 0; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; color: var(--c); display: grid; place-items: center; opacity: 0; pointer-events: none; transform: translate(-50%, -50%); transition: opacity .9s ease, transform .9s ease; -webkit-tap-highlight-color: transparent; }
+.elbtn.on { opacity: 1; }
+.elbtn.live { pointer-events: auto; }
+.elbtn.live:hover, .elbtn:focus-visible { transform: translate(-50%, -50%) scale(1.14); transition-duration: .25s; }
+.elbtn:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+.elbtn svg { width: 76%; height: 76%; overflow: visible; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c) 60%, transparent)); }
+.elbtn.air svg { animation: sway 3s ease-in-out infinite alternate; }
+.elbtn.water svg { animation: bobv 2.6s ease-in-out infinite alternate; }
+.elbtn.fire svg { animation: flick 1.3s steps(1, end) infinite; }
+@keyframes sway { from { transform: translateX(-2px); } to { transform: translateX(3px); } }
+@keyframes bobv { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
+@keyframes flick { 0% { opacity: 1; } 18% { opacity: .78; } 34% { opacity: 1; } 55% { opacity: .85; } 72% { opacity: 1; } 88% { opacity: .8; } }
+.elbtn.on.off { opacity: 0; transition-duration: .6s; pointer-events: none; }
+.elbtn.on.chosen { transform: translate(-50%, -50%) scale(1.7); pointer-events: none; transition-duration: 1.1s; }
+.elbtn.on.chosen svg { filter: drop-shadow(0 0 16px var(--c)); }
+
+/* ---- "Choose an element:" ---- */
+.choose { position: fixed; left: 50%; top: 0; z-index: 6; transform: translate(-50%, -100%); width: max-content; max-width: 90vw; text-align: center; opacity: 0; pointer-events: none; transition: opacity 1s ease; }
+.choose.on { opacity: 1; }
+.choose h2 { margin: 0; font-size: 1.6em; font-weight: normal; color: var(--fg); }
+.choose .cap { min-height: 1.5em; margin-top: 4px; font-style: italic; }
+
+/* ---- leaving ---- */
+#veil { position: fixed; inset: 0; z-index: 50; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 1s ease; }
+#veil.on { opacity: 1; pointer-events: auto; }
+.skip { position: fixed; right: 20px; bottom: 16px; z-index: 60; font-size: .875em; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .6s ease; }
+.skip.on { opacity: 1; pointer-events: auto; }
+.nojs { position: fixed; left: 0; right: 0; bottom: 20px; margin: 0; text-align: center; z-index: 70; }

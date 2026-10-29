@@ -17,7 +17,9 @@ FE.module(function (FE) {
     { id: 'fire',  key: 'f' }
   ];
 
-  FE.CAP = 10000;         // total storage across all elements (prototype pacing: main uses 100,000)
+  FE.CAP = 10000;         // base storage, and all a tier 1 crystal needs (prototype pacing: main uses 100,000)
+  FE.VAULT_COSTS = [8000, 80000, 800000];   // vaults: each makes storage x10 for the run; paid from everything you hold, in proportion
+  FE.TIER2_AT = 10000000; // stored elements a tier 2 crystal needs; the first one opens the 3rd element (Layer 3)
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
 
   // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier
@@ -47,7 +49,7 @@ FE.module(function (FE) {
   FE.FULL_VERB = { air: 'smothered', water: 'drowned', earth: 'swallowed', fire: 'consumed' };
   FE.FLAVOR = { air: 'restless winds', water: 'rising tides', earth: 'settling stone', fire: 'roaring flames' };   // balance status
 
-  // ---- spells and vagrants: they start once you hold two elements ----
+  // ---- spells and vagrants: they start once the Spellforge is built (Layer 2) ----
   FE.SPELLS = { air: 'Lightning', water: 'Hypnosis', earth: 'Binding', fire: 'Fireball' };
   FE.BEATS = { water: 'fire', fire: 'air', air: 'earth', earth: 'water' };   // x beats BEATS[x]
   FE.STRONG = 2;                // damage multiplier of a spell against the element it beats
@@ -81,6 +83,25 @@ FE.module(function (FE) {
     { id: 'kiln',      name: 'Kiln',       use: { fire: 20, air: 10, sand: 2 },     make: { glass: 1 },  cost: { fire: 1000, sand: 20 },   when: ['fire', 0.6] },
     { id: 'crucible',  name: 'Crucible',   use: { fire: 30, metal: 1 },             make: { gold: 1 },   cost: { fire: 1000, metal: 20 },  when: ['fire', 0.7] }
   ];
+  // fire-hungry crafters: water quenching halves their fire use
+  ['furnace', 'kiln', 'crucible'].forEach(id => { FE.CONVERTERS.find(c => c.id === id).heat = true; });
+  // Transmuters (Layer 2 only): your two elements in, an element you don't have out, at a deliberately bad rate. One per
+  // pair and missing element. `tm` marks them and names the pair. They never unlock resonance or structures for the
+  // element they make: those cards follow the elements you chose.
+  FE.TRANSMUTE_IN = 100;        // of each of your two elements, per second, per transmuter
+  FE.TRANSMUTE_OUT = 1;         // of the missing element, per second: 200 in for 1 out
+  FE.TRANSMUTE_COST = 1500;     // of each of your two elements
+  (function () {
+    const ids = FE.ELEMENTS.map(e => e.id), cap = t => t[0].toUpperCase() + t.slice(1);
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => ids.filter(t => t !== a && t !== b).forEach(t => {
+      FE.CONVERTERS.push({ id: `tm_${a}_${b}_${t}`, name: `${cap(t)} Transmuter`, tm: [a, b],
+        use: { [a]: FE.TRANSMUTE_IN, [b]: FE.TRANSMUTE_IN }, make: { [t]: FE.TRANSMUTE_OUT },
+        cost: { [a]: FE.TRANSMUTE_COST, [b]: FE.TRANSMUTE_COST } });
+    })));
+  })();
+  FE.FOCUS_BONUS = 3;           // a converter with a balance condition makes this much more while you own that element and meet it
+  FE.QUENCH_COST = { water: 2000 };     // water owners only: Furnace, Kiln and Crucible use QUENCH_FIRE of their usual fire
+  FE.QUENCH_FIRE = 0.5;
   FE.CONVERTER_COST_STEP = 0.5;
   FE.FITTINGS_COST = { metal: 20 };     // per element: its structures make FITTINGS_BOOST times as much
   FE.FITTINGS_BOOST = 2;
@@ -88,7 +109,8 @@ FE.module(function (FE) {
   FE.LENSES_BOOST = 1.5;
   FE.GILDING_COST = { gold: 10 };       // works add GILDING_THREAT of their usual threat
   FE.GILDING_THREAT = 0.5;
-  FE.FLASK_COST = { glass: 10, gold: 10 };   // the Brewing Flask ends the prototype
+  FE.FORGE_NAME = 'Spellforge';
+  FE.FORGE_COST = 2000;       // of each of your first two elements: the forge starts spells and vagrants
 
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',

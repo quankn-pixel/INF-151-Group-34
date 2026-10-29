@@ -37,6 +37,7 @@ FE.module(function (FE) {
     try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {}
     FE.state = FE.freshState();
     FE.clearIcons();
+    FE.storyReset();
     FE.hideEnd();
     FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(performance.now());
     FE.render();

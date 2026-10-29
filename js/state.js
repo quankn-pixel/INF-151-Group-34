@@ -13,6 +13,8 @@ FE.module(function (FE) {
       seen: {},             // 'res-air', 'struct-air', 'cond' -> true once that build has faded in (kept when condensing)
       crystals: 0,          // tier 1 crystals; each raises the max multiplier
       planets: 0,           // the first crystal also forms a planet, which opens the 2nd element
+      crystals2: 0,         // tier 2 crystals: the first opens the 3rd element (Layer 3)
+      vault: 0,             // vaults built this run: each makes storage x10 (reset by condensing)
       spells: [],           // { el, power }, oldest first
       enemy: null,          // the vagrant here now: { el, hp, max, left, time (seconds), leader }
       threat: 0,            // 0-100; a vagrant arrives when it fills
@@ -28,9 +30,11 @@ FE.module(function (FE) {
       fit: {},              // element -> true once its structures have fittings
       lenses: false,
       gilding: false,
-      flask: false,         // the Brewing Flask is built
+      quench: false,        // water quenching: Furnace, Kiln and Crucible burn less fire
+      forge: false,         // the Spellforge is built: spells and vagrants start (kept when condensing)
       ended: false,         // the end-of-prototype message has been shown
       played: 0,            // seconds played with the tab visible
+      story: { told: {} },  // story beats already told (see story.js)
       log: [{ h: 'The dark space stirs with <b>Four Elements</b>', c: 'title' }],   // newest first
       savedAt: 0
     };
@@ -40,7 +44,8 @@ FE.module(function (FE) {
   FE.totalCount = () => FE.round1(FE.ELEMENTS.reduce((t, { id }) => t + Math.max(0, FE.state.counts[id]), 0));
 
   // derived values (k is an element id)
-  FE.locked = () => FE.totalCount() >= FE.CAP;                 // storage full: no gathering
+  FE.capacity = () => FE.CAP * Math.pow(10, FE.state.vault);   // storage: each vault built this run makes it x10
+  FE.locked = () => FE.totalCount() >= FE.capacity();          // storage full: no gathering
   // Before the first planet a full storage also blocks buying, so condensing is the only way on. After it, spending
   // is how you make room, so buying stays open.
   FE.buyBlocked = () => FE.locked() && !FE.state.planets;

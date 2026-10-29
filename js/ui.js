@@ -38,6 +38,7 @@ FE.module(function (FE) {
     });
     FE.MATERIALS.forEach(m => storeRow(m, m));
     storeRow('crystal', 'tier 1 crystal');
+    storeRow('crystal2', 'tier 2 crystal');
     storeRow('planet', 'planet');
     $('cap').textContent = '/ ' + FE.CAP.toLocaleString('en-US');
     $('btn-conjure').addEventListener('click', () => FE.conjure());
@@ -88,25 +89,18 @@ FE.module(function (FE) {
 
   // ---- the goal line under the title: the next thing to do ----
   function goal(total) {
-    const s = FE.state, n = s.owned.length, m = s.mats, flask = FE.FLASK_COST;
+    const s = FE.state, n = s.owned.length;
     if (s.picking) return n ? `investigate a ${n === 1 ? 'second' : 'third'} element.` : 'investigate one of the elements.';
     if (s.enemy) return s.enemy.leader ? 'defeat the vagrant leader: conjure a spell, then cast it.' : 'a vagrant is here: cast a spell before it raids you.';
     if (n === 1) return total >= FE.CAP ? 'condense your stores.' : `fill your stores: ${FE.fmt(total)} / ${FE.fmt(FE.CAP)}.`;
-    if (n === 2) return s.leaderIn != null ? 'conjure a spell. something is coming.' : 'the vagrant leader will be back. keep a spell ready.';
-    if (s.flask) return 'the elements are yours. keep playing, or restart.';
-    // crafting: glass (Kiln, which costs sand) and gold (Crucible, which costs metal) for the Brewing Flask
-    const needGlass = m.glass < flask.glass, needGold = m.gold < flask.gold;
-    if (!needGlass && !needGold) return 'build the Brewing Flask.';
-    const sand = FE.converter('kiln').cost.sand, metal = FE.converter('crucible').cost.metal;
-    if (needGlass && !s.conv.kiln) {
-      if (m.sand >= sand) return 'build a Kiln.';
-      return `make sand: ${s.conv.sifter ? '' : 'build a Sifter and '}keep ${condition('sifter')}. sand ${FE.fmt(m.sand)} / ${sand}.`;
+    if (n === 2) {
+      if (!s.forge) return `build the ${FE.FORGE_NAME}: ${FE.fmt(FE.FORGE_COST)} each of ${s.owned.join(' and ')}.`;
+      if (s.leaderIn != null) return 'conjure a spell. something is coming.';
+      if (!s.leaderBeaten) return 'the vagrant leader will be back. keep a spell ready.';
+      return total >= FE.TIER2_AT ? 'condense into a tier 2 crystal.'
+        : `build vaults and fill your stores for a tier 2 crystal: ${FE.fmt(total)} / ${FE.fmt(FE.TIER2_AT)}.`;
     }
-    if (needGold && !s.conv.crucible) {
-      if (m.metal >= metal) return 'build a Crucible.';
-      return `make metal: ${s.conv.furnace ? '' : 'build a Furnace and '}keep ${condition('furnace')}. metal ${FE.fmt(m.metal)} / ${metal}.`;
-    }
-    return `make glass and gold for the Brewing Flask: glass ${FE.fmt(Math.min(m.glass, flask.glass))} / ${flask.glass} · gold ${FE.fmt(Math.min(m.gold, flask.gold))} / ${flask.gold}.`;
+    return 'explore Yetzirah: work the elements into materials, and keep the vagrants off.';
   }
 
   function renderStores() {
@@ -119,7 +113,7 @@ FE.module(function (FE) {
       text('per-' + id, perSec(FE.rate(id) + FE.convFlow(id)));
     });
     FE.MATERIALS.forEach(m => {
-      const show = FE.crafting() || s.mats[m] > 0;
+      const show = FE.makeable(m) || s.mats[m] > 0;
       $('row-' + m).hidden = !show;
       if (!show) return;
       text('n-' + m, FE.fmt(s.mats[m]));
@@ -127,6 +121,8 @@ FE.module(function (FE) {
     });
     $('row-crystal').hidden = !s.crystals;
     text('n-crystal', FE.fmt(s.crystals));
+    $('row-crystal2').hidden = !s.crystals2;
+    text('n-crystal2', FE.fmt(s.crystals2));
     $('row-planet').hidden = !s.planets;
     text('n-planet', FE.fmt(s.planets));
     $('empty').hidden = s.owned.length > 0;
@@ -171,7 +167,17 @@ FE.module(function (FE) {
   // ---- builds, in pages (the target's arrows and dots). Page 0: each element's resonance and structure, then
   // condense, with locks for the ones not found yet. Pages 1 and 2 open with the 3rd element. ----
   const PAGES = ['elements', 'converters', 'upgrades'];
-  const pages = () => FE.crafting() ? PAGES.length : 1;
+  // what each page lists. From the 3rd element on all of it is open; in Layer 2 only what your two elements can build
+  const listFor = name => {
+    const s = FE.state;
+    if (name === 'converters') return FE.CONVERTERS.filter(c => FE.available(c)).map(c => 'conv-' + c.id);
+    if (name === 'upgrades') return (FE.makeable('metal') ? mine().map(k => 'fit-' + k) : [])
+      .concat(FE.makeable('glass') ? 'lenses' : [], FE.makeable('gold') ? 'gilding' : [], mine().includes('water') ? 'quench' : []);
+    return mine().flatMap(k => ['res-' + k, 'struct-' + k])
+      .concat(s.planets ? 'vault' : [], s.owned.length >= 2 ? 'forge' : [], s.owned.length ? 'cond' : []);
+  };
+  const open = () => PAGES.filter(n => n === 'elements' || (FE.crafting() && listFor(n).length > 0));   // pages with something on them
+  const pages = () => open().length;
   let page = 0, buildSig = null, pagerSig = null;
   FE.showBuildsPage = function (n) {
     page = Math.max(0, Math.min(pages() - 1, n));
@@ -185,15 +191,15 @@ FE.module(function (FE) {
       if (s.counts[k] >= FE.STRUCT_AT) s.seen['struct-' + k] = true;
     });
     if (s.owned.length && locked) s.seen.cond = true;
+    if (s.planets) s.seen.vault = true;
+    if (s.owned.length >= 2) s.seen.forge = true;
     if (page >= pages()) page = 0;                             // after a restart
-    const list = page === 1 ? FE.CONVERTERS.map(c => 'conv-' + c.id)
-      : page === 2 ? mine().map(k => 'fit-' + k).concat('lenses', 'gilding', 'flask')
-      : mine().flatMap(k => ['res-' + k, 'struct-' + k]).concat(s.owned.length ? 'cond' : []);
-    const shown = b => page > 0 || s.seen[b];
-    const show = FE.crafting() || list.some(shown);
+    const name = open()[page], list = listFor(name);
+    const shown = b => name !== 'elements' || s.seen[b];
+    const show = pages() > 1 || list.some(shown);
     $('builds-box').hidden = !show;
     if (!show) return;
-    const sig = page + ':' + list.map(b => (shown(b) ? '+' : '-') + b).join();
+    const sig = name + ':' + list.map(b => (shown(b) ? '+' : '-') + b).join();
     if (sig !== buildSig) {                                    // rebuilt only on a new page or a new find, never mid-click
       buildSig = sig;
       $('builds').replaceChildren(...list.map(b => shown(b) ? card(b) : lock(b)));
@@ -207,7 +213,7 @@ FE.module(function (FE) {
     $('pager').hidden = n < 2;
     if (n < 2 || pagerSig === n + ':' + page) return;
     pagerSig = n + ':' + page;
-    $('pg-dots').replaceChildren(...PAGES.slice(0, n).map((name, i) => {
+    $('pg-dots').replaceChildren(...open().map((name, i) => {
       const d = document.createElement('button');
       d.type = 'button'; d.className = 'dot' + (i === page ? ' on' : '');
       d.setAttribute('aria-label', name);
@@ -215,7 +221,7 @@ FE.module(function (FE) {
       d.addEventListener('click', () => FE.showBuildsPage(i));
       return d;
     }));
-    $('pg-name').textContent = PAGES[page];
+    $('pg-name').textContent = open()[page];
     $('pg-prev').disabled = page === 0;
     $('pg-next').disabled = page === n - 1;
   }
@@ -224,15 +230,15 @@ FE.module(function (FE) {
   function card(b) {
     const [kind, k] = b.split('-');
     const el = document.createElement('button');
-    el.type = 'button'; el.className = 'card' + (kind === 'cond' || kind === 'flask' ? ' wide' : ''); el.id = 'build-' + b;
+    el.type = 'button'; el.className = 'card' + (kind === 'cond' ? ' wide' : ''); el.id = 'build-' + b;
     // colour: the element it's about, or for a converter the element it makes or needs to lead the bar
     const c = kind === 'conv' && FE.converter(k);
-    const tint = c ? (c.when ? c.when[0] : Object.keys(c.make)[0]) : k;
+    const tint = c ? (c.when ? c.when[0] : Object.keys(c.make)[0]) : kind === 'quench' ? 'water' : k;
     if (isElement(tint)) el.style.setProperty('--c', `var(--${tint}-ink)`);
     el.innerHTML = '<span class="card-title"></span><span class="card-cost"></span><span class="card-note"></span>';
     const act = {
       res: () => FE.buyRes(k), struct: () => FE.buyStruct(k), cond: () => FE.condense(), conv: () => FE.buyConverter(k),
-      fit: () => FE.buyFittings(k), lenses: () => FE.buyLenses(), gilding: () => FE.buyGilding(), flask: () => FE.buildFlask()
+      fit: () => FE.buyFittings(k), lenses: () => FE.buyLenses(), gilding: () => FE.buyGilding(), vault: () => FE.buyVault(), forge: () => FE.buyForge(), quench: () => FE.buyQuench()
     }[kind];
     el.addEventListener('click', act);
     return el;
@@ -264,17 +270,38 @@ FE.module(function (FE) {
       put(cost, parts({ [k]: c }, !blocked));
       put(note, `+${FE.STRUCT_RATE * (s.fit[k] ? FE.FITTINGS_BOOST : 1)} ${k}/s each`);
     } else if (kind === 'cond') {
+      const t2 = total >= FE.TIER2_AT;
       can = locked;
-      put(title, 'condense');
-      put(cost, `<span class="${can ? 'have' : ''}">${FE.fmt(total)} / ${FE.fmt(FE.CAP)}</span> stored`);
-      put(note, s.planets ? `a crystal: +${FE.CRYSTAL_MAX_MULT} max multiplier. resets everything.`
+      put(title, t2 ? 'condense: tier 2' : 'condense');
+      put(cost, `<span class="${can ? 'have' : ''}">${FE.fmt(total)} / ${FE.fmt(t2 ? FE.TIER2_AT : FE.CAP)}</span> stored`);
+      put(note, t2 ? 'a tier 2 crystal: opens the next world. resets everything.'
+        : s.planets ? `a tier 1 crystal: +${FE.CRYSTAL_MAX_MULT} max multiplier. resets everything.`
         : 'a crystal and a planet: a new element. resets everything.');
     } else if (kind === 'conv') {
       const c = FE.converter(k), price = FE.convCost(k);
       can = FE.canBuy(price);
       put(title, c.name + (s.conv[k] ? ` ×${s.conv[k]}` : ''));
       put(cost, parts(price, true));
-      put(note, (c.when ? `while ${condition(k)}: ` : '') + `${amounts(c.use)} → ${amounts(c.make)}/s`);
+      put(note, (c.when && s.owned.includes(c.when[0]) ? `while ${condition(k)} (\u00d7${FE.FOCUS_BONUS}): ` : '') + `${amounts(c.use)} → ${amounts(c.make)}/s`);
+    } else if (kind === 'quench') {
+      done = !!s.quench;
+      can = !done && FE.canBuy(FE.QUENCH_COST);
+      put(title, 'quenching');
+      put(cost, done ? 'done' : parts(FE.QUENCH_COST, true));
+      put(note, `furnaces, kilns and crucibles use ${Math.round((1 - FE.QUENCH_FIRE) * 100)}% less fire`);
+    } else if (kind === 'vault') {
+      const price = FE.vaultCost(), maxed = price == null;
+      can = !maxed && total >= price;
+      put(title, 'vault' + (s.vault ? ` \u00d7${s.vault}` : ''));
+      put(cost, maxed ? 'maxed' : `<span class="${can ? 'have' : ''}">${FE.fmt(total)} / ${FE.fmt(price)}</span> stored`);
+      put(note, `storage ${FE.fmt(FE.capacity())}` + (maxed ? '' : ` \u2192 ${FE.fmt(FE.capacity() * 10)}`));
+    } else if (kind === 'forge') {
+      const ks = s.owned.slice(0, 2);
+      done = s.forge;
+      can = !done && !blocked && ks.length === 2 && ks.every(e => s.counts[e] >= FE.FORGE_COST);
+      put(title, FE.FORGE_NAME);
+      put(cost, done ? 'built' : ks.map(e => `<span class="${s.counts[e] >= FE.FORGE_COST ? 'have' : ''}">${FE.fmt(s.counts[e])} / ${FE.fmt(FE.FORGE_COST)}</span> ${named(e)}`).join(' \u00b7 '));
+      put(note, 'spells and vagrants');
     } else if (kind === 'fit') {
       done = !!s.fit[k];
       can = !done && FE.canBuy(FE.FITTINGS_COST);
@@ -288,12 +315,7 @@ FE.module(function (FE) {
       put(title, kind);
       put(cost, done ? 'done' : parts(price, true));
       put(note, lenses ? `converters make ×${FE.LENSES_BOOST}` : 'works add half the threat');
-    } else {
-      done = s.flask;
-      can = !done && FE.canBuy(FE.FLASK_COST);
-      put(title, 'Brewing Flask');
-      put(cost, done ? 'built' : parts(FE.FLASK_COST, true));
-      put(note, 'unlocks spell concoction');
+    
     }
     el.disabled = !can;
     el.classList.toggle('done', done);
@@ -306,6 +328,7 @@ FE.module(function (FE) {
     $('balance-box').hidden = !s.balanceShown;
     if (!s.balanceShown) return;
     text('total', FE.fmt(total));
+    text('cap', '/ ' + FE.capacity().toLocaleString('en-US'));
     const ks = inPlay(), barW = $('bar').clientWidth;
     ids.forEach(id => { $('seg-' + id).hidden = $('leg-' + id).hidden = !ks.includes(id); });
     const shares = ks.map(k => ({ k, share: FE.share(k) }));
@@ -333,7 +356,7 @@ FE.module(function (FE) {
     renderWorks();
     renderBuilds(total);
     renderBalance(total);
-    s.owned.forEach(k => { const b = $('btn-' + k); if (b) b.disabled = total >= FE.CAP; });
+    s.owned.forEach(k => { const b = $('btn-' + k); if (b) b.disabled = total >= FE.capacity(); });
     FE.renderCombat(total);
     FE.updateMult();
   };
