@@ -41,12 +41,10 @@
 
   /* the play link is the magic circle: a round, invisible hit area laid over the drawing */
   #play { position: relative; box-sizing: border-box; width: 200px; height: 200px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none;
-    display: grid; place-items: center; font-size: .85em; -webkit-tap-highlight-color: transparent;
-    text-shadow: 0 0 10px color-mix(in srgb, var(--water-ink) 60%, transparent); transition: color .5s ease; }
-  #play:hover { background: none; box-shadow: none; text-decoration: underline; }
+    display: block; font-size: 0; color: transparent; text-shadow: none; -webkit-tap-highlight-color: transparent; }
+  #play:hover { background: none; box-shadow: none; text-decoration: none; }
   #play:active { transform: none; }
   #play:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
-  body.fading #play { color: transparent; text-shadow: none; }
 
   #sigil .ln, #sigil .gl { fill: none; stroke: url(#sg); stroke-linecap: round; stroke-linejoin: round; }
   #sigil .disc { fill: color-mix(in srgb, var(--fg) 4%, var(--bg)); }
@@ -102,7 +100,7 @@
     <h1>Four Elements</h1>
     <p class="sub">the elements stir.</p>
     <div class="menu">
-      <a class="play" id="play" href="game.html">play.</a>
+      <a class="play" id="play" href="game.html" aria-label="play">play.</a>
       <p class="saved" id="saved" hidden></p>
       <button class="play quiet" id="new" type="button" hidden>new game.</button>
       <span class="confirm" id="new-confirm" hidden>
@@ -133,7 +131,7 @@
     try { saved = JSON.parse(localStorage.getItem(FE.SAVE_KEY)); } catch (e) {}
     if (!saved || !saved.owned || !saved.owned.length) return;
     const sec = Math.floor(saved.played || 0);
-    $('play').textContent = 'continue.';
+    $('play').textContent = 'continue.'; $('play').setAttribute('aria-label', 'continue');
     $('saved').textContent = `${saved.owned.join(', ')} · ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} played`;
     $('saved').hidden = $('new').hidden = false;
     const ask = on => { $('new').hidden = on; $('new-confirm').hidden = !on; (on ? $('new-no') : $('new')).focus(); };
@@ -374,6 +372,17 @@ function spawnFae() {
   for (let i = 0; i < nb; i++) fae.push(mkFae(false, i));      // back layer first, so the front layer draws over it
   for (let i = 0; i < nf; i++) fae.push(mkFae(true, i));
 }
+function fitFae(ow, oh) {                                        // the window changed size (windowed <-> fullscreen): spread the fae over the new area
+  const sx = W / ow, sy = H / oh;
+  for (const f of fae) { f.x *= sx; f.tx *= sx; f.y *= sy; f.ty *= sy; }
+  for (const p of sparks) { p.x *= sx; p.y *= sy; }
+  const nb = clamp(Math.round(W * H / 55000), 12, 28), nf = clamp(Math.round(W * H / 120000), 6, 14);
+  let b = fae.filter(f => !f.front).length, fr = fae.length - b;
+  for (; b < nb; b++) fae.unshift(mkFae(false, b));
+  for (; fr < nf; fr++) fae.push(mkFae(true, fr));
+  while (b > nb) { fae.splice(fae.findIndex(f => !f.front), 1); b--; }
+  while (fr > nf) { fae.splice(fae.findIndex(f => f.front), 1); fr--; }
+}
 function updateFae(dt) {
   for (const f of fae) {
     f.tt -= dt;
@@ -447,6 +456,7 @@ function idleEmit(dt) {
   }
 }
 function ring(x, y, r0, r1, dur, c, delay = 0, w = 3, sq = 1) {
+  dur /= 1000;                                                  // callers pass ms; delay is in seconds
   let t = -delay;
   fx.push(dt => {
     t += dt; if (t < 0) return true;
@@ -768,13 +778,14 @@ window.FEIntro = { start: () => play(true) };              // used by "new game.
 // ---- layout and the frame loop ----
 function layoutHome() { if (!started) btn.style.width = btn.style.height = homeR() * 2 + 'px'; }
 function resize() {
+  const ow = W, oh = H;
   W = innerWidth; H = innerHeight; dpr = Math.min(2, devicePixelRatio || 1);
   [faeC, fxC, flC].forEach(c => { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); });
   [fa, fc, fl].forEach(c => c.setTransform(dpr, 0, 0, dpr, 0, 0));
   layoutHome();
   if (rest) Object.assign(C, rest());
   if (phase === 'choose') placeChoose();
-  if (!fae.length) spawnFae();
+  if (!fae.length) spawnFae(); else if (ow !== W || oh !== H) fitFae(ow, oh);
 }
 addEventListener('resize', resize);
 mq.addEventListener('change', readPal);
