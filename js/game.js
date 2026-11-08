@@ -1,144 +1,81 @@
-/* game.js - what a click does, finding elements, builds, condensing, the timers, and boot. Loaded last. */
+/* game.js - what a click does, buying, condensing a star, collapsing it, the timer, and boot. Loaded last. */
 FE.module(function (FE) {
-  // Add to an element, never past the cap. Announces the moment storage first fills up.
-  FE.addAmount = function (k, amount) {
+  // The home page's opening sequence opens the game as game.html?new=1&el=fire (a new game that starts with that element)
+  // and "continue." as game.html?el=fire. See start().
+  FE.discover = function (k) {
     const s = FE.state;
-    const room = FE.round1(FE.capacity() - FE.totalCount());
-    if (room <= 0 || !(amount > 0)) return;
-    s.counts[k] = FE.round1(s.counts[k] + Math.min(amount, room));
-    if (!s.full && FE.totalCount() >= FE.capacity()) {
-      s.full = true;
-      const top = FE.majority() || k;
-      FE.note(`Your ${FE.wordHTML(top, top, true)} has ${FE.FULL_VERB[top]} the other elements, but there is still not enough space in this <span class="fx-room">room</span>.`, 'note');
-      FE.save();
-    }
-  };
-
-  // While choosing, a click investigates an element and makes it yours (that click gives nothing). After that it gathers.
-  FE.act = function (k) {
-    const s = FE.state;
-    if (s.owned.includes(k)) { if (!FE.locked()) FE.gather(k); }
-    else if (s.picking) discover(k);
-  };
-
-  function discover(k) {
-    const s = FE.state;
-    s.owned.push(k);
-    s.picking = false;
-    FE.note(FE.FIRST_MSG[k], 'note');
-    if (s.owned.length === 3) {
-      FE.note('Where three elements meet, something like life begins.', 'dim');
-      FE.note('The elements can be worked into materials now. New builds wait on the next pages of builds.', 'note');
-      FE.showBuildsPage(1);
-    }
-    FE.renderChoices();
-    FE.render();
-    FE.save();
-  }
-
-  FE.gather = function (k) {
-    const power = FE.round1(FE.clickPower(k) * FE.multiplier());  // read BEFORE this click's own icon exists
-    FE.addAmount(k, power);
-    FE.spawnIcon(k);
-    FE.render();
-  };
-
-  // ---- builds: paid for with their own element; locked while storage is full until the first planet ----
-  function spend(k, cost) {
-    const s = FE.state;
-    if (!s.owned.includes(k) || FE.buyBlocked() || s.counts[k] < cost) return false;
-    s.counts[k] = FE.round1(s.counts[k] - cost);
-    return true;
-  }
-  FE.buyRes = function (k) { if (spend(k, FE.resCost(k))) { FE.state.up[k].res++; FE.render(); FE.save(); } };
-  FE.buyStruct = function (k) { if (spend(k, FE.structCost(k))) { FE.state.up[k].struct++; FE.render(); FE.save(); } };
-
-  // vault: storage x10 for this run. Paid from everything you hold, in proportion, so the balance doesn't shift.
-  FE.vaultCost = () => FE.VAULT_COSTS[FE.state.vault];        // undefined once every vault is built
-  FE.buyVault = function () {
-    const s = FE.state, cost = FE.vaultCost(), total = FE.totalCount();
-    if (!s.planets || cost == null || total < cost) return;
-    const keep = 1 - cost / total;
-    FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = FE.round1(Math.max(0, s.counts[id]) * keep); });
-    s.vault++;
-    FE.note('The vault opens a deeper hollow. Storage x10.', 'note');
-    FE.render(); FE.save();
-  };
-  // Spellforge: FORGE_COST of each of your first two elements. Starts the leader's approach; spells and vagrants follow.
-  FE.buyForge = function () {
-    const s = FE.state, ks = s.owned.slice(0, 2);
-    if (s.forge || ks.length < 2 || FE.buyBlocked() || !ks.every(k => s.counts[k] >= FE.FORGE_COST)) return;
-    ks.forEach(k => { s.counts[k] = FE.round1(s.counts[k] - FE.FORGE_COST); });
-    s.forge = true;
-    s.leaderIn = FE.LEADER_DELAY;
-    FE.note(`The ${FE.FORGE_NAME} is lit. Everything you hold can now be folded into a spell: its element is whatever you hold most of.`, 'note');
-    FE.note('Something far off turns to look.', 'dim');
+    if (s.owned.length || !FE.ELEMENTS.some(e => e.id === k)) return;
+    s.owned.push(k); s.picking = false;
+    FE.core.sync();
     FE.render(); FE.save();
   };
 
-  // Condense: storage is full. Wipes every element, build, material and upgrade, keeps the crystal. The first one also
-  // forms a planet, which opens the 2nd element; later ones only add a crystal.
+  // a click on the button or star (x, y in the 560-unit box the star is drawn in)
+  FE.gather = function (x, y) {
+    const s = FE.state;
+    if (!s.owned.length || FE.collapsing) return;
+    const g = FE.clickGain();
+    s.count += g;
+    FE.core.click(x, y, FE.fmt(g));
+    FE.render();
+  };
+
+  FE.buy = function (k) {
+    const s = FE.state, c = FE.upCost(k);
+    if (FE.collapsing || s.count < c || !FE.UPS[k]) return;
+    s.count -= c; s.up[k]++;
+    FE.render(); FE.save();
+  };
+
+  // condense: 10^tier x 10,000 of the element becomes a star of the next tier
   FE.condense = function () {
-    const s = FE.state, total = FE.totalCount();
-    if (!s.owned.length || total < FE.CAP) return;
-    const tier2 = total >= FE.TIER2_AT;
-    FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; s.up[id].res = 0; s.up[id].struct = 0; });
-    FE.MATERIALS.forEach(m => { s.mats[m] = 0; });
-    FE.CONVERTERS.forEach(c => { s.conv[c.id] = 0; });
-    Object.assign(s, { off: {}, fit: {}, lenses: false, gilding: false, vault: 0 });
-    if (tier2) {
-      s.crystals2++;
-      FE.note(`${FE.fmt(FE.TIER2_AT)} of everything folds into a single point, and the point rings like a bell.`, 'dim');
-      if (s.owned.length < 3) {
-        s.picking = true;
-        FE.note('Something else stirs. Investigate it.', 'note');
-        FE.renderChoices();
-      }
-    } else {
-      s.crystals++;
-      if (!s.planets) {
-        s.planets = 1;
-        s.picking = true;
-        FE.note('The crystal pulls everything in and hardens into a small, dark planet.', 'dim');
-        FE.note('Something else stirs. Investigate it.', 'note');
-        FE.renderChoices();
-      } else {
-        FE.note('Another crystal settles into the planet.', 'dim');
-      }
-    }
+    const s = FE.state, cost = FE.nextStarCost();
+    if (FE.collapsing || cost == null || s.count < cost) return;
+    s.count -= cost; s.tier++;
+    FE.core.condense(s.tier);
     FE.render(); FE.save();
   };
 
-  // ---- every 100ms: structures make their element (scaled by the multiplier, not click power), then converters run.
-  // The leader's approach, vagrants and the threat meter only move while the tab is visible, so nothing raids you
-  // while you're away. ----
-  let lastTick = performance.now(), wasVisible = !document.hidden;
+  // collapse: a star of tier 2 or more is destroyed, everything on layer 1 starts over, and stardust remains. Needs two clicks.
+  FE.collapseArmed = 0; FE.collapsing = false;
+  FE.collapse = function () {
+    const s = FE.state;
+    if (FE.collapsing || s.tier < FE.COLLAPSE_TIER || FE.dustPreview() < 1) return;
+    if (!(FE.collapseArmed && Date.now() < FE.collapseArmed)) { FE.collapseArmed = Date.now() + 4000; FE.render(); setTimeout(FE.render, 4100); return; }
+    FE.collapseArmed = 0; FE.collapsing = true;
+    const dust = FE.dustPreview(), el = FE.el();
+    FE.render();
+    FE.supernova(el, () => {                                                   // under the white flash
+      s.stardust += dust; s.totalDust += dust; s.collapses++; s.layer2 = true;
+      s.count = FE.has('seed') ? 250 : 0; s.tier = 0;
+      s.up = { res: 0, gath: 0, harm: 0, eng: 0, excl: 0 };
+      FE.core.sync();
+      FE.goto(2, true);                                                        // (does nothing until layer 2 has its page)
+      FE.save(); FE.render();
+    }, () => {
+      FE.collapsing = false;
+      FE.toast(document.getElementById('page2') ? `${dust} stardust condensed. Layer 2 is above layer 1: scroll or click to move between them.` : `${dust} stardust condensed.`, 5200);
+      FE.render();
+    });
+  };
+
+  // ---- every 100ms: what is built makes the element ----
+  let lastTick = performance.now();
   setInterval(() => {
     const t = performance.now(), dt = Math.min((t - lastTick) / 1000, 3600);
     lastTick = t;
-    const s = FE.state, visible = !document.hidden;
-    let changed = false;
-    s.owned.forEach(k => {
-      if (s.up[k].struct > 0 && !FE.locked()) { FE.addAmount(k, FE.rate(k) * dt); changed = true; }
-    });
-    if (FE.craftTick(dt)) changed = true;
-    if (visible && wasVisible) {               // the first tick back counts nothing: dt may span the hidden time
-      const step = Math.min(dt, 1);
-      s.played += step;
-      FE.storyTick(step);
-      if (FE.combatTick(step)) changed = true;
-    }
-    wasVisible = visible;
-    if (changed) FE.render();
+    const s = FE.state;
+    if (!s.owned.length) return;
+    if (!FE.collapsing) s.count += FE.rate() * dt;
+    if (!document.hidden) s.played += Math.min(dt, 1);
+    FE.render();
   }, 100);
 
   function start() {
-    FE.buildStatic();
     FE.BUILD = FE.computeBuild();   // game.js loads last, so every file has registered by now
 
-    // The home page's opening sequence opens the game as game.html?new=1&el=fire (a new game that starts with that element)
-    // and "continue." as game.html?el=fire. The address is cleaned right away, so a refresh never repeats it. The element
-    // is also left in sessionStorage; either one will do, because a browser may not share storage between the two files.
+    // The address is cleaned right away, so a refresh never repeats it. The element is also left in sessionStorage;
+    // either one will do, because a browser may not share storage between the two files.
     let chosen = null, fresh = false;
     try {
       const q = new URLSearchParams(location.search);
@@ -146,35 +83,31 @@ FE.module(function (FE) {
       if (q.has('el') || q.has('new')) history.replaceState(null, '', location.pathname);
     } catch (e) {}
     try {
-      const s = sessionStorage.getItem('fe-chosen');
+      const c = sessionStorage.getItem('fe-chosen');
       sessionStorage.removeItem('fe-chosen');
-      if (!chosen) chosen = s;
+      if (!chosen) chosen = c;
     } catch (e) {}
     if (fresh) { try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {} }
 
     const saved = FE.loadStored();
     if (saved) {
       FE.adopt(saved);
-      // balanceShown stays as saved: once the box is shown it never hides, same as in a running session
       FE.$('save-status').textContent = 'saved.';
     }
-    FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(0);
-    if (FE.clearedOldSave) FE.note('The game was updated, so your old save was cleared.', 'dim');
-
-    // A game with nothing chosen yet starts with the home page's element already investigated, exactly as if it had been
-    // clicked here. (A save that exists but has no element yet, from an earlier visit, counts as nothing chosen.)
-    if (chosen && FE.state.picking && !FE.state.owned.length && FE.ELEMENTS.some(e => e.id === chosen)) discover(chosen);
-
+    FE.buildStatic();
+    FE.core.sync();
+    // A game with no element yet starts with the one from the home page. (A save that exists but has none counts as nothing chosen.)
+    if (chosen && !FE.state.owned.length) FE.discover(chosen);
+    if (FE.clearedOldSave) FE.toast('The game was updated, so your old save was cleared.', 5000);
     FE.render();
   }
 
   // ---- timers ----
-  setInterval(() => { if (!document.hidden) FE.updateMult(); }, 100);     // the multiplier changes as icons leave
   setInterval(() => { if (!document.hidden) FE.save(); }, 5000);
   window.addEventListener('pagehide', FE.save);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) FE.save();
-    else { FE.render(); FE.save(); }
+    else { lastTick = performance.now(); FE.render(); FE.save(); }
   });
 
   start();

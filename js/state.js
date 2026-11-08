@@ -1,83 +1,65 @@
 /* state.js - the game state, saving, and values derived from it. Always read FE.state at call time (it is replaced on restart/load). */
 FE.module(function (FE) {
-  const perElement = make => Object.fromEntries(FE.ELEMENTS.map(({ id }) => [id, make()]));
-
   FE.freshState = function () {
     return {
-      counts: perElement(() => 0),
-      owned: [],            // elements found so far, in the order they were picked
-      picking: true,        // the investigate options show: at the start, after the first planet, after the leader falls
-      balanceShown: false,  // the balance box appears once BALANCE_AT elements exist
-      full: false,          // storage has been filled
-      up: perElement(() => ({ res: 0, struct: 0 })),   // per element: resonance level, structures owned (reset by condensing)
-      seen: {},             // 'res-air', 'struct-air', 'cond' -> true once that build has faded in (kept when condensing)
-      crystals: 0,          // tier 1 crystals; each raises the max multiplier
-      planets: 0,           // the first crystal also forms a planet, which opens the 2nd element
-      crystals2: 0,         // tier 2 crystals: the first opens the 3rd element (Layer 3)
-      vault: 0,             // vaults built this run: each makes storage x10 (reset by condensing)
-      spells: [],           // { el, power }, oldest first
-      enemy: null,          // the vagrant here now: { el, hp, max, left, time (seconds), leader }
-      threat: 0,            // 0-100; a vagrant arrives when it fills
-      threatOn: false,      // the meter runs once the first vagrant has arrived
-      leaderIn: null,       // seconds until the scripted leader arrives, while it is on its way
-      leaderBeaten: false,  // beating the leader opens the 3rd element
-      kills: 0,
-      raids: 0,
-      conjured: 0,
-      mats: Object.fromEntries(FE.MATERIALS.map(m => [m, 0])),          // materials: outside storage and the balance bar
-      conv: Object.fromEntries(FE.CONVERTERS.map(c => [c.id, 0])),      // converters owned
-      off: {},              // works switched off in the works box: 'struct-air', 'hearth', ... -> true
-      fit: {},              // element -> true once its structures have fittings
-      lenses: false,
-      gilding: false,
-      quench: false,        // water quenching: Furnace, Kiln and Crucible burn less fire
-      forge: false,         // the Spellforge is built: spells and vagrants start (kept when condensing)
-      ended: false,         // the end-of-prototype message has been shown
+      owned: [],            // [the player's element]; the home page reads owned[0] to colour its magic circle
+      picking: true,        // no element yet (only when the game is opened without going through the home page)
+      count: 0,             // elements held (no limit)
+      tier: 0,              // 0 = just the round button, 1-5 = a star of that tier
+      up: { res: 0, gath: 0, harm: 0, eng: 0, excl: 0 },   // layer 1 builds, reset by collapsing
+      seen: {},             // builds that have faded in
+      stardust: 0,          // layer 2: condensed stardust held
+      totalDust: 0,         // ...and ever received
+      collapses: 0,
+      layer2: false,        // the first collapse opens layer 2
+      skills: {},           // skill tree nodes bought (permanent)
+      mg: { readyAt: 0, plays: 0, best: 0 },   // mini-game: next play time (ms), times played, best result
+      buffs: {},            // buff id -> time it ends (ms)
       played: 0,            // seconds played with the tab visible
-      story: { told: {} },  // story beats already told (see story.js)
-      log: [{ h: 'The dark space stirs with <b>Four Elements</b>', c: 'title' }],   // newest first
       savedAt: 0
     };
   };
   FE.state = FE.freshState();
 
-  FE.totalCount = () => FE.round1(FE.ELEMENTS.reduce((t, { id }) => t + Math.max(0, FE.state.counts[id]), 0));
+  const S = () => FE.state;
+  FE.el = () => S().owned[0] || null;
+  FE.has = id => !!S().skills[id];
+  FE.buffOn = id => (S().buffs[id] || 0) > Date.now();
 
-  // derived values (k is an element id)
-  FE.capacity = () => FE.CAP * Math.pow(10, FE.state.vault);   // storage: each vault built this run makes it x10
-  FE.locked = () => FE.totalCount() >= FE.capacity();          // storage full: no gathering
-  // Before the first planet a full storage also blocks buying, so condensing is the only way on. After it, spending
-  // is how you make room, so buying stays open.
-  FE.buyBlocked = () => FE.locked() && !FE.state.planets;
-  FE.maxMultiplier = () => FE.BASE_MAX_MULT + FE.CRYSTAL_MAX_MULT * FE.state.crystals;
-  FE.clickPower = k => Math.pow(2, FE.state.up[k].res);
-  FE.resCost = k => FE.RES_BASE_COST * Math.pow(FE.RES_COST_GROWTH, FE.state.up[k].res);
-  FE.resMaxed = k => FE.resCost(k) >= FE.CAP;                  // the next level would cost all of storage: this is the top
-  FE.structCost = k => FE.STRUCT_BASE_COST + FE.STRUCT_COST_STEP * FE.state.up[k].struct;
-  // what an element's structures make per second right now (nothing while switched off in works)
-  FE.rate = function (k) {
-    const s = FE.state;
-    if (s.off['struct-' + k]) return 0;
-    return s.up[k].struct * FE.STRUCT_RATE * FE.multiplier() * (s.fit[k] ? FE.FITTINGS_BOOST : 1);
+  // ---- production ----
+  FE.starMult = () => S().tier ? Math.pow(FE.has('radiance') ? 2.2 : 1.8, S().tier) : 1;
+  FE.multiplier = function () {
+    const s = S();
+    let m = FE.starMult() * Math.pow(1.5, s.up.harm);
+    if (FE.has('memory')) m *= 1.5;
+    if (FE.el() === 'air') m *= 1 + 0.1 * s.up.excl;
+    if (FE.buffOn('tailwind')) m *= 2;
+    return m;
   };
-  FE.structures = () => FE.state.owned.reduce((t, k) => t + FE.state.up[k].struct, 0);
-  // elements in play: the ones you found, then any other you hold (a converter can make the sealed 4th)
-  FE.present = function () {
-    const s = FE.state;
-    return s.owned.concat(FE.ELEMENTS.map(e => e.id).filter(k => !s.owned.includes(k) && s.counts[k] > 0));
+  // per second, before the multiplier
+  FE.baseRate = function () {
+    const s = S();
+    const gath = s.up.gath * FE.GATHER_RATE * (FE.has('autonomy') ? 2 : 1) * (FE.buffOn('tidal') ? 3 : 1);
+    const eng = s.up.eng * FE.ENGINE_RATE * (FE.has('gravity') ? 2 : 1);
+    return gath + eng + (FE.el() === 'water' ? 40 * s.up.excl : 0);
   };
-  FE.share = k => { const total = FE.totalCount(); return total > 0 ? Math.max(0, FE.state.counts[k]) / total : 0; };
-  // the element you hold most of decides the next spell (ties go to the one found first)
-  FE.majority = function () {
-    const s = FE.state, ks = FE.present();
-    return ks.reduce((a, b) => s.counts[b] > s.counts[a] ? b : a, ks[0]);
+  FE.rate = () => FE.baseRate() * FE.multiplier();
+  FE.clickPower = () => Math.pow(2, S().up.res) * (FE.has('core') ? 2 : 1) * (FE.buffOn('inferno') ? 4 : 1);
+  FE.clickGain = function () {
+    let g = FE.clickPower() * FE.multiplier();
+    if (FE.el() === 'fire') g += FE.rate() * 0.05 * S().up.excl;
+    return g;
   };
-  // 0 when your elements are even, 1 when everything you hold is one element. Ramps in over the first BALANCE_AT held.
-  FE.imbalance = function () {
-    const s = FE.state, ks = FE.present(), n = ks.length, total = FE.totalCount();
-    if (n < 2 || total <= 0) return 0;
-    const top = Math.max(...ks.map(k => Math.max(0, s.counts[k]))) / total;
-    return Math.min(1, total / FE.BALANCE_AT) * (top - 1 / n) / (1 - 1 / n);
+
+  // ---- costs ----
+  FE.costMult = () => (FE.has('accretion') ? 0.85 : 1) * (FE.buffOn('bedrock') ? 0.7 : 1) * (FE.el() === 'earth' ? Math.pow(0.97, S().up.excl) : 1);
+  FE.upCost = k => Math.ceil(FE.UPS[k].base * Math.pow(FE.UPS[k].grow, S().up[k]) * FE.costMult());
+  FE.nextStarCost = () => S().tier >= FE.MAX_TIER ? null : FE.starCost(S().tier);
+  // stardust for collapsing now: log42(elements held) x star tier (x1.25 with the Dust Sieve)
+  FE.dustPreview = function () {
+    const s = S();
+    if (s.tier < FE.COLLAPSE_TIER || s.count < 2) return 0;
+    return Math.max(0, Math.floor(Math.log(s.count) / Math.log(FE.DUST_BASE) * s.tier * (FE.has('sieve') ? 1.25 : 1)));
   };
 
   // ---- build id: a hash of every file's source (see config.js), so a save only loads into the build that wrote it ----
@@ -117,7 +99,7 @@ FE.module(function (FE) {
     const s = FE.freshState();
     for (const k of Object.keys(s)) {
       if (saved[k] == null) continue;
-      const d = s[k];   // null defaults (enemy, leaderIn) are plain values: typeof null is 'object', but it can't be merged into
+      const d = s[k];
       s[k] = (d && typeof d === 'object' && !Array.isArray(d)) ? Object.assign(d, saved[k]) : saved[k];
     }
     FE.state = s;

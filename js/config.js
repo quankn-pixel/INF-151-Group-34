@@ -16,101 +16,45 @@ FE.module(function (FE) {
     { id: 'earth', key: 'e' },
     { id: 'fire',  key: 'f' }
   ];
-
-  FE.CAP = 10000;         // base storage, and all a tier 1 crystal needs (prototype pacing: main uses 100,000)
-  FE.VAULT_COSTS = [8000, 80000, 800000];   // vaults: each makes storage x10 for the run; paid from everything you hold, in proportion
-  FE.TIER2_AT = 10000000; // stored elements a tier 2 crystal needs; the first one opens the 3rd element (Layer 3)
-  FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
-
-  // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier
-  FE.MULT_PER_ICON = 0.1;
-  FE.BASE_MAX_MULT = 2;
-  FE.CRYSTAL_MAX_MULT = 2;      // each crystal raises the max multiplier by this much
-
-  // builds: every element has its own resonance and structure, paid for in that element
-  FE.RES_AT = 100;              // resonance fades in at this many of your element
-  FE.RES_BASE_COST = 10;        // doubles click power; cost grows x10 each time
-  FE.RES_COST_GROWTH = 10;
-  FE.STRUCT_AT = 1000;          // structure fades in at this many of your element
-  FE.STRUCT_BASE_COST = 1000;   // cost grows by STRUCT_COST_STEP each time, no limit
-  FE.STRUCT_COST_STEP = 1000;
-  FE.STRUCT_RATE = 100;         // element per second each, scaled by the multiplier (not click power)
-  FE.STRUCT_NAMES = { air: 'windmill', water: 'stream', earth: 'boulder', fire: 'bonfire' };
   FE.SAVE_KEY = 'four-elements-save-v1';
   FE.SIZE_KEY = 'four-elements-size-v1';
-
   FE.OPTIONS = { air: 'Breeze', water: 'Puddle', earth: 'Patch of Dirt', fire: 'Embers' };
-  FE.FIRST_MSG = {
-    air:   'The breeze stirs, hardly more than a sigh.',
-    water: 'The puddle is shallow, giving up a drop at a time.',
-    earth: 'The dirt is dry and loose, crumbling in your hand.',
-    fire:  'The embers flicker weakly.'
+
+  // ---- stars ----
+  // A star is condensed out of the player's element. Going from tier t to t+1 costs 10^t x 10,000 of it (so the first star
+  // costs 10,000). Collapsing a star of tier 2 or more pays out stardust: log42(elements held) x tier.
+  FE.MAX_TIER = 5;
+  FE.COLLAPSE_TIER = 2;
+  FE.DUST_BASE = 42;
+  FE.starCost = tier => Math.pow(10, tier) * 10000;
+  FE.STAR_NAMES = ['', 'ember', 'spark', 'beacon', 'giant', 'colossus'];
+
+  // ---- layer 1 builds: [base cost, growth per level, reveal when you hold this many]. All are paid for in the player's element. ----
+  FE.UPS = {
+    res:  { base: 15,   grow: 2.5,  show: 0 },       // click power x2
+    gath: { base: 50,   grow: 1.28, show: 25 },      // +1 per second each
+    harm: { base: 600,  grow: 3.2,  show: 300 },     // all production x1.5
+    eng:  { base: 3000, grow: 1.35, show: 1500 },    // +30 per second each
+    excl: { base: 8000, grow: 1.6,  show: 0 }        // exclusive to the element: opens once its mini-game has been played
   };
-  FE.FULL_VERB = { air: 'smothered', water: 'drowned', earth: 'swallowed', fire: 'consumed' };
-  FE.FLAVOR = { air: 'restless winds', water: 'rising tides', earth: 'settling stone', fire: 'roaring flames' };   // balance status
+  FE.GATHER_RATE = 1;
+  FE.ENGINE_RATE = 30;
+  FE.NAMES = {
+    air:   { gath: 'windmill', eng: 'cyclone tower', excl: 'jet stream',    exclNote: 'all production +10% each' },
+    water: { gath: 'stream',   eng: 'waterfall',     excl: 'deep spring',   exclNote: '+40 water per second each' },
+    earth: { gath: 'boulder',  eng: 'quarry',        excl: 'bedrock vault', exclNote: 'every build 3% cheaper each' },
+    fire:  { gath: 'bonfire',  eng: 'furnace',       excl: 'forgeheart',    exclNote: 'a click also adds 5% of your rate each' }
+  };
 
-  // ---- spells and vagrants: they start once the Spellforge is built (Layer 2) ----
-  FE.SPELLS = { air: 'Lightning', water: 'Hypnosis', earth: 'Binding', fire: 'Fireball' };
-  FE.BEATS = { water: 'fire', fire: 'air', air: 'earth', earth: 'water' };   // x beats BEATS[x]
-  FE.STRONG = 2;                // damage multiplier of a spell against the element it beats
-  FE.WEAK = 0.5;                // ...and against the element that beats it
-  FE.LEADER_DELAY = 30;         // seconds after the 2nd element before the scripted vagrant leader arrives
-  FE.LEADER_LINES = [[20, 'A vagrant settlement on the horizon.'], [10, 'The vagrants have seen you.']];   // [seconds left, story line]
-  FE.LEADER_HP = 1000;
-  FE.VAGRANT_TIME = 60;         // seconds any vagrant stays before it raids and leaves
-  FE.VAGRANT_HP_BASE = 0.15;    // later vagrants: this share of CAP, plus VAGRANT_HP_STEP per vagrant beaten, at most CAP
-  FE.VAGRANT_HP_STEP = 0.05;
-  FE.RAID_TAKE = 0.25;          // a raid takes this share of every stored element, plus one structure
-  // threat meter (0-100): a vagrant arrives when it fills. It gains, per second:
-  FE.THREAT_IMBALANCE = 1.5;    // x imbalance (0 = even, 1 = everything you hold is one element)
-  FE.THREAT_PER_WORK = 0.08;    // x works running (structures and converters)
-  FE.THREAT_PER_RATE = 1 / 3000;   // x elements per second the structures make
-  FE.THREAT_LEADER = 1;         // flat, while the leader is still at large, so it always comes back
-  FE.SPELL_SLOTS = 3;           // conjuring is blocked while you hold this many spells
-
-  // ---- crafting: opens with the 3rd element ----
-  FE.MATERIALS = ['metal', 'sand', 'glass', 'gold'];
-  // Converters, per one owned and per second: `use` goes in and `make` comes out, only while `when` holds (that element's
-  // share of the balance bar must be above the number). The four element ones let you make the sealed 4th element.
-  // Each one costs `cost`, plus CONVERTER_COST_STEP of that again for every one you already own.
-  FE.CONVERTERS = [
-    { id: 'hearth',    name: 'Hearth',     use: { earth: 50, air: 50 },             make: { fire: 100 }, cost: { earth: 1000, air: 1000 } },
-    { id: 'steamvent', name: 'Steam Vent', use: { fire: 50, water: 50 },            make: { air: 100 },  cost: { fire: 1000, water: 1000 } },
-    { id: 'siltbed',   name: 'Silt Bed',   use: { water: 50, air: 50 },             make: { earth: 100 },cost: { water: 1000, air: 1000 } },
-    { id: 'hotspring', name: 'Hot Spring', use: { fire: 50, earth: 50 },            make: { water: 100 },cost: { fire: 1000, earth: 1000 } },
-    { id: 'sifter',    name: 'Sifter',     use: { earth: 20, air: 10 },             make: { sand: 2 },   cost: { earth: 1000, air: 500 },  when: ['earth', 0.5] },
-    { id: 'furnace',   name: 'Furnace',    use: { fire: 30, earth: 20, air: 10 },   make: { metal: 1 },  cost: { fire: 1500, earth: 500 }, when: ['fire', 0.8] },
-    { id: 'kiln',      name: 'Kiln',       use: { fire: 20, air: 10, sand: 2 },     make: { glass: 1 },  cost: { fire: 1000, sand: 20 },   when: ['fire', 0.6] },
-    { id: 'crucible',  name: 'Crucible',   use: { fire: 30, metal: 1 },             make: { gold: 1 },   cost: { fire: 1000, metal: 20 },  when: ['fire', 0.7] }
-  ];
-  // fire-hungry crafters: water quenching halves their fire use
-  ['furnace', 'kiln', 'crucible'].forEach(id => { FE.CONVERTERS.find(c => c.id === id).heat = true; });
-  // Transmuters (Layer 2 only): your two elements in, an element you don't have out, at a deliberately bad rate. One per
-  // pair and missing element. `tm` marks them and names the pair. They never unlock resonance or structures for the
-  // element they make: those cards follow the elements you chose.
-  FE.TRANSMUTE_IN = 100;        // of each of your two elements, per second, per transmuter
-  FE.TRANSMUTE_OUT = 1;         // of the missing element, per second: 200 in for 1 out
-  FE.TRANSMUTE_COST = 1500;     // of each of your two elements
-  (function () {
-    const ids = FE.ELEMENTS.map(e => e.id), cap = t => t[0].toUpperCase() + t.slice(1);
-    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => ids.filter(t => t !== a && t !== b).forEach(t => {
-      FE.CONVERTERS.push({ id: `tm_${a}_${b}_${t}`, name: `${cap(t)} Transmuter`, tm: [a, b],
-        use: { [a]: FE.TRANSMUTE_IN, [b]: FE.TRANSMUTE_IN }, make: { [t]: FE.TRANSMUTE_OUT },
-        cost: { [a]: FE.TRANSMUTE_COST, [b]: FE.TRANSMUTE_COST } });
-    })));
-  })();
-  FE.FOCUS_BONUS = 3;           // a converter with a balance condition makes this much more while you own that element and meet it
-  FE.QUENCH_COST = { water: 2000 };     // water owners only: Furnace, Kiln and Crucible use QUENCH_FIRE of their usual fire
-  FE.QUENCH_FIRE = 0.5;
-  FE.CONVERTER_COST_STEP = 0.5;
-  FE.FITTINGS_COST = { metal: 20 };     // per element: its structures make FITTINGS_BOOST times as much
-  FE.FITTINGS_BOOST = 2;
-  FE.LENSES_COST = { glass: 10 };       // every converter makes LENSES_BOOST times as much
-  FE.LENSES_BOOST = 1.5;
-  FE.GILDING_COST = { gold: 10 };       // works add GILDING_THREAT of their usual threat
-  FE.GILDING_THREAT = 0.5;
-  FE.FORGE_NAME = 'Spellforge';
-  FE.FORGE_COST = 2000;       // of each of your first two elements: the forge starts spells and vagrants
+  // ---- layer 2 ----
+  FE.BUFF_SECONDS = 90;
+  FE.MG_COOLDOWN = 75;       // seconds between mini-games
+  FE.BUFFS = {
+    tailwind: { name: 'tailwind', note: 'production x2' },
+    inferno:  { name: 'inferno',  note: 'click power x4' },
+    tidal:    { name: 'tidal flow', note: 'windmill-type builds x3' },
+    bedrock:  { name: 'bedrock',  note: 'builds 30% cheaper' }
+  };
 
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -119,14 +63,16 @@ FE.module(function (FE) {
     fire:  '<path d="M12 2.5c.6 3-1.8 4.6-3.4 7C7 12 6 13.5 6 15.5a6 6 0 0 0 12 0c0-2.6-1.3-4.2-2.6-5.7-.3 1.5-1 2.4-2 2.9.5-3.8-.3-7-1.4-10.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
   };
 
-  // resource values are kept to one decimal place
+  // numbers: 12,345 up to a million, then 1.23M, 4.5B ...
   FE.round1 = n => Math.round(n * 10) / 10;
-  FE.fmt = n => FE.round1(n).toLocaleString('en-US', { maximumFractionDigits: 1 });   // 12,345 and 12,345.6 alike
-
-  // water text: every letter is its own span. --o = signed distance from the middle, --d = absolute distance
-  FE.letters = t => {
-    const a = [...t], mid = (a.length - 1) / 2;
-    return a.map((ch, i) => `<i class="ch" style="--o:${(i - mid).toFixed(2)};--d:${Math.abs(i - mid).toFixed(2)}">${ch}</i>`).join('');
+  FE.fmt = n => {
+    if (!isFinite(n)) return '0';
+    if (n < 1000) return FE.round1(n).toLocaleString('en-US', { maximumFractionDigits: 1 });
+    if (n < 1e6) return Math.floor(n).toLocaleString('en-US');
+    const u = ['M', 'B', 'T', 'Qa', 'Qi', 'Sx'];
+    let i = 0; n /= 1e6;
+    while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+    return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + u[i];
   };
-  FE.wordHTML = (k, t, fx) => `<span class="w${fx ? ' fx' : ''} w-${k}">${k === 'water' ? FE.letters(t) : t}</span>`;
+  FE.clock = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 });
