@@ -26,13 +26,9 @@ FE.module(function (FE) {
     s.owned.push(k);
     s.picking = false;
     FE.note(FE.FIRST_MSG[k], 'note');
-    if (s.owned.length === 2 && FE.CONVERTERS.some(c => FE.available(c))) {
-      FE.note('Your two elements can be worked into materials. Look for the new page of builds.', 'note');
-      FE.showBuildsPage(1);
-    }
     if (s.owned.length === 3) {
       FE.note('Where three elements meet, something like life begins.', 'dim');
-      FE.note('Three elements open every work. More builds wait on the new pages.', 'note');
+      FE.note('The elements can be worked into materials now. New builds wait on the next pages of builds.', 'note');
       FE.showBuildsPage(1);
     }
     FE.renderChoices();
@@ -89,7 +85,7 @@ FE.module(function (FE) {
     FE.ELEMENTS.forEach(({ id }) => { s.counts[id] = 0; s.up[id].res = 0; s.up[id].struct = 0; });
     FE.MATERIALS.forEach(m => { s.mats[m] = 0; });
     FE.CONVERTERS.forEach(c => { s.conv[c.id] = 0; });
-    Object.assign(s, { off: {}, fit: {}, lenses: false, gilding: false, quench: false, vault: 0 });
+    Object.assign(s, { off: {}, fit: {}, lenses: false, gilding: false, vault: 0 });
     if (tier2) {
       s.crystals2++;
       FE.note(`${FE.fmt(FE.TIER2_AT)} of everything folds into a single point, and the point rings like a bell.`, 'dim');
@@ -139,6 +135,23 @@ FE.module(function (FE) {
   function start() {
     FE.buildStatic();
     FE.BUILD = FE.computeBuild();   // game.js loads last, so every file has registered by now
+
+    // The home page's opening sequence opens the game as game.html?new=1&el=fire (a new game that starts with that element)
+    // and "continue." as game.html?el=fire. The address is cleaned right away, so a refresh never repeats it. The element
+    // is also left in sessionStorage; either one will do, because a browser may not share storage between the two files.
+    let chosen = null, fresh = false;
+    try {
+      const q = new URLSearchParams(location.search);
+      chosen = q.get('el'); fresh = !!q.get('new');
+      if (q.has('el') || q.has('new')) history.replaceState(null, '', location.pathname);
+    } catch (e) {}
+    try {
+      const s = sessionStorage.getItem('fe-chosen');
+      sessionStorage.removeItem('fe-chosen');
+      if (!chosen) chosen = s;
+    } catch (e) {}
+    if (fresh) { try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {} }
+
     const saved = FE.loadStored();
     if (saved) {
       FE.adopt(saved);
@@ -147,6 +160,11 @@ FE.module(function (FE) {
     }
     FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(0);
     if (FE.clearedOldSave) FE.note('The game was updated, so your old save was cleared.', 'dim');
+
+    // A game with nothing chosen yet starts with the home page's element already investigated, exactly as if it had been
+    // clicked here. (A save that exists but has no element yet, from an earlier visit, counts as nothing chosen.)
+    if (chosen && FE.state.picking && !FE.state.owned.length && FE.ELEMENTS.some(e => e.id === chosen)) discover(chosen);
+
     FE.render();
   }
 

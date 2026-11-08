@@ -26,6 +26,25 @@
   .hint { margin: 0; color: var(--muted); font-size: 0.875em; max-width: 26em; line-height: 1.5; }
   .credits { margin: 0; color: var(--muted); font-size: 0.8125em; text-align: center; line-height: 1.5; }
 
+  /* the red circle for a returning player: erases the save, after a question */
+  :root { --reset: #c4271f; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --reset: #ff6b5e; } }
+  :root[data-theme="dark"] { --reset: #ff6b5e; }
+  .reset { position: fixed; right: 18px; bottom: 14px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; transition: opacity .5s ease; }
+  .reset-btn { position: relative; width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .reset-btn::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .25s ease;
+    background: radial-gradient(circle, color-mix(in srgb, var(--reset) 38%, transparent) 0, transparent 68%); }
+  .reset-btn canvas { position: relative; display: block; width: 100%; height: 100%; opacity: .78; transition: opacity .25s ease; animation: rspin 70s linear infinite; }
+  .reset-btn:hover::before, .reset-btn:focus-visible::before, .reset-btn[aria-expanded="true"]::before { opacity: 1; }
+  .reset-btn:hover canvas, .reset-btn:focus-visible canvas, .reset-btn[aria-expanded="true"] canvas { opacity: 1; }
+  .reset-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  @keyframes rspin { to { transform: rotate(360deg); } }
+  .reset-ask { box-sizing: border-box; max-width: 17em; padding: 10px 14px; border: 1px solid var(--reset); background: var(--bg); font-size: 0.875em; line-height: 1.45; animation: pop .25s ease-out; }
+  .reset-ask p { margin: 0 0 6px; }
+  .reset-ask .btns { display: flex; gap: 14px; }
+  body.playing .reset, body.fading .reset { opacity: 0; pointer-events: none; }
+  @media (max-width: 760px) { body.has-reset { padding-bottom: 88px; } }
+
   /* ================= opening sequence ================= */
   html.playing, body.playing { overflow: hidden; }
   .home, .credits { position: relative; z-index: 3; }
@@ -34,10 +53,10 @@
 
   canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
   #fae { z-index: 1; transition: opacity .5s ease; }
-  #sigil { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; transition: opacity .9s ease; }
+  #sigil { z-index: 2; transition: opacity .9s ease; }
   #sigil.out { opacity: 0; }
   #fx { z-index: 5; }
-  #flood { z-index: 40; }
+  #flood { z-index: 40; display: none; }                      /* shown only while the element floods the screen */
 
   /* the play link is the magic circle: a round, invisible hit area laid over the drawing */
   #play { position: relative; box-sizing: border-box; width: 200px; height: 200px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none;
@@ -46,29 +65,30 @@
   #play:active { transform: none; }
   #play:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
 
-  #sigil .ln, #sigil .gl { fill: none; stroke: url(#sg); stroke-linecap: round; stroke-linejoin: round; }
-  #sigil .disc { fill: color-mix(in srgb, var(--fg) 4%, var(--bg)); }
-  #sigil .holefill { fill: var(--bg); }
-
   /* dialog bubble, centred in the hole */
   .dialog { position: fixed; inset: 0; z-index: 7; display: grid; place-items: center; pointer-events: none; }
-  .bubble { --c: var(--fg); font: inherit; font-size: clamp(1.05rem, 2.6vw, 1.9rem); color: var(--fg); background: var(--bg); border: 1px solid var(--c); border-radius: 999px; padding: .65em 1.4em; max-width: min(86vw, 22em); cursor: pointer; opacity: 0; pointer-events: none; box-shadow: 0 0 24px -6px var(--c); -webkit-tap-highlight-color: transparent; }
+  .bubble { --c: var(--fg); font: inherit; font-size: clamp(1.05rem, 2.6vw, 1.9rem); color: var(--fg); background: var(--bg); border: 1px solid var(--c); border-radius: 999px; padding: .65em 1.4em; max-width: min(86vw, 22em); cursor: pointer; opacity: 0; pointer-events: none; box-shadow: 0 0 24px -6px var(--c); position: relative; will-change: transform, opacity; -webkit-tap-highlight-color: transparent; }
+  .bubble::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; box-shadow: 0 0 44px 4px var(--c); opacity: 0; pointer-events: none; }
   .bubble:hover { background: color-mix(in srgb, var(--c) 14%, var(--bg)); }
   .bubble:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
   .bubble.show { opacity: 1; pointer-events: auto; animation: pop .5s ease-out, bob 3.6s ease-in-out .5s infinite; }
   .bubble.show.burst { pointer-events: none; animation: burst .7s ease-out forwards; }
+  .bubble.show.burst::after { animation: flash .7s ease-out forwards; }
   @keyframes pop { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
   @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-  @keyframes burst { 0% { opacity: 1; transform: scale(1); } 30% { opacity: 1; transform: scale(1.12); box-shadow: 0 0 44px 4px var(--c); } 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes burst { 0% { opacity: 1; transform: scale(1); } 30% { opacity: 1; transform: scale(1.12); } 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes flash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
 
   /* the four elements, one per hole */
   #stage { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
   .elbtn { --c: var(--fg); position: fixed; left: 0; top: 0; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; color: var(--c); display: grid; place-items: center; opacity: 0; pointer-events: none; transform: translate(-50%, -50%); transition: opacity .9s ease, transform .9s ease; -webkit-tap-highlight-color: transparent; }
-  .elbtn.on { opacity: 1; }
+  .elbtn::before { content: ""; position: absolute; inset: -30%; border-radius: 50%; pointer-events: none; opacity: .85; transition: opacity .6s ease;
+    background: radial-gradient(circle, color-mix(in srgb, var(--c) 34%, transparent) 0, transparent 66%); }
+  .elbtn.on { opacity: 1; will-change: translate, opacity; }
   .elbtn.live { pointer-events: auto; }
   .elbtn.live:hover, .elbtn:focus-visible { transform: translate(-50%, -50%) scale(1.14); transition-duration: .25s; }
   .elbtn:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
-  .elbtn svg { width: 76%; height: 76%; overflow: visible; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c) 60%, transparent)); }
+  .elbtn svg { position: relative; width: 76%; height: 76%; overflow: visible; }
   .elbtn.air svg { animation: sway 3s ease-in-out infinite alternate; }
   .elbtn.water svg { animation: bobv 2.6s ease-in-out infinite alternate; }
   .elbtn.fire svg { animation: flick 1.3s steps(1, end) infinite; }
@@ -77,7 +97,7 @@
   @keyframes flick { 0% { opacity: 1; } 18% { opacity: .78; } 34% { opacity: 1; } 55% { opacity: .85; } 72% { opacity: 1; } 88% { opacity: .8; } }
   .elbtn.on.off { opacity: 0; transition-duration: .6s; pointer-events: none; }
   .elbtn.on.chosen { transform: translate(-50%, -50%) scale(1.7); pointer-events: none; transition-duration: 1.1s; }
-  .elbtn.on.chosen svg { filter: drop-shadow(0 0 16px var(--c)); }
+  .elbtn.on.chosen::before { opacity: 1; }
 
   /* "Choose an element:" */
   .choose { position: fixed; left: 50%; top: 0; z-index: 6; transform: translate(-50%, -100%); width: max-content; max-width: 90vw; text-align: center; opacity: 0; pointer-events: none; transition: opacity 1s ease; }
@@ -88,13 +108,11 @@
   /* leaving */
   #veil { position: fixed; inset: 0; z-index: 50; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 1s ease; }
   #veil.on { opacity: 1; pointer-events: auto; }
-  .skip { position: fixed; right: 20px; bottom: 16px; z-index: 60; font-size: .875em; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .6s ease; }
-  .skip.on { opacity: 1; pointer-events: auto; }
 </style>
 </head>
 <body>
   <canvas id="fae" class="layer" aria-hidden="true"></canvas>
-  <svg id="sigil" aria-hidden="true"></svg>
+  <canvas id="sigil" class="layer" aria-hidden="true"></canvas>
 
   <main class="home">
     <h1>Four Elements</h1>
@@ -102,16 +120,18 @@
     <div class="menu">
       <a class="play" id="play" href="game.html" aria-label="play">play.</a>
       <p class="saved" id="saved" hidden></p>
-      <button class="play quiet" id="new" type="button" hidden>new game.</button>
-      <span class="confirm" id="new-confirm" hidden>
-        <span>lose everything?</span>
-        <button class="link" id="new-yes" type="button">yes.</button>
-        <button class="link" id="new-no" type="button">no.</button>
-      </span>
     </div>
     <p class="hint">Gather the elements, keep them in balance, and fend off the vagrants. Click an element to gather it, or press a, w, e or f. Progress saves as you play.</p>
   </main>
   <p class="credits">INF 151 · Group 34 · Henry Bao, Jaden Nguyen, Quan Nguyen and Jerry Chen<br>music: “Cathedral in the forest” by congusbongus · sounds by Kenney (both CC0)</p>
+
+  <div class="reset" id="reset-wrap" hidden>
+    <div class="reset-ask" id="reset-ask" role="alertdialog" aria-labelledby="reset-q" hidden>
+      <p id="reset-q">delete all progress and start over?</p>
+      <div class="btns"><button class="link" id="reset-yes" type="button">yes.</button><button class="link" id="reset-no" type="button">no.</button></div>
+    </div>
+    <button class="reset-btn" id="reset-btn" type="button" aria-label="reset all progress" aria-expanded="false"><canvas id="reset-c" aria-hidden="true"></canvas></button>
+  </div>
 
   <canvas id="fx" class="layer" aria-hidden="true"></canvas>
   <div id="stage"></div>
@@ -119,28 +139,33 @@
   <div class="dialog"><button class="bubble" id="bubble" type="button"></button></div>
   <canvas id="flood" class="layer" aria-hidden="true"></canvas>
   <div id="veil"></div>
-  <button class="link skip" id="skip" type="button">skip.</button>
 
 <script src="js/config.js"></script>
 <script>
-  // With a save, "play." becomes "continue." and a new game is offered (after a confirm, like restart in the game).
-  // "continue." goes straight into the game; a new game (or no save) runs the opening sequence below.
+  // What the home page knows about the player: the element they chose first, and (when the game's save can be read) the time played.
+  // The home page keeps its own copy of the element (HOME_KEY), because the game page is a different file and some browsers
+  // do not share storage between files opened from disk. The game hands the element over in the address (?el=air) when the
+  // player comes back with "back." and "?reset=1" when they restart there.
   (function () {
-    const $ = FE.$;
-    let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(FE.SAVE_KEY)); } catch (e) {}
-    if (!saved || !saved.owned || !saved.owned.length) return;
-    const sec = Math.floor(saved.played || 0);
-    $('play').textContent = 'continue.'; $('play').setAttribute('aria-label', 'continue');
-    $('saved').textContent = `${saved.owned.join(', ')} · ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} played`;
-    $('saved').hidden = $('new').hidden = false;
-    const ask = on => { $('new').hidden = on; $('new-confirm').hidden = !on; (on ? $('new-no') : $('new')).focus(); };
-    $('new').addEventListener('click', () => ask(true));
-    $('new-no').addEventListener('click', () => ask(false));
-    $('new-yes').addEventListener('click', () => {
-      try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {}
-      window.FEIntro.start();
-    });
+    const HOME_KEY = 'four-elements-home-v1', ids = ['air', 'water', 'earth', 'fire'];
+    const q = new URLSearchParams(location.search);
+    let el = null, played = null;
+    try {
+      if (q.get('reset')) { localStorage.removeItem(HOME_KEY); localStorage.removeItem(FE.SAVE_KEY); sessionStorage.removeItem('fe-chosen'); }
+      else if (ids.includes(q.get('el'))) localStorage.setItem(HOME_KEY, q.get('el'));
+    } catch (e) {}
+    if (q.has('el') || q.has('reset')) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+    try {
+      const sv = JSON.parse(localStorage.getItem(FE.SAVE_KEY));
+      if (sv && sv.owned && ids.includes(sv.owned[0])) { el = sv.owned[0]; played = Math.floor(sv.played || 0); localStorage.setItem(HOME_KEY, el); }
+    } catch (e) {}
+    if (!el) { try { const h = localStorage.getItem(HOME_KEY); if (ids.includes(h)) el = h; } catch (e) {} }
+    window.FEHome = { key: HOME_KEY, el };
+    if (!el) return;
+    // a returning player: "play." becomes "continue."; the circle and the red reset circle are set up by the script below
+    FE.$('play').textContent = 'continue.'; FE.$('play').setAttribute('aria-label', 'continue');
+    FE.$('saved').textContent = played == null ? el : `${el} \u00b7 ${Math.floor(played / 60)}:${String(played % 60).padStart(2, '0')} played`;
+    FE.$('saved').hidden = false;
   })();
 </script>
 
@@ -207,6 +232,9 @@ const PAL = {};
 function readPal() {
   const cs = getComputedStyle(document.documentElement);
   ids.forEach(id => { PAL[id] = cs.getPropertyValue('--' + id).trim(); PAL[id + 'I'] = cs.getPropertyValue('--' + id + '-ink').trim() || PAL[id]; });
+  PAL.reset = cs.getPropertyValue('--reset').trim() || '#c4271f';
+  PAL.bg = cs.getPropertyValue('--bg').trim() || '#ffffff'; PAL.fg = cs.getPropertyValue('--fg').trim() || '#111111';
+  PAL.disc = blend(PAL.bg, PAL.fg, .04);                       // the circle's face: the page colour, a touch toward the text colour
 }
 const pc = id => isDark() ? PAL[id] : PAL[id + 'I'];
 const rgbOf = c => {
@@ -215,14 +243,16 @@ const rgbOf = c => {
   const m = c.match(/\d+(\.\d+)?/g); return m ? m.slice(0, 3).map(Number) : [255, 255, 255];
 };
 const rgba = (c, a) => { const [r, g, b] = rgbOf(c); return `rgba(${r},${g},${b},${a})`; };
+const blend = (a, b, t) => { const A = rgbOf(a), B = rgbOf(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`; };
 const mix = (c, f) => { const t = f > 0 ? 255 : 0, k = Math.abs(f); return '#' + rgbOf(c).map(v => Math.round(lerp(v, t, k)).toString(16).padStart(2, '0')).join(''); };
 const hs = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };   // stable pseudo-random
 
 // ---- screen, canvases ----
-let W = innerWidth, H = innerHeight, dpr = 1;
-const faeC = $('fae'), fxC = $('fx'), flC = $('flood');
-const fa = faeC.getContext('2d'), fc = fxC.getContext('2d'), fl = flC.getContext('2d');
-const btn = $('play'), skip = $('skip'), bubble = $('bubble');
+let W = innerWidth, H = innerHeight, dpr = 1, fdpr = 1;
+let dprCap = 2, quality = 0;                                   // quality drops (smaller canvases, no glow pass) if the device cannot keep up; see watchPerf
+const faeC = $('fae'), fxC = $('fx'), flC = $('flood'), sigC = $('sigil');
+const fa = faeC.getContext('2d'), fc = fxC.getContext('2d'), fl = flC.getContext('2d'), sg = sigC.getContext('2d');
+const btn = $('play'), bubble = $('bubble');
 
 // ---- the camera ----
 const C = { cx: 0, cy: 0, s: 1, rot: 0, ring: 0, d1: 0, d2: 0, hover: 0, breath: 1, boost: 0 };
@@ -255,95 +285,112 @@ async function move({ to, rot, ms, ease, rotEase }) {
   if (rot != null) C.rot = rot;
 }
 
-// ---- the magic circle (SVG, drawn in circle units under one camera group so lines stay crisp at any zoom) ----
-const svg = $('sigil'), NS = 'http://www.w3.org/2000/svg';
-const S = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+// ---- the magic circle: drawn on a canvas, in circle units under one camera transform, so lines stay crisp at any zoom.
+// (It used to be an SVG. At full zoom the browser re-rasterised ~200 huge strokes and a dozen opacity groups every frame.
+// Here the shapes are built once as Path2D objects and each frame is a handful of stroke calls.) ----
 const pol = (a, r) => [Math.sin(a) * r, -Math.cos(a) * r];
-const f2 = n => n.toFixed(2);
-const defs = S('defs', {}, svg);
-const sg = S('linearGradient', { id: 'sg', gradientUnits: 'userSpaceOnUse', x1: -OUT, y1: -OUT, x2: OUT, y2: OUT }, defs);
-ids.forEach((id, k) => S('stop', { offset: k / 3, style: `stop-color:var(--${id}-ink)` }, sg));
-const au = S('radialGradient', { id: 'aura' }, defs);
-[[.6, 0], [.74, .3], [1, 0]].forEach(([o, a]) => S('stop', { offset: o, style: 'stop-color:var(--water-ink)', 'stop-opacity': a }, au));
-ids.forEach(id => {
-  const g = S('radialGradient', { id: 'hg-' + id }, defs);
-  S('stop', { offset: .45, style: `stop-color:var(--${id}-ink)`, 'stop-opacity': 0 }, g);
-  S('stop', { offset: 1, style: `stop-color:var(--${id}-ink)`, 'stop-opacity': .45 }, g);
-});
-const cam = S('g', {}, svg);
-const aura = S('circle', { r: 130, fill: 'url(#aura)' }, cam);
-S('circle', { r: OUT + 1, class: 'disc' }, cam);
-const glows = [];
-function layer() { const g = S('g', {}, cam), gg = S('g', {}, g), cg = S('g', {}, g); glows.push(gg); return { g, gg, cg }; }
-function add(L, tag, attrs, w) {
-  S(tag, Object.assign({ class: 'gl', 'stroke-width': w * 4.5 }, attrs), L.gg);   // wide faint copy = the glow
-  S(tag, Object.assign({ class: 'ln', 'stroke-width': w }, attrs), L.cg);
-}
-const circ = (L, r, w, x) => add(L, 'circle', Object.assign({ r }, x || {}), w);
-const pth = (L, d, w, x) => add(L, 'path', Object.assign({ d }, x || {}), w);
-
-// outer rings (still)
-const L0 = layer(); circ(L0, 96, .9); circ(L0, 93, .3);
-// tick band and rune band (turns slowly with the circle)
-const L1 = layer();
+const circle = (r, cx = 0, cy = 0) => { const p = new Path2D(); p.moveTo(cx + r, cy); p.arc(cx, cy, r, 0, TAU); return p; };
+const segs = list => { const p = new Path2D(); for (const [u, v] of list) { p.moveTo(u[0], u[1]); p.lineTo(v[0], v[1]); } return p; };
+// a layer is a list of [path, line width, dash]
+const L0 = [[circle(96), .9], [circle(93), .3]];                           // outer rings (still)
+const L1 = [];                                                             // tick band and rune band (turns slowly)
 {
-  let fine = '', bold = '';
+  const fine = [], bold = [];
   for (let k = 0; k < 72; k++) {
     const a = k * 5 * Math.PI / 180, long = k % 6 === 0, len = long ? 7 : (k % 2 ? 2.5 : 4);
-    const [x1, y1] = pol(a, 91), [x2, y2] = pol(a, 91 - len), seg = `M${f2(x1)} ${f2(y1)}L${f2(x2)} ${f2(y2)}`;
-    if (long) bold += seg; else fine += seg;
+    (long ? bold : fine).push([pol(a, 91), pol(a, 91 - len)]);
   }
-  pth(L1, fine, .3); pth(L1, bold, .7); circ(L1, 86, .5); circ(L1, 70, .5);
   let seed = 7; const rng = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const GP = [[-2.2, -4], [2.2, -4], [-2.2, 0], [2.2, 0], [-2.2, 4], [2.2, 4], [0, -4.8], [0, 4.8]];
-  let runes = '';
+  const runes = [];
   for (let k = 0; k < 24; k++) {
     const a = k * 15 * Math.PI / 180, pt = ([u, v]) => { const [x, y] = pol(a, 77 + v); return [x + Math.cos(a) * u, y + Math.sin(a) * u]; };
     for (let j = 0, n = 3 + Math.floor(rng() * 2); j < n; j++) {
       const p = GP[Math.floor(rng() * 8)], q = GP[Math.floor(rng() * 8)];
       if (p === q) continue;
-      const A = pt(p), B = pt(q);
-      runes += `M${f2(A[0])} ${f2(A[1])}L${f2(B[0])} ${f2(B[1])}`;
+      runes.push([pt(p), pt(q)]);
     }
   }
-  pth(L1, runes, .5);
+  L1.push([segs(fine), .3], [segs(bold), .7], [circle(86), .5], [circle(70), .5], [segs(runes), .5]);
 }
-// two squares (an eight-pointed star), the orbit track and the core (turns the other way)
-const L2 = layer();
+const L2 = [];                                                             // two squares (an eight-pointed star), the orbit track and the core (turns the other way)
 {
   const sqA = [45, 135, 225, 315], sqB = [0, 90, 180, 270];
-  [sqA, sqB].forEach(arr => {
-    let d = '';
-    arr.forEach((deg, j) => { const [x, y] = pol(deg * Math.PI / 180, 66); d += (j ? 'L' : 'M') + f2(x) + ' ' + f2(y); });
-    pth(L2, d + 'Z', .6);
-  });
-  [...sqA, ...sqB].forEach(deg => { const [x, y] = pol(deg * Math.PI / 180, 66); circ(L2, 2.4, .4, { cx: f2(x), cy: f2(y) }); });
-  circ(L2, HOLE_R, .3, { 'stroke-dasharray': '1.2 2.4' });
-  circ(L2, 30, .6); circ(L2, 27.5, .25); circ(L2, 2.4, .5);
+  const square = arr => { const p = new Path2D(); arr.forEach((deg, j) => { const [x, y] = pol(deg * Math.PI / 180, 66); j ? p.lineTo(x, y) : p.moveTo(x, y); }); p.closePath(); return p; };
+  L2.push([square(sqA), .6], [square(sqB), .6]);
+  const nodes = new Path2D();
+  [...sqA, ...sqB].forEach(deg => { const [x, y] = pol(deg * Math.PI / 180, 66); nodes.addPath(circle(2.4, x, y)); });
+  L2.push([nodes, .4], [circle(HOLE_R), .3, [1.2, 2.4]], [circle(30), .6], [circle(27.5), .25]);
 }
-// the four holes, orbiting the centre
-const L3 = S('g', {}, cam);
-ids.forEach((id, i) => {
-  const h = S('g', { transform: `rotate(${i * 90}) translate(0 ${-HOLE_R})` }, L3);
-  S('circle', { r: HOLE_RAD, class: 'holefill' }, h);
-  S('circle', { r: HOLE_RAD, fill: `url(#hg-${id})` }, h);
-  const gg = S('g', {}, h), cg = S('g', {}, h), col = `stroke:var(--${id}-ink)`;
-  glows.push(gg);
-  S('circle', { r: HOLE_RAD, class: 'gl', 'stroke-width': 4, style: col }, gg);
-  S('circle', { r: HOLE_RAD, class: 'ln', 'stroke-width': .9, style: col }, cg);
-  S('circle', { r: HOLE_RAD + 2.6, class: 'ln', 'stroke-width': .3, style: col }, cg);
-});
+const L2dot = L2.concat([[circle(2.4), .5]]);                              // the centre dot, left out when a symbol sits there
+const holeShape = circle(HOLE_RAD), holeRing = circle(HOLE_RAD + 2.6), faceShape = circle(OUT + 1), auraShape = circle(130);
 
-let T = 0;
+// A returning player (there is a save) sees the circle in the colour of the element they chose first, with its symbol in the middle.
+let tint = FEHome.el && ids.includes(FEHome.el) ? FEHome.el : null, symbol = null;
+const symbolPaths = () => symbol || (symbol = [...ICON[tint].matchAll(/<path d="([^"]+)"[^>]*?stroke-width="([\d.]+)"/g)].map(m => [new Path2D(m[1]), +m[2]]));
+
+let T = 0, sigOn = true;
+const sigPrev = new Array(11).fill(NaN);
 function renderSigil() {
+  if (!sigOn) return;
   const sc = C.s * (1 + C.breath * (0.012 * Math.sin(T * 1.7) + 0.04 * C.hover));
-  cam.setAttribute('transform', `translate(${C.cx} ${C.cy}) rotate(${C.rot}) scale(${sc})`);
-  L1.g.setAttribute('transform', `rotate(${C.d1})`);
-  L2.g.setAttribute('transform', `rotate(${C.d2})`);
-  L3.setAttribute('transform', `rotate(${C.ring})`);
+  const cur = [C.cx, C.cy, sc, C.rot, C.ring, C.d1, C.d2, C.breath, C.hover, C.boost, dpr];
+  // redraw when the circle moved; when it is only resting, the slow glow shimmer is redrawn a few times a second
+  let moved = false;
+  for (let i = 0; i < cur.length; i++) if (Math.abs(cur[i] - sigPrev[i]) > 1e-4 || sigPrev[i] !== sigPrev[i]) { moved = true; break; }
+  if (!moved && T - sigPrev.t < .16) return;
+  for (let i = 0; i < cur.length; i++) sigPrev[i] = cur[i];
+  sigPrev.t = T;
+
+  const ink = tint ? ids.map(() => pc(tint)) : ids.map(pc), glowOn = quality < 2 && sc < 5, ctx = sg;      // magnified past ~5x the glow is invisible and costs the most to draw
   const g = clamp(.22 + .07 * Math.sin(T * 2.1) + .3 * C.hover * C.breath + .5 * C.boost, 0, 1);
-  glows.forEach(n => n.setAttribute('opacity', g));
-  aura.setAttribute('opacity', clamp(.75 + C.boost + .4 * C.hover, 0, 1));
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, sigC.width, sigC.height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.translate(C.cx, C.cy); ctx.rotate(C.rot * Math.PI / 180); ctx.scale(sc, sc);
+
+  const w = ink[1], ag = ctx.createRadialGradient(0, 0, 0, 0, 0, 130);        // the faint blue aura
+  ag.addColorStop(0, rgba(w, 0)); ag.addColorStop(.6, rgba(w, 0)); ag.addColorStop(.74, rgba(w, .3)); ag.addColorStop(1, rgba(w, 0));
+  ctx.globalAlpha = clamp(.75 + C.boost + .4 * C.hover, 0, 1); ctx.fillStyle = ag; ctx.fill(auraShape);
+  ctx.globalAlpha = 1; ctx.fillStyle = PAL.disc; ctx.fill(faceShape);
+
+  const grad = ctx.createLinearGradient(-OUT, -OUT, OUT, OUT);                // one colour sweep across the whole circle
+  ink.forEach((c, k) => grad.addColorStop(k / 3, c));
+  ctx.strokeStyle = grad; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const pass = list => {
+    if (glowOn) {                                                            // a wide, faint copy underneath = the glow
+      ctx.globalAlpha = g;
+      for (const [p, lw, dash] of list) { ctx.lineWidth = lw * 4.5; ctx.setLineDash(dash || []); ctx.stroke(p); }
+      ctx.globalAlpha = 1;
+    }
+    for (const [p, lw, dash] of list) { ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.stroke(p); }
+    ctx.setLineDash([]);
+  };
+  pass(L0);
+  ctx.save(); ctx.rotate(C.d1 * Math.PI / 180); pass(L1); ctx.restore();
+  ctx.save(); ctx.rotate(C.d2 * Math.PI / 180); pass(tint ? L2 : L2dot); ctx.restore();
+  if (tint) {                                                                  // the element's symbol, upright in the middle
+    const sp = symbolPaths(), k = 1.55;
+    ctx.save(); ctx.translate(-12 * k, -12 * k); ctx.scale(k, k); ctx.strokeStyle = ink[0];
+    if (glowOn) { ctx.globalAlpha = g; for (const [p, lw] of sp) { ctx.lineWidth = lw * 3.5; ctx.stroke(p); } ctx.globalAlpha = 1; }
+    for (const [p, lw] of sp) { ctx.lineWidth = lw; ctx.stroke(p); }
+    ctx.restore();
+  }
+
+  ctx.save(); ctx.rotate(C.ring * Math.PI / 180);                             // the four holes, orbiting the centre
+  ids.forEach((id, i) => {
+    ctx.save(); ctx.rotate(i * Math.PI / 2); ctx.translate(0, -HOLE_R);
+    ctx.fillStyle = PAL.bg; ctx.fill(holeShape);
+    const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, HOLE_RAD);
+    hg.addColorStop(0, rgba(ink[i], 0)); hg.addColorStop(.45, rgba(ink[i], 0)); hg.addColorStop(1, rgba(ink[i], .45));
+    ctx.fillStyle = hg; ctx.fill(holeShape);
+    ctx.strokeStyle = ink[i];
+    if (glowOn) { ctx.globalAlpha = g; ctx.lineWidth = 4; ctx.stroke(holeShape); ctx.globalAlpha = 1; }
+    ctx.lineWidth = .9; ctx.stroke(holeShape);
+    ctx.lineWidth = .3; ctx.stroke(holeRing);
+    ctx.restore();
+  });
+  ctx.restore();
 }
 
 // ---- glow sprites (cheap soft light for fae, sparks and effects) ----
@@ -391,7 +438,7 @@ function updateFae(dt) {
     f.vx += ((f.tx - f.x) * k - f.vx * 1.6) * dt;
     f.vy += ((f.ty - f.y) * k - f.vy * 1.6) * dt;
     f.x += f.vx * dt; f.y += f.vy * dt + Math.sin(T * 2.3 + f.ph) * 10 * dt;
-    if (Math.random() < dt * (f.front ? 9 : 4)) {
+    if (Math.random() < dt * (f.front ? 9 : 4) * (quality > 1 || !orbitOn ? .4 : 1)) {   // fewer sparks once the pulse has started
       const o = { x: f.x + rand(-1, 1) * f.r, y: f.y + rand(-1, 1) * f.r, el: f.el, age: 0, life: rand(.8, 1.4), r: f.front ? rand(1.5, 2.6) : rand(1, 1.8), a: f.front ? 1 : .55, vx: 0, vy: 0 };
       if (f.el === 'air') { o.vx = rand(-12, 12); o.vy = rand(-12, 12); }
       else if (f.el === 'water') { o.vx = rand(-6, 6); o.vy = rand(14, 44); }
@@ -564,12 +611,17 @@ ids.forEach((id, i) => {
   b.addEventListener('pointerenter', () => hint(true)); b.addEventListener('pointerleave', () => hint(false));
   b.addEventListener('focus', () => hint(true)); b.addEventListener('blur', () => hint(false));
 });
-function placeEls() {
-  const d = Math.max(44, HOLE_RAD * C.s * 2);
+const HAS_TRANSLATE = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('translate', '1px 1px');
+function placeEls() {                                           // runs every frame: only the compositor-friendly `translate` changes
+  const d = Math.max(44, HOLE_RAD * C.s * 2), ds = d.toFixed(0) + 'px';
   for (const id of ids) {
     const e = els[id]; if (!e.show) continue;
-    const p = holePos(e.i);
-    e.b.style.left = p.x + 'px'; e.b.style.top = p.y + 'px'; e.b.style.width = e.b.style.height = d + 'px';
+    const p = holePos(e.i), st = e.b.style, t = p.x.toFixed(1) + 'px ' + p.y.toFixed(1) + 'px';
+    if (e.d !== ds) { e.d = ds; st.width = st.height = ds; }
+    if (e.t !== t) {
+      e.t = t;
+      if (HAS_TRANSLATE) st.translate = t; else { st.left = p.x.toFixed(1) + 'px'; st.top = p.y.toFixed(1) + 'px'; }
+    }
   }
 }
 function placeChoose() { const p = poseChoose(); $('choose').style.top = Math.max(40, p.cy - OUT * p.s - 14) + 'px'; }
@@ -642,16 +694,16 @@ function flood(id, x, y) {
 
 // ---- leaving ----
 let leaving = false;
-function leave(ms) {
+function leave(ms, url) {
   if (leaving) return; leaving = true; aborted = true;
   bubble.classList.remove('show', 'burst');
   $('veil').classList.add('on');
-  setTimeout(() => { location.href = 'game.html'; }, ms);
+  setTimeout(() => { location.href = url || 'game.html'; }, ms);
 }
 
 // ---- the sequence ----
 let started = false, orbitOn = true, hoverT = 0;
-const hasSave = () => { const n = $('new'); return !!n && !n.hidden; };   // the menu script above shows "new game." only when a save exists
+const hasSave = () => !!FEHome.el;                                     // a returning player: the menu script above found their element
 
 function showBubble(text, i) {
   return new Promise(res => {
@@ -671,24 +723,32 @@ function showBubble(text, i) {
 function pulse() {
   const p = poseHome(), R = homeR();
   C.boost = 1; orbitOn = false; hoverT = 0;
-  ids.forEach((id, k) => ring(p.cx, p.cy, R * .9, R * 3.8, 1500, pc(id), k * .22, 3));
+  ids.forEach((id, k) => ring(p.cx, p.cy, R * .9, R * 3.8, 1500, pc(tint || id), k * .22, 3));
 }
 
-// "continue." with a save: pulse, then straight into the game
+// "continue." with a save: no spinning. A pulse, then the chosen element floods the screen from the circle, then the game.
 async function resume() {
   started = true; frozen = poseHome(); btn.style.pointerEvents = 'none';
+  document.documentElement.classList.add('playing'); document.body.classList.add('playing');
+  const p = frozen, id = tint || 'air';
   pulse();
-  await wait(1100);
-  leave(700);
+  document.body.classList.add('fading');                                                     // the title, fae and buttons fade; the circle stays
+  await wait(800);
+  flC.style.display = 'block';
+  await flood(id, p.cx, p.cy);
+  sigOn = false; sigC.style.display = 'none';
+  await wait(150);
+  leave(1050, 'game.html?el=' + id);                                                        // continuing: the game uses its own save, the element is only a fallback
 }
 
-async function play(force) {
+async function play() {
   if (started) return;
-  if (!force && hasSave()) return resume();
-  started = true;
+  if (hasSave()) return resume();
+  started = true; tint = null;                                                               // a new game: the circle is plain again
+  try { sessionStorage.removeItem('fe-chosen'); localStorage.removeItem(FEHome.key); } catch (e) {}                                 // a choice left over from an earlier run must not leak into this one
   frozen = poseHome();                                                                       // pin the circle where the link was, then lock the page
   document.documentElement.classList.add('playing'); document.body.classList.add('playing');
-  btn.style.pointerEvents = 'none'; skip.classList.add('on');
+  btn.style.pointerEvents = 'none';
   phase = 'pulse';
   pulse();
   const r0 = C.ring, a0 = C.d1, b0 = C.d2, rT = Math.ceil((r0 + 40) / 90) * 90, aT = Math.ceil((a0 + 20) / 90) * 90, bT = Math.floor((b0 - 30) / 90) * 90;
@@ -696,7 +756,7 @@ async function play(force) {
   await wait(2250);                                                                          // after the pulse has fully faded...
   document.body.classList.add('fading');                                                     // ...everything but the circle goes
   await wait(700);
-  faeOn = false; btn.style.visibility = 'hidden';
+  faeOn = false; btn.style.visibility = 'hidden';                                            // (the fae canvas is switched off in the frame loop)
 
   // spin up and magnify until the centre is in the top-left corner and hole 1 is in the middle of the screen
   phase = 'zoom';
@@ -745,18 +805,20 @@ async function play(force) {
 async function pick(id) {
   if (!live || chosen) return;
   chosen = id; live = false; phase = 'leave';
-  try { sessionStorage.setItem('fe-chosen', id); } catch (e) {}
+  try { sessionStorage.setItem('fe-chosen', id); localStorage.setItem(FEHome.key, id); } catch (e) {}
   const p = holePos(els[id].i);
   ids.forEach(o => { els[o].b.classList.remove('live'); if (o !== id) { els[o].b.classList.add('off'); if (idle[o]) idle[o].on = false; } });
   els[id].b.classList.add('chosen');
   caption.textContent = '';
   $('choose').classList.remove('on');
-  $('sigil').classList.add('out');
+  sigC.classList.add('out');
+  setTimeout(() => { sigOn = false; sigC.style.display = 'none'; }, 1000);          // faded out: stop drawing it
   ring(p.x, p.y, 20, Math.min(W, H) * .35, 1200, pc(id), 0, 3);
   await wait(1200);
+  flC.style.display = 'block';
   await flood(id, p.x, p.y);
   await wait(150);
-  leave(1050);
+  leave(1050, 'game.html?new=1&el=' + id);                                                   // a new game that starts with this element
 }
 
 // ---- input ----
@@ -765,52 +827,106 @@ btn.addEventListener('pointerenter', () => { if (!started) hoverT = 1; });
 btn.addEventListener('pointerleave', () => { hoverT = 0; });
 btn.addEventListener('focus', () => { if (!started) hoverT = 1; });
 btn.addEventListener('blur', () => { hoverT = 0; });
-skip.addEventListener('click', () => leave(650));
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || !live) return;
   const id = ids.find(x => x[0] === e.key.toLowerCase());
   if (id) { e.preventDefault(); pick(id); }
 });
 addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
-if (matchMedia('(prefers-reduced-motion: reduce)').matches) skip.classList.add('on');
-window.FEIntro = { start: () => play(true) };              // used by "new game." in the menu script above
 
 // ---- layout and the frame loop ----
 function layoutHome() { if (!started) btn.style.width = btn.style.height = homeR() * 2 + 'px'; }
 function resize() {
   const ow = W, oh = H;
-  W = innerWidth; H = innerHeight; dpr = Math.min(2, devicePixelRatio || 1);
-  [faeC, fxC, flC].forEach(c => { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); });
-  [fa, fc, fl].forEach(c => c.setTransform(dpr, 0, 0, dpr, 0, 0));
+  W = innerWidth; H = innerHeight; dpr = Math.min(dprCap, devicePixelRatio || 1); fdpr = Math.min(dpr, 1.25);   // the flood is big flat shapes, so it can be drawn smaller
+  [faeC, fxC, sigC].forEach(c => { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); });
+  flC.width = Math.round(W * fdpr); flC.height = Math.round(H * fdpr);
+  [fa, fc].forEach(c => c.setTransform(dpr, 0, 0, dpr, 0, 0));
+  fl.setTransform(fdpr, 0, 0, fdpr, 0, 0);
+  sigPrev.fill(NaN);
   layoutHome();
   if (rest) Object.assign(C, rest());
   if (phase === 'choose') placeChoose();
   if (!fae.length) spawnFae(); else if (ow !== W || oh !== H) fitFae(ow, oh);
 }
 addEventListener('resize', resize);
-mq.addEventListener('change', readPal);
+mq.addEventListener('change', () => { readPal(); if (!$('reset-wrap').hidden) drawReset(); });
 
-let last = performance.now();
+// ---- the red circle, bottom right (only when there is a save): erases it, after asking ----
+const rWrap = $('reset-wrap'), rBtn = $('reset-btn'), rAsk = $('reset-ask'), rCan = $('reset-c');
+function drawReset() {                                          // drawn once; the slow turning is a CSS animation
+  const S = Math.round(64 * Math.min(3, devicePixelRatio || 1)), u = S / 100, col = PAL.reset;
+  rCan.width = rCan.height = S;
+  const c = rCan.getContext('2d');
+  c.setTransform(u, 0, 0, u, S / 2, S / 2);
+  c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.shadowColor = col; c.shadowBlur = 5 * u;
+  const ringAt = (r, w) => { c.lineWidth = w; c.beginPath(); c.arc(0, 0, r, 0, TAU); c.stroke(); };
+  ringAt(47, 1.8); ringAt(43, .8);
+  c.lineWidth = 1; c.beginPath();
+  for (let k = 0; k < 24; k++) { const a = k * TAU / 24, r2 = k % 6 === 0 ? 36 : 39.5; c.moveTo(Math.sin(a) * 43, -Math.cos(a) * 43); c.lineTo(Math.sin(a) * r2, -Math.cos(a) * r2); }
+  c.stroke();
+  c.lineWidth = 1.4;
+  for (const off of [0, Math.PI / 4]) {                          // two squares: an eight-pointed star
+    c.beginPath();
+    for (let k = 0; k < 4; k++) { const a = off + k * Math.PI / 2, x = Math.sin(a) * 33, y = -Math.cos(a) * 33; k ? c.lineTo(x, y) : c.moveTo(x, y); }
+    c.closePath(); c.stroke();
+  }
+  ringAt(16, 1.6);
+  c.lineWidth = 3; c.beginPath(); c.moveTo(-6.5, -6.5); c.lineTo(6.5, 6.5); c.moveTo(6.5, -6.5); c.lineTo(-6.5, 6.5); c.stroke();   // a cross at the centre
+}
+function initReset() {
+  if (!hasSave()) return;
+  rWrap.hidden = false; document.body.classList.add('has-reset'); drawReset();
+  const ask = on => { rAsk.hidden = !on; rBtn.setAttribute('aria-expanded', String(on)); (on ? $('reset-no') : rBtn).focus(); };
+  rBtn.addEventListener('click', () => ask(rAsk.hidden));
+  $('reset-no').addEventListener('click', () => ask(false));
+  $('reset-yes').addEventListener('click', () => {
+    try { localStorage.removeItem(FE.SAVE_KEY); localStorage.removeItem(FEHome.key); sessionStorage.removeItem('fe-chosen'); } catch (e) {}
+    location.reload();                                          // back to the home page of a new player
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !rAsk.hidden) ask(false); });
+}
+
+// If frames keep taking too long (an older laptop, a software renderer), drop quality in two steps instead of stuttering:
+// 1) draw the canvases at 1x, 2) skip the glow pass on the circle and halve the fae sparks.
+let ema = 16.7, slow = 0;
+function watchPerf(raw) {
+  if (raw > 200 || T < 1.5) return;                             // a hidden tab or the first frames say nothing
+  ema += (raw - ema) * .06;
+  slow = ema > 26 ? slow + raw : 0;
+  if (slow > 1500 && quality < 2) {
+    quality++; slow = 0; ema = 16.7;
+    if (quality === 1) { dprCap = 1; resize(); } else sigPrev.fill(NaN);
+  }
+}
+
+let last = performance.now(), fcBusy = false;
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now; T += dt;
+  const raw = now - last, dt = Math.min(.05, raw / 1000); last = now; T += dt;
+  watchPerf(raw);
   if (phase === 'home') Object.assign(C, poseHome());       // the circle follows its slot in the page (scrolling, resizing)
   if (orbitOn) { C.ring += 24 * dt; C.d1 += 5 * dt; C.d2 -= 8 * dt; }
   C.hover += (hoverT - C.hover) * Math.min(1, dt * 6);
   C.boost *= Math.exp(-dt * 1.3);
   renderSigil();
   if (faeOn) { updateFae(dt); drawFae(); }
-  else if (!faeCleared) { fa.clearRect(0, 0, W, H); faeCleared = true; }
-  fc.clearRect(0, 0, W, H);
-  fc.globalCompositeOperation = isDark() ? 'lighter' : 'source-over';
-  for (let i = fx.length - 1; i >= 0; i--) if (!fx[i](dt)) fx.splice(i, 1);
+  else if (!faeCleared) { fa.clearRect(0, 0, W, H); faeC.style.display = 'none'; faeCleared = true; }
   idleEmit(dt);
-  updParts(dt);
-  fc.globalCompositeOperation = 'source-over';
+  const busy = fx.length > 0 || parts.length > 0;           // the effects canvas is only touched while something is on it
+  if (busy || fcBusy) {
+    fc.clearRect(0, 0, W, H);
+    fc.globalCompositeOperation = isDark() ? 'lighter' : 'source-over';
+    for (let i = fx.length - 1; i >= 0; i--) if (!fx[i](dt)) fx.splice(i, 1);
+    updParts(dt);
+    fc.globalCompositeOperation = 'source-over';
+  }
+  fcBusy = busy;
   placeEls();
   requestAnimationFrame(frame);
 }
 
 readPal();
+initReset();
 resize();
 rest = poseHome;
 Object.assign(C, poseHome());
