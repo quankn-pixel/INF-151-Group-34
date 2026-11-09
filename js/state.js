@@ -13,7 +13,13 @@ FE.module(function (FE) {
       collapses: 0,
       layer2: false,        // the first collapse opens layer 2
       skills: {},           // skill tree nodes bought (permanent)
-      mg: { readyAt: 0, plays: 0, best: 0 },   // mini-game: next play time (ms), times played, best result
+      mg: { readyAt: 0, plays: 0, best: 0, auxReadyAt: 0, auxPlays: 0, auxBest: 0 },   // mini-games: next play time (ms), times played, best result (main, then aux)
+      aux: null,            // the auxiliary element, chosen after the first collapse
+      auxCount: 0,          // held; it only comes from the aux mini-game and the spirits it earns
+      auxUp: { gath: 0 },   // aux spirits: they make the aux element by themselves
+      fusion: 0,            // the fused resource (main + aux). Its use is not decided yet.
+      fzOn: true,           // the crucibles are burning (they can be paused)
+      fz: { crucible: 0, catalyst: 0 },   // special upgrades, kept through collapses
       buffs: {},            // buff id -> time it ends (ms)
       played: 0,            // seconds played with the tab visible
       savedAt: 0
@@ -49,6 +55,17 @@ FE.module(function (FE) {
     let g = FE.clickPower() * FE.multiplier();
     if (FE.el() === 'fire') g += FE.rate() * 0.05 * S().up.excl;
     return g;
+  };
+
+  // ---- the auxiliary element and the fused resource ----
+  FE.auxRate = () => S().aux ? S().auxUp.gath * FE.AUX_GATH_RATE : 0;
+  FE.fusionName = () => S().aux ? FE.fusionOf(FE.el(), S().aux) : '';
+  FE.catalystMult = () => Math.pow(1.5, S().fz.catalyst);
+  FE.fusing = false;                                             // set by the timer: the crucibles had what they needed on the last tick
+  FE.fusionRate = () => S().aux && S().fzOn && FE.fusing ? S().fz.crucible * FE.catalystMult() : 0;
+  FE.fzCost = k => {
+    const f = FE.FZ[k], g = Math.pow(f.grow, S().fz[k]);
+    return { main: Math.ceil(f.main * g), aux: Math.ceil(f.aux * g) };
   };
 
   // ---- costs ----

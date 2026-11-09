@@ -199,6 +199,25 @@ FE.module(function (FE) {
     ctx.restore();
   }
 
+  // ---- the auxiliary element: a small planet of its own, circling the main star or button ----
+  function auxBody(ctx, aux, front) {
+    const R = RADIUS[core.vis], orbit = R * 1.3 + 22, tilt = .34, a = core.T * .55 + 1, sn = Math.sin(a);
+    if ((sn >= 0) !== front) return;
+    const p = PAL[aux], x = C0 + Math.cos(a) * orbit, y = C0 + sn * orbit * tilt, r = 15 * (.9 + .1 * sn);
+    if (!front) { ctx.strokeStyle = rgba(p.glow, .22); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(C0, C0, orbit, orbit * tilt, 0, 0, TAU); ctx.stroke(); }
+    ctx.save(); ctx.globalCompositeOperation = dark() ? 'lighter' : 'source-over'; glowAt(ctx, x, y, r * 3.4, p.glow, .55); ctx.restore();
+    ctx.save(); ctx.translate(x, y);
+    circle(ctx, 0, 0, r); ctx.save(); ctx.clip();
+    const g = ctx.createRadialGradient(-r * .35, -r * .4, 0, 0, 0, r); g.addColorStop(0, p.core); g.addColorStop(.55, p.mid); g.addColorStop(1, p.edge);
+    ctx.fillStyle = g; ctx.fillRect(-r, -r, r * 2, r * 2);
+    if (aux === 'water') { ctx.strokeStyle = rgba(p.acc, .5); ctx.lineWidth = 1.4; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(-r, i * r * .5); ctx.quadraticCurveTo(0, i * r * .5 + 3 * Math.sin(core.T * 2 + i), r, i * r * .5); ctx.stroke(); } }
+    else if (aux === 'earth') { ctx.strokeStyle = rgba(p.acc, .8); ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(-r * .6, -r * .2); ctx.lineTo(0, r * .1); ctx.lineTo(r * .5, -r * .4); ctx.moveTo(0, r * .1); ctx.lineTo(r * .2, r * .7); ctx.stroke(); }
+    else if (aux === 'fire') { ctx.fillStyle = rgba(p.dk, .45); for (let i = 0; i < 3; i++) { circle(ctx, Math.cos(i * 2.3 + core.T * .3) * r * .5, Math.sin(i * 2.3 + core.T * .3) * r * .5, r * .28); ctx.fill(); } }
+    else { ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.4; ctx.beginPath(); for (let t = 0; t <= 1; t += .08) { const rr = t * r, aa = t * 4 + core.T; t ? ctx.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr) : ctx.moveTo(0, 0); } ctx.stroke(); }
+    const sh = ctx.createRadialGradient(-r * .3, -r * .3, r * .2, 0, 0, r); sh.addColorStop(0, 'rgba(255,255,255,.2)'); sh.addColorStop(1, rgba(p.edge, .55)); ctx.fillStyle = sh; ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.restore(); ctx.restore();
+  }
+
   // ---- bits of element that fly in and stick to the edge: the more you hold toward the next star, the thicker the rim ----
   const rimR = () => RADIUS[core.vis] + (core.vis ? 4 : 2);
   function spawnFly(x, y, ghost) {
@@ -241,6 +260,8 @@ FE.module(function (FE) {
     ctx.clearRect(0, 0, BOX, BOX);
     let shx = 0, shy = 0;
     if (core.shake) { shx = rand(-1, 1) * core.shake; shy = rand(-1, 1) * core.shake; ctx.translate(shx, shy); }
+
+    if (s.aux) auxBody(ctx, s.aux, false);                         // the half of its orbit behind the star
 
     // bits: too few on the rim -> more fly in; too many (after buying something) -> the extras drop away
     if (!core.pending) {
@@ -292,6 +313,8 @@ FE.module(function (FE) {
       }
     }
     for (const f of core.fly) bit(ctx, el, f.x, f.y, f.r, f.t * 6, f.seed, clamp(f.t / .12, 0, 1) * (f.ghost ? .85 : 1));
+
+    if (s.aux) auxBody(ctx, s.aux, true);                          // ...and the half in front
 
     // ripples, puffs, floating numbers
     for (let i = core.rips.length - 1; i >= 0; i--) {
@@ -350,7 +373,7 @@ FE.module(function (FE) {
         c.fillStyle = `rgba(255,255,255,${clamp((q - .75) * 4, 0, 1) * .9})`; c.fillRect(0, 0, W, H);
       } else {
         if (!flashed) { flashed = true; core.charge = 0; core.shake = 0; onFlash(); }
-        const u = t - FLASH, ox = W / 2, oy = H / 2;
+        const u = t - FLASH, ox = sx, oy = sy;
         c.fillStyle = `rgba(255,255,255,${clamp(1 - u / 1.5, 0, 1)})`; c.fillRect(0, 0, W, H);
         c.globalCompositeOperation = 'lighter';
         for (let k = 0; k < 3; k++) {                                 // shockwaves
@@ -371,5 +394,169 @@ FE.module(function (FE) {
       else { nc.style.display = 'none'; c.clearRect(0, 0, W, H); onDone(); }
     }
     requestAnimationFrame(step);
+  };
+});
+
+/* aux.js - the first time a star collapses, the screen goes dark and a magic circle with three holes appears (like the one in
+ * the opening sequence). The three elements the player did not choose wait in the holes; the one they pick becomes their
+ * auxiliary element, which then orbits their main star. */
+FE.module(function (FE) {
+  const $ = FE.$, TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = p => 1 - Math.pow(1 - p, 3);
+  const hs = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+  const rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const rgba = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
+  const OUT = 96, HOLE_R = 47, HOLE_RAD = 15;
+
+  // ---- the circle's shapes (the same family as the opening sequence: rings, a tick and rune band, two triangles, the orbit track) ----
+  const circle = (r, cx = 0, cy = 0) => { const p = new Path2D(); p.moveTo(cx + r, cy); p.arc(cx, cy, r, 0, TAU); return p; };
+  const pol = (a, r) => [Math.sin(a) * r, -Math.cos(a) * r];
+  const segs = list => { const p = new Path2D(); for (const [u, v] of list) { p.moveTo(u[0], u[1]); p.lineTo(v[0], v[1]); } return p; };
+  const L0 = [[circle(96), .9], [circle(93), .3]];
+  const L1 = [], L2 = [];
+  {
+    const fine = [], bold = [];
+    for (let k = 0; k < 72; k++) { const a = k * 5 * Math.PI / 180, long = k % 6 === 0, len = long ? 7 : (k % 2 ? 2.5 : 4); (long ? bold : fine).push([pol(a, 91), pol(a, 91 - len)]); }
+    const runes = [], GP = [[-2.2, -4], [2.2, -4], [-2.2, 0], [2.2, 0], [-2.2, 4], [2.2, 4], [0, -4.8], [0, 4.8]];
+    for (let k = 0; k < 24; k++) {
+      const a = k * 15 * Math.PI / 180, pt = ([u, v]) => { const [x, y] = pol(a, 77 + v); return [x + Math.cos(a) * u, y + Math.sin(a) * u]; };
+      for (let j = 0, n = 3 + Math.floor(hs(k, 1) * 2); j < n; j++) { const p = GP[Math.floor(hs(k, 2 + j) * 8)], q = GP[Math.floor(hs(k, 9 + j) * 8)]; if (p !== q) runes.push([pt(p), pt(q)]); }
+    }
+    L1.push([segs(fine), .3], [segs(bold), .7], [circle(86), .5], [circle(70), .5], [segs(runes), .5]);
+    const tri = arr => { const p = new Path2D(); arr.forEach((deg, j) => { const [x, y] = pol(deg * Math.PI / 180, 66); j ? p.lineTo(x, y) : p.moveTo(x, y); }); p.closePath(); return p; };
+    const nodes = new Path2D(); [0, 60, 120, 180, 240, 300].forEach(d => { const [x, y] = pol(d * Math.PI / 180, 66); nodes.addPath(circle(2.4, x, y)); });
+    L2.push([tri([0, 120, 240]), .6], [tri([60, 180, 300]), .6], [nodes, .4], [circle(HOLE_R), .3, [1.2, 2.4]], [circle(30), .6], [circle(27.5), .25], [circle(2.4), .5]);
+  }
+  const holeShape = circle(HOLE_RAD), holeRing = circle(HOLE_RAD + 2.6), faceShape = circle(OUT + 1), auraShape = circle(130);
+
+  const glyphs = {};
+  const glyph = el => glyphs[el] || (glyphs[el] = [...FE.ICONS[el].matchAll(/<path d="([^"]+)"[^>]*?stroke-width="([\d.]+)"/g)].map(m => [new Path2D(m[1]), +m[2]]));
+
+  let cv, ctx, W, H, dpr = 1, raf = 0, T = 0, last = 0, st = null;
+
+  function size() { W = innerWidth; H = innerHeight; dpr = Math.min(1.5, devicePixelRatio || 1); cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const pose = () => { const R = Math.min(W * .4, H * .34); return { cx: W / 2, cy: H / 2 + H * .05, s: R / OUT }; };
+  const holeAt = (i, ringDeg, p) => { const a = (ringDeg + i * 120) * Math.PI / 180; return { x: p.cx + p.s * HOLE_R * Math.sin(a), y: p.cy - p.s * HOLE_R * Math.cos(a) }; };
+  const ringDeg = () => T * 7;
+
+  function draw(dt) {
+    T += dt; st.t += dt;
+    const p = pose(), appear = easeOut(clamp((st.t - st.delay) / 2.2, 0, 1)), ch = st.chosen;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    if (appear <= 0) return;
+    const out = ch != null ? easeOut(clamp(st.pickT / .9, 0, 1)) : 0;                    // the others fade after a choice
+    ctx.save(); ctx.globalAlpha = appear;
+    ctx.translate(p.cx, p.cy); ctx.scale(p.s * (.92 + .08 * appear), p.s * (.92 + .08 * appear));
+    const cols = st.opts.map(id => FE.PAL[id].glow);
+    const grad = ctx.createLinearGradient(-OUT, -OUT, OUT, OUT); grad.addColorStop(0, cols[0]); grad.addColorStop(.5, cols[1]); grad.addColorStop(1, cols[2]);
+    const ag = ctx.createRadialGradient(0, 0, 0, 0, 0, 130); ag.addColorStop(0, 'rgba(0,0,0,0)'); ag.addColorStop(.62, 'rgba(0,0,0,0)'); ag.addColorStop(.76, rgba(cols[1], .28)); ag.addColorStop(1, rgba(cols[1], 0));
+    ctx.fillStyle = ag; ctx.fill(auraShape);
+    ctx.fillStyle = '#05060d'; ctx.fill(faceShape);
+    ctx.strokeStyle = grad; ctx.lineCap = ctx.lineJoin = 'round';
+    const g = .3 + .08 * Math.sin(T * 2);
+    const pass = list => {
+      ctx.globalAlpha = appear * g; for (const [pa, lw, d] of list) { ctx.lineWidth = lw * 4.5; ctx.setLineDash(d || []); ctx.stroke(pa); }
+      ctx.globalAlpha = appear; for (const [pa, lw, d] of list) { ctx.lineWidth = lw; ctx.setLineDash(d || []); ctx.stroke(pa); }
+      ctx.setLineDash([]);
+    };
+    pass(L0);
+    ctx.save(); ctx.rotate(T * 5 * Math.PI / 180); pass(L1); ctx.restore();
+    ctx.save(); ctx.rotate(-T * 8 * Math.PI / 180); pass(L2); ctx.restore();
+    ctx.save(); ctx.rotate(ringDeg() * Math.PI / 180);                                         // the three holes
+    st.opts.forEach((id, i) => {
+      const al = i === ch ? 1 : 1 - out;
+      ctx.save(); ctx.rotate(i * TAU / 3); ctx.translate(0, -HOLE_R); ctx.globalAlpha = appear * al;
+      ctx.fillStyle = '#000'; ctx.fill(holeShape);
+      const hov = st.hover === i && ch == null ? 1 : 0, c = FE.PAL[id].glow;
+      const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, HOLE_RAD); hg.addColorStop(0, rgba(c, 0)); hg.addColorStop(.45, rgba(c, .06 + .1 * hov)); hg.addColorStop(1, rgba(c, .45 + .25 * hov));
+      ctx.fillStyle = hg; ctx.fill(holeShape);
+      ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.globalAlpha = appear * al * (.25 + .2 * hov); ctx.stroke(holeShape);
+      ctx.globalAlpha = appear * al; ctx.lineWidth = .9; ctx.stroke(holeShape); ctx.lineWidth = .3; ctx.stroke(holeRing);
+      ctx.restore();
+    });
+    ctx.restore(); ctx.restore();
+
+    // each element in its hole: a glow, its symbol, and motes of its own kind
+    st.opts.forEach((id, i) => {
+      const al = (i === ch ? 1 : 1 - out) * clamp((appear - .45) / .55, 0, 1); if (al <= 0) return;
+      const h = holeAt(i, ringDeg(), p), c = FE.PAL[id].glow, hr = HOLE_RAD * p.s, hov = st.hover === i && ch == null ? 1 : 0;
+      const grow = i === ch ? 1 + .9 * easeOut(clamp(st.pickT / 1, 0, 1)) : 1 + .12 * hov;
+      ctx.save(); ctx.translate(h.x, h.y); ctx.globalAlpha = al; ctx.globalCompositeOperation = 'lighter';
+      const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, hr * 2.3 * grow); rg.addColorStop(0, rgba(c, .5 + .3 * hov)); rg.addColorStop(1, rgba(c, 0)); ctx.fillStyle = rg; ctx.fillRect(-hr * 2.4 * grow, -hr * 2.4 * grow, hr * 4.8 * grow, hr * 4.8 * grow);
+      for (let k = 0; k < 9; k++) {                                                              // motes
+        const a = T * (.8 + hs(k, i)) * (k % 2 ? 1 : -1) + hs(k, 7 + i) * TAU, rr = hr * (.45 + .6 * hs(k, 3 + i)), mx = Math.cos(a) * rr, my = Math.sin(a) * rr * (id === 'fire' ? 1 : .9) - (id === 'fire' ? ((T * 30 + k * 9) % hr) * .5 : 0);
+        ctx.fillStyle = rgba(c, .5 + .4 * hs(k, 11)); ctx.beginPath(); ctx.arc(mx, my, 1.2 + 1.6 * hs(k, 5), 0, TAU); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      const k = hr * 1.5 * grow / 24;
+      ctx.translate(-12 * k, -12 * k); ctx.scale(k, k); ctx.strokeStyle = c; ctx.lineCap = ctx.lineJoin = 'round';
+      for (const [pa, lw] of glyph(id)) { ctx.lineWidth = lw; ctx.stroke(pa); }
+      ctx.restore();
+    });
+    // pulses from the chosen hole
+    if (ch != null) {
+      const h = holeAt(ch, ringDeg(), p);
+      for (let k = 0; k < 3; k++) {
+        const q = (st.pickT - k * .22) / 1.4; if (q <= 0 || q >= 1) continue;
+        ctx.strokeStyle = rgba(FE.PAL[st.opts[ch]].glow, .8 * (1 - q)); ctx.lineWidth = 3 * (1 - q * .5); ctx.beginPath(); ctx.arc(h.x, h.y, HOLE_RAD * p.s * (1 + 5 * easeOut(q)), 0, TAU); ctx.stroke();
+      }
+    }
+  }
+
+  function loop(now) {
+    raf = requestAnimationFrame(loop);
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (!st) return;
+    if (st.chosen != null) st.pickT += dt;
+    draw(dt);
+    if (st.chosen != null && st.pickT > 1.7 && !st.leaving) leave();
+  }
+
+  function pick(i) {
+    if (!st || st.chosen != null || st.t - st.delay < 1.4) return;
+    st.chosen = i; st.pickT = 0;
+    const id = st.opts[i];
+    FE.state.aux = id; FE.save();                                                                 // kept right away, so a reload cannot undo it
+    $('aux-title').classList.remove('on'); $('aux-cap').textContent = '';
+  }
+  function leave() {
+    st.leaving = true;
+    const id = st.opts[st.chosen];
+    $('aux').classList.remove('on');                                                              // fades back to the game
+    setTimeout(() => {
+      cancelAnimationFrame(raf); raf = 0; st = null; $('aux').hidden = true; FE.auxOpen = false;
+      FE.render();
+      FE.toast(`${id} joins your star as its auxiliary element. It cannot be gathered by clicking: its mini-game and its spirits provide it.`, 6500);
+    }, 1000);
+  }
+
+  FE.chooseAux = function (instant) {
+    if (FE.state.aux || st) return;
+    const box = $('aux');
+    if (!cv) {
+      cv = $('aux-c'); ctx = cv.getContext('2d');
+      cv.addEventListener('pointermove', e => {
+        if (!st || st.chosen != null) return;
+        const p = pose(); let best = -1;
+        st.opts.forEach((id, i) => { const h = holeAt(i, ringDeg(), p); if (Math.hypot(e.clientX - h.x, e.clientY - h.y) < HOLE_RAD * p.s * 1.3) best = i; });
+        if (best !== st.hover) { st.hover = best; $('aux-cap').textContent = best < 0 ? '' : `${st.opts[best]} · ${FE.MG_INFO[st.opts[best]].title}`; cv.style.cursor = best < 0 ? 'default' : 'pointer'; }
+      });
+      cv.addEventListener('click', e => { if (st && st.hover >= 0) pick(st.hover); });
+      addEventListener('resize', () => { if (st) size(); });
+      document.addEventListener('keydown', e => {
+        if (!st || st.chosen != null || e.ctrlKey || e.metaKey || e.altKey) return;
+        const i = st.opts.findIndex(id => FE.ELEMENTS.find(x => x.id === id).key === e.key.toLowerCase());
+        if (i >= 0) { e.preventDefault(); pick(i); }
+      }, true);
+    }
+    FE.auxOpen = true; size();
+    st = { opts: FE.ELEMENTS.map(e => e.id).filter(id => id !== FE.el()), t: 0, delay: instant ? .3 : 1.3, chosen: null, pickT: 0, hover: -1, leaving: false };
+    box.hidden = false; box.classList.toggle('instant', !!instant);
+    $('aux-title').classList.remove('on'); $('aux-cap').textContent = '';
+    void box.offsetWidth; box.classList.add('on');                                                // fade to black
+    setTimeout(() => $('aux-title').classList.add('on'), (st.delay + .6) * 1000);
+    last = performance.now(); if (!raf) raf = requestAnimationFrame(loop);
   };
 });

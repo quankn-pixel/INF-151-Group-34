@@ -56,6 +56,16 @@ FE.module(function (FE) {
     bedrock:  { name: 'bedrock',  note: 'builds 30% cheaper' }
   };
 
+  // ---- the auxiliary element (chosen after the first collapse) and the resource made from both ----
+  FE.AUX_GATH_RATE = 1;      // per second, each aux spirit (earned in the aux mini-game)
+  FE.FUSION = { 'air+fire': 'storm', 'air+water': 'mist', 'air+earth': 'dune', 'fire+water': 'steam', 'earth+fire': 'magma', 'earth+water': 'clay' };
+  FE.fusionOf = (a, b) => FE.FUSION[[a, b].sort().join('+')] || 'essence';
+  // special upgrades: each costs both elements. The crucible turns them into the fused resource; the catalyst makes more of it.
+  FE.FZ = {
+    crucible: { main: 5000,  aux: 40,  grow: 1.8, use: [20, 2] },   // use: main and aux per second, each
+    catalyst: { main: 20000, aux: 150, grow: 2.5 }
+  };
+
   FE.ICONS = {
     air:   '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
     water: '<path d="M12 3C9 7.5 5.5 11 5.5 15a6.5 6.5 0 0 0 13 0C18.5 11 15 7.5 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 15.5a3 3 0 0 0 2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',

@@ -35,6 +35,7 @@
         </div>
       </div>
       <div class="event" id="event">
+        <div class="mg-tabs" id="mg-tabs" hidden><button class="link" id="mgt-main" type="button"></button><button class="link" id="mgt-aux" type="button"></button></div>
         <h2 id="mg-title"></h2>
         <p class="mg-blurb" id="mg-blurb"></p>
         <div class="mg-stage"><canvas id="mg" width="480" height="320"></canvas></div>
@@ -88,6 +89,11 @@
       <div class="s-line"><span id="s-rate"></span></div>
       <div class="s-line"><span id="s-click"></span></div>
       <div class="s-line"><span id="s-star"></span></div>
+      <div class="s-main s-extra" id="s-aux" hidden><span class="s-ico" id="sa-ico"></span><span class="s-name" id="sa-name"></span><span class="s-n sm" id="sa-n">0</span></div>
+      <div class="s-line" id="sa-line" hidden></div>
+      <div class="s-main s-extra" id="s-fus" hidden><span class="s-ico fus" aria-hidden="true">&#10022;</span><span class="s-name" id="sf-name"></span><span class="s-n sm" id="sf-n">0</span></div>
+      <div class="s-line" id="sf-line" hidden></div>
+      <button class="link s-run" id="fz-run" type="button" hidden></button>
     </aside>
 
     <button class="nav up" id="nav-up" type="button" hidden>&#9650; layer 2</button>
@@ -110,6 +116,11 @@
 </div>
 
 <canvas id="nova" aria-hidden="true"></canvas>
+<div id="aux" hidden>
+  <canvas id="aux-c" aria-hidden="true"></canvas>
+  <div id="aux-title" role="status">Choose an auxiliary element:</div>
+  <div id="aux-cap" aria-live="polite"></div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- Plain scripts (no modules) so the game opens straight from the file system. Order matters. -->

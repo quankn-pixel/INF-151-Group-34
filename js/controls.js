@@ -44,7 +44,7 @@ FE.module(function (FE) {
   // ---- layers: wheel, arrow keys, swipe. Layer 2 sits above layer 1. ----
   let lastNav = 0;
   function nav(dir) {                                    // -1 = up, 1 = down
-    if (FE.collapsing || performance.now() - lastNav < 900) return;
+    if (FE.busy() || performance.now() - lastNav < 900) return;
     if (dir < 0 && FE.view === 1 && FE.state.layer2) { lastNav = performance.now(); FE.goto(2); }
     else if (dir > 0 && FE.view === 2) { lastNav = performance.now(); FE.goto(1); }
   }

@@ -70,6 +70,16 @@ FE.module(function (FE) {
       b.addEventListener('click', () => FE.buy(k));
       $('cards').appendChild(b);
     });
+    // special upgrades (after the auxiliary element is chosen): each costs both elements and makes the fused resource
+    const h = document.createElement('div'); h.className = 'cards-h'; h.id = 'sec-fz'; h.textContent = 'fusion'; h.hidden = true; $('cards').appendChild(h);
+    Object.keys(FE.FZ).forEach(k => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'card fz'; b.id = 'fz-' + k; b.hidden = true;
+      b.innerHTML = '<span class="card-title"></span><span class="card-cost"></span><span class="card-note"></span>';
+      b.addEventListener('click', () => FE.buyFz(k));
+      $('cards').appendChild(b);
+    });
+    $('fz-run').addEventListener('click', () => { FE.state.fzOn = !FE.state.fzOn; FE.render(); });
     // the round button / star
     const cb = $('core-btn');
     cb.addEventListener('pointerdown', e => {
@@ -180,6 +190,35 @@ FE.module(function (FE) {
       put(note, d);
       card.disabled = s.count < c;
       card.classList.toggle('excl', k === 'excl');
+    });
+
+    // the auxiliary element and the fused resource
+    const aux = s.aux, spirits = s.auxUp.gath;
+    $('s-aux').hidden = $('sa-line').hidden = !aux;
+    if (aux) {
+      put($('sa-ico'), svg(FE.ICONS[aux])); $('sa-ico').style.color = `var(--${aux}-ink)`;
+      $('sa-name').className = 's-name ink-' + aux;
+      text('sa-name', aux); text('sa-n', FE.fmt(s.auxCount));
+      text('sa-line', `${spirits} spirit${spirits === 1 ? '' : 's'} \u00b7 +${FE.fmt(FE.auxRate())}/s \u00b7 only from its mini-game`);
+    }
+    const crucible = s.fz.crucible, fused = !!aux && (crucible > 0 || s.fusion > 0);
+    $('s-fus').hidden = $('sf-line').hidden = !fused;
+    $('fz-run').hidden = !(aux && crucible > 0);
+    if (fused) {
+      text('sf-name', FE.fusionName()); text('sf-n', FE.fmt(s.fusion));
+      text('sf-line', (crucible ? `+${FE.fmt(FE.fusionRate())}/s${s.fzOn ? '' : ' (paused)'} \u00b7 ` : '') + 'its use is not decided yet');
+      text('fz-run', s.fzOn ? 'pause the crucible.' : 'run the crucible.');
+    }
+    $('sec-fz').hidden = !aux;
+    Object.keys(FE.FZ).forEach(k => {
+      const card = $('fz-' + k), show = !!aux && (k === 'crucible' || crucible > 0);
+      card.hidden = !show;
+      if (!show) return;
+      const c = FE.fzCost(k), n = s.fz[k], f = FE.fusionName(), [title, price, note] = card.children;
+      put(title, (k === 'crucible' ? `${f} crucible` : 'catalyst') + (n ? ` \u00d7${n}` : ''));
+      put(price, `<span class="${s.count >= c.main ? 'have' : ''}">${FE.fmt(s.count)} / ${FE.fmt(c.main)}</span> ${el} &middot; <span class="${s.auxCount >= c.aux ? 'have' : ''}">${FE.fmt(s.auxCount)} / ${FE.fmt(c.aux)}</span> ${aux}`);
+      put(note, k === 'crucible' ? `burns ${FE.FZ.crucible.use[0]} ${el} + ${FE.FZ.crucible.use[1]} ${aux} a second each, makes ${f}` : `${f} output \u00d71.5 each`);
+      card.disabled = s.count < c.main || s.auxCount < c.aux;
     });
 
     // layer 2

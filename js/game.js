@@ -11,9 +11,10 @@ FE.module(function (FE) {
   };
 
   // a click on the button or star (x, y in the 560-unit box the star is drawn in)
+  FE.busy = () => FE.collapsing || FE.auxOpen;                    // the supernova or the auxiliary choice is on screen
   FE.gather = function (x, y) {
     const s = FE.state;
-    if (!s.owned.length || FE.collapsing) return;
+    if (!s.owned.length || FE.busy()) return;
     const g = FE.clickGain();
     s.count += g;
     FE.core.click(x, y, FE.fmt(g));
@@ -22,7 +23,7 @@ FE.module(function (FE) {
 
   FE.buy = function (k) {
     const s = FE.state, c = FE.upCost(k);
-    if (FE.collapsing || s.count < c || !FE.UPS[k]) return;
+    if (FE.busy() || s.count < c || !FE.UPS[k]) return;
     s.count -= c; s.up[k]++;
     FE.render(); FE.save();
   };
@@ -30,7 +31,7 @@ FE.module(function (FE) {
   // condense: 10^tier x 10,000 of the element becomes a star of the next tier
   FE.condense = function () {
     const s = FE.state, cost = FE.nextStarCost();
-    if (FE.collapsing || cost == null || s.count < cost) return;
+    if (FE.busy() || cost == null || s.count < cost) return;
     s.count -= cost; s.tier++;
     FE.core.condense(s.tier);
     FE.render(); FE.save();
@@ -40,7 +41,7 @@ FE.module(function (FE) {
   FE.collapseArmed = 0; FE.collapsing = false;
   FE.collapse = function () {
     const s = FE.state;
-    if (FE.collapsing || s.tier < FE.COLLAPSE_TIER || FE.dustPreview() < 1) return;
+    if (FE.busy() || s.tier < FE.COLLAPSE_TIER || FE.dustPreview() < 1) return;
     if (!(FE.collapseArmed && Date.now() < FE.collapseArmed)) { FE.collapseArmed = Date.now() + 4000; FE.render(); setTimeout(FE.render, 4100); return; }
     FE.collapseArmed = 0; FE.collapsing = true;
     const dust = FE.dustPreview(), el = FE.el();
@@ -54,9 +55,20 @@ FE.module(function (FE) {
       FE.save(); FE.render();
     }, () => {
       FE.collapsing = false;
+      if (!s.aux) { FE.render(); FE.chooseAux(false); return; }         // the first collapse: the screen goes dark and a second element is chosen
       FE.toast(document.getElementById('page2') ? `${dust} stardust condensed. Layer 2 is above layer 1: scroll or click to move between them.` : `${dust} stardust condensed.`, 5200);
       FE.render();
     });
+  };
+
+  // special upgrades cost both elements; they make the fused resource
+  FE.buyFz = function (k) {
+    const s = FE.state;
+    if (FE.busy() || !s.aux || !FE.FZ[k] || (k === 'catalyst' && !s.fz.crucible)) return;
+    const c = FE.fzCost(k);
+    if (s.count < c.main || s.auxCount < c.aux) return;
+    s.count -= c.main; s.auxCount -= c.aux; s.fz[k]++;
+    FE.render(); FE.save();
   };
 
   // ---- every 100ms: what is built makes the element ----
@@ -66,7 +78,14 @@ FE.module(function (FE) {
     lastTick = t;
     const s = FE.state;
     if (!s.owned.length) return;
-    if (!FE.collapsing) s.count += FE.rate() * dt;
+    if (!FE.busy()) {
+      s.count += FE.rate() * dt;
+      if (s.aux) s.auxCount += FE.auxRate() * dt;
+      // the crucibles burn some of each element into the fused resource, while they have both
+      const c = s.fz.crucible, m = FE.FZ.crucible.use[0] * c * dt, a = FE.FZ.crucible.use[1] * c * dt;
+      FE.fusing = !!(s.aux && c && s.fzOn && s.count >= m && s.auxCount >= a);
+      if (FE.fusing) { s.count -= m; s.auxCount -= a; s.fusion += c * FE.catalystMult() * dt; }
+    }
     if (!document.hidden) s.played += Math.min(dt, 1);
     FE.render();
   }, 100);
@@ -100,6 +119,7 @@ FE.module(function (FE) {
     if (chosen && !FE.state.owned.length) FE.discover(chosen);
     if (FE.clearedOldSave) FE.toast('The game was updated, so your old save was cleared.', 5000);
     FE.render();
+    if (FE.state.owned.length && FE.state.collapses > 0 && !FE.state.aux) { FE.goto(2, true); FE.chooseAux(true); }     // reloaded before choosing: ask again
   }
 
   // ---- timers ----

@@ -15,7 +15,9 @@ FE.module(function (FE) {
   const rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const rgba = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
 
-  let ctx, running = null, T = 0, last = performance.now(), result = '';
+  let ctx, running = null, runningTab = 'main', tab = 'main', T = 0, last = performance.now(), result = '';
+  // two games: the main element's pays stardust and a buff; the auxiliary element's pays that element and spirits that gather it
+  const tabEl = t => (t === 'aux' && FE.state.aux) ? FE.state.aux : FE.el();
 
   const INFO = {
     air:   { title: 'catch the currents', buff: 'tailwind', thresholds: [8, 16, 24, 32], minBuff: 4, unit: 'caught',
@@ -207,8 +209,20 @@ FE.module(function (FE) {
   const MAKE = { air: airGame, fire: fireGame, water: waterGame, earth: earthGame };
 
   // ---- the shell: starting, finishing, paying out ----
-  const ready = () => Date.now() >= FE.state.mg.readyAt;
+  const readyKey = t => t === 'aux' ? 'auxReadyAt' : 'readyAt';
+  const ready = t => Date.now() >= FE.state.mg[readyKey(t || tab)];
+  function finishAux(g) {
+    const el = FE.state.aux, info = INFO[el], st = FE.state, score = g.score_();
+    const n = info.thresholds.filter(t => score >= t).length, amount = Math.round(score * 40 * (FE.has('echo') ? 2 : 1));
+    const spirits = n >= 4 ? 2 : n >= 2 ? 1 : 0;
+    st.mg.auxPlays++; st.mg.auxBest = Math.max(st.mg.auxBest, score); st.mg.auxReadyAt = Date.now() + FE.MG_COOLDOWN * 1000;
+    st.auxCount += amount; st.auxUp.gath += spirits;
+    result = `${score} ${info.unit}. ${FE.fmt(amount)} ${el} gathered.` + (spirits ? ` ${spirits === 1 ? 'A spirit of' : spirits + ' spirits of'} ${el} will now gather it for you (+${FE.AUX_GATH_RATE}/s each).` : ' Reach more to earn a spirit that gathers it for you.');
+    running = null;
+    FE.save(); FE.render();
+  }
   function finish(g) {
+    if (runningTab === 'aux') return finishAux(g);
     const el = FE.el(), info = INFO[el], st = FE.state, score = g.score_();
     const echo = FE.has('echo');
     const dust = info.thresholds.filter(t => score >= t).length * (echo ? 2 : 1);
@@ -225,9 +239,10 @@ FE.module(function (FE) {
 
   FE.startMini = function () {
     if (running || !ready() || !FE.el()) return;
-    running = MAKE[FE.el()](); result = '';
+    runningTab = tab; running = MAKE[tabEl(tab)](); result = '';
     FE.render();
   };
+  FE.setMiniTab = t => { if (running || (t === 'aux' && !FE.state.aux)) return; tab = t; result = ''; FE.render(); };
 
   FE.buildMini = function () {
     const cv = $('mg'); ctx = cv.getContext('2d');
@@ -237,6 +252,8 @@ FE.module(function (FE) {
       running.click((e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height);
     });
     $('mg-start').addEventListener('click', () => FE.startMini());
+    $('mgt-main').addEventListener('click', () => FE.setMiniTab('main'));
+    $('mgt-aux').addEventListener('click', () => FE.setMiniTab('aux'));
     requestAnimationFrame(function loop(now) {
       requestAnimationFrame(loop);
       const dt = Math.min(.05, (now - last) / 1000); last = now; T += dt;
@@ -246,8 +263,8 @@ FE.module(function (FE) {
         running.draw();
         if (running.over) finish(running);
       } else {
-        backdrop(FE.el(), T);
-        const p = FE.PAL[FE.el()]; glow(W / 2, H / 2, 150, p.glow, .35 + .08 * Math.sin(T * 1.6));
+        backdrop(tabEl(tab), T);
+        const p = FE.PAL[tabEl(tab)]; glow(W / 2, H / 2, 150, p.glow, .35 + .08 * Math.sin(T * 1.6));
         text(ready() ? 'ready' : 'resting...', W / 2, H / 2 + 8, 28, '#dfe6ff', 'center');
       }
     });
@@ -256,10 +273,22 @@ FE.module(function (FE) {
   // called from FE.render
   FE.renderMini = function () {
     const el = FE.el(); if (!el) return;
-    const info = INFO[el], st = FE.state, wait = Math.max(0, Math.ceil((st.mg.readyAt - Date.now()) / 1000));
+    const st = FE.state, aux = st.aux;
+    if (!aux && tab === 'aux') tab = 'main';
+    if (running) tab = runningTab;
+    const te = tabEl(tab), info = INFO[te], isAux = tab === 'aux';
+    const wait = Math.max(0, Math.ceil((st.mg[readyKey(tab)] - Date.now()) / 1000));
     const set = (id, t) => { const e = $(id); if (e.textContent !== t) e.textContent = t; };
-    set('mg-title', info.title); set('mg-blurb', info.blurb);
-    set('mg-status', running ? 'in play' : wait ? `resting: ${FE.clock(wait)}` : st.mg.plays ? `best: ${st.mg.best} ${info.unit}` : 'ready');
+    $('mg-tabs').hidden = !aux;
+    if (aux) {
+      set('mgt-main', `${el}: ${INFO[el].title}`); set('mgt-aux', `${aux}: ${INFO[aux].title}`);
+      $('mgt-main').classList.toggle('on', !isAux); $('mgt-aux').classList.toggle('on', isAux);
+      $('mgt-main').disabled = $('mgt-aux').disabled = !!running;
+    }
+    set('mg-title', info.title);
+    set('mg-blurb', info.blurb + (isAux ? ` This one pays ${te} itself, and spirits that gather it: it cannot be gathered any other way.` : aux ? ' This one pays stardust and a buff.' : ''));
+    const plays = isAux ? st.mg.auxPlays : st.mg.plays, best = isAux ? st.mg.auxBest : st.mg.best;
+    set('mg-status', running ? 'in play' : wait ? `resting: ${FE.clock(wait)}` : plays ? `best: ${best} ${info.unit}` : 'ready');
     set('mg-result', result);
     const b = $('mg-start'); b.disabled = !!running || wait > 0;
     set('mg-start', running ? 'playing...' : 'begin');
