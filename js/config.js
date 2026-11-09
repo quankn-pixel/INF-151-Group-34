@@ -25,9 +25,8 @@ FE.module(function (FE) {
     first: 45,        // seconds of play before the first surge
     every: 75,        // seconds between surges (counted from when one is played or skipped)
     minOwn: 50,       // of your first element held before the timer starts, so it never appears in the first clicks
-    rounds: 6,        // rounds in the timing game; a perfect hit is worth 2
-    lump: 0.05,       // a perfect game pays this share of storage, in your first element
-    buffMax: 1,       // a perfect game adds this much to production (x2.0); the boost scales with your score
+    lump: 0.05,       // a top score (all four thresholds of the game) pays this share of storage, in your first element
+    buffMax: 1,       // a top score adds this much to production (x2.0); it scales with how many thresholds you pass
     buffSec: 30       // how long the boost lasts
   };
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
