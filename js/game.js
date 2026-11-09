@@ -99,7 +99,7 @@ FE.module(function (FE) {
     if (visible && wasVisible) {               // the first tick back counts nothing: dt may span the hidden time
       const step = Math.min(dt, 1);
       s.played += step;
-      if (FE.combatTick(step)) changed = true;
+      if (!FE.surgeOpen && FE.combatTick(step)) changed = true;     // the fight waits while a surge is open
     }
     wasVisible = visible;
     if (changed) FE.render();

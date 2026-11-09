@@ -130,6 +130,14 @@ button.link:disabled { color: var(--muted); text-decoration: none; cursor: defau
 .star .star-line { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 0.875em; color: var(--muted); }
 .star .star-line span:first-child { color: var(--fg); }
 .star .meter { --c: var(--fire-ink); margin-top: 6px; }
+.surge-btn { animation: surge-pulse 2.4s ease-in-out infinite; }
+.surge-btn[hidden], .surge-buff[hidden] { display: none; }
+.surge-box { width: min(32em, 100%); }
+.surge-box canvas { display: block; width: 100%; aspect-ratio: 480 / 320; background: #0b0b12; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.surge-result { min-height: 1.4em; margin: 0; }
+.surge-buff { font-size: 0.875em; color: var(--muted); font-variant-numeric: tabular-nums; }
+@keyframes surge-pulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 16px -3px var(--c); } }
+@media (prefers-reduced-motion: reduce) { .surge-btn { animation: none; } }
 .settings-box { width: min(26em, 100%); gap: 16px; }
 .set-row { display: grid; grid-template-columns: 7em 1fr 3em; gap: 12px; align-items: baseline; }
 .set-row .set-val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.875em; }

@@ -31,6 +31,8 @@
     <p class="goal" id="goal" aria-live="polite" hidden></p>
     <div class="mult" id="mult" hidden>×1.0</div>
     <div class="stack" id="gather"></div>
+    <button class="el pick solo surge-btn" id="surge-btn" type="button" hidden></button>
+    <div class="surge-buff" id="surge-buff" hidden></div>
 
     <div class="box builds" id="builds-box" hidden>
       <span class="label">builds</span>
@@ -94,6 +96,16 @@
   <span><button class="link" id="settings-btn" type="button" aria-haspopup="dialog">settings.</button></span>
 </div>
 
+<div class="overlay" id="surge-overlay" role="dialog" aria-modal="true" aria-labelledby="surge-title" hidden>
+  <div class="box end-box surge-box">
+    <span class="label" id="surge-title">surge</span>
+    <canvas id="surge-cv" aria-label="The surge mini-game"></canvas>
+    <p class="stats" id="surge-blurb"></p>
+    <p class="surge-result" id="surge-result" aria-live="polite"></p>
+    <div class="end-btns"><button class="link" id="surge-skip" type="button">skip.</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
   <div class="box end-box settings-box">
     <span class="label" id="settings-title">settings</span>
@@ -147,6 +159,8 @@
 <script src="js/audio.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/star.js"></script>
+<script src="js/minigames.js"></script>
+<script src="js/surge.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/combat.js"></script>
 <script src="js/crafting.js"></script>
