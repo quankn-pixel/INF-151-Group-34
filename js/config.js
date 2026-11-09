@@ -20,6 +20,16 @@ FE.module(function (FE) {
   FE.CAP = 10000;         // total storage across all elements
   FE.STAR_TIERS = [10, 100, 500, 2000, 10000];   // star growth needed to reach tiers 1 to 5
   FE.STAR_RATE = 1;       // star growth a second, for each crystal held
+  // surge: a timing mini-game offered now and then (see surge.js). It pays lump x CAP x score share, plus a production boost.
+  FE.SURGE = {
+    first: 45,        // seconds of play before the first surge
+    every: 75,        // seconds between surges (counted from when one is played or skipped)
+    minOwn: 50,       // of your first element held before the timer starts, so it never appears in the first clicks
+    rounds: 6,        // rounds in the timing game; a perfect hit is worth 2
+    lump: 0.05,       // a perfect game pays this share of storage, in your first element
+    buffMax: 1,       // a perfect game adds this much to production (x2.0); the boost scales with your score
+    buffSec: 30       // how long the boost lasts
+  };
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
 
   // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier

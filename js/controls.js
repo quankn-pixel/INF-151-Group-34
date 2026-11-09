@@ -63,7 +63,7 @@ FE.module(function (FE) {
       else if (!settings.hidden) closeSettings();
       return;
     }
-    if (!$('end-overlay').hidden || !settings.hidden) return;   // while the end message or settings are up, keys only close them
+    if (!$('end-overlay').hidden || !settings.hidden || FE.surgeOpen) return;   // while the end message or settings are up, keys only close them
     const el = FE.ELEMENTS.find(x => x.key === e.key.toLowerCase());
     if (el && (FE.state.owned.includes(el.id) || FE.state.picking)) { e.preventDefault(); FE.act(el.id); }
   });
