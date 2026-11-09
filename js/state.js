@@ -12,6 +12,7 @@ FE.module(function (FE) {
       up: perElement(() => ({ res: 0, struct: 0 })),   // per element: resonance level, structures owned (reset by condensing)
       seen: {},             // 'res-air', 'struct-air', 'cond' -> true once that build has faded in (kept when condensing)
       crystals: 0,          // tier 1 crystals; each raises the max multiplier
+      growth: 0,            // star growth: crystals feed it, and it passes STAR_TIERS (see star.js); kept when condensing
       planets: 0,           // the first crystal also forms a planet, which opens the 2nd element
       spells: [],           // { el, power }, oldest first
       enemy: null,          // the vagrant here now: { el, hp, max, left, time (seconds), leader }

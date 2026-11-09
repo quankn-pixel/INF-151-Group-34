@@ -18,6 +18,8 @@ FE.module(function (FE) {
   ];
 
   FE.CAP = 10000;         // total storage across all elements
+  FE.STAR_TIERS = [10, 100, 500, 2000, 10000];   // star growth needed to reach tiers 1 to 5
+  FE.STAR_RATE = 1;       // star growth a second, for each crystal held
   FE.BALANCE_AT = 100;    // the balance box appears once this many elements exist
 
   // multiplier: +0.1 per icon on screen (no limit on icons), never above the max multiplier
