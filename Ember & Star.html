@@ -3,222 +3,390 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ember &amp; Star</title>
+<title>Four Elements</title>
 <style>
-:root{--bg:#050303;--panel:#0d0707;--line:#3a0f0c;--fire:#ff3b1f;--ember:#ff7a3c;--text:#f3d9d2;--dim:#8a5d55;
+:root{--fire:#ff3b1f;--ember:#ff7a3c;--glow:rgba(255,59,31,.35);--line:#3a0f0c;--dim:#8a5d55;--bg:#050303;--panel:#0d0707;--text:#f3d9d2;--bgrad:#1a0505;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif}
-#app{display:flex;height:100%}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif;overflow:hidden}
+#track{display:flex;width:300%;height:100%;transition:transform .6s cubic-bezier(.6,0,.2,1)}
+.screen{width:33.3333%;height:100%;overflow:auto}
+#app{display:flex}
 .side{flex:1 1 50%;min-width:0;display:flex;flex-direction:column;padding:24px;overflow:auto}
-#left{border-right:1px solid var(--line);background:var(--panel)}
-#right{overflow-x:hidden;align-items:center;background:radial-gradient(ellipse at 50% 45%,#1a0505 0%,var(--bg) 70%)}
+#left{border-right:1px solid var(--line);background:var(--panel);padding-left:48px}
+#right{align-items:center;background:radial-gradient(ellipse at 50% 45%,var(--bgrad) 0%,var(--bg) 70%);overflow-x:hidden;padding-right:48px}
 .res{display:flex;align-items:center;gap:14px}
-.res svg{width:52px;height:64px;flex:none;filter:drop-shadow(0 0 10px #ff3b1f99)}
+.res svg{width:52px;height:64px;flex:none;filter:drop-shadow(0 0 10px var(--glow))}
 .big{font-size:50px;line-height:1;color:var(--fire);font-variant-numeric:tabular-nums}
 .sub{color:var(--dim);font-size:19px;margin-top:4px}
-h3{margin:28px 0 10px;font-weight:normal;font-size:19px;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px}
-.up{display:block;width:100%;text-align:left;margin:0 0 10px;padding:12px 14px;background:#000;color:var(--text);
-border:1px solid var(--line);border-radius:4px;font:inherit;font-size:18px;cursor:pointer}
-.up.info{cursor:default;border-color:#5a1510;border-style:dashed;background:transparent}
+h3{margin:22px 0 10px;font-weight:normal;font-size:19px;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px}
+.up{display:block;width:100%;text-align:left;margin:0 0 10px;padding:12px 14px;background:#000;color:var(--text);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:18px;cursor:pointer}
+.up.info{cursor:default}
 .up b{display:block;color:var(--fire);font-weight:normal;font-size:20px;margin-bottom:2px}
+.up b small{color:var(--ember);font-size:16px}
 .up span{color:var(--dim);font-size:16px}
 button.up:hover:not(:disabled){border-color:var(--fire)}
 button.up:disabled{opacity:.45;cursor:not-allowed}
-button.up:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
-#cond{margin-top:auto;border-color:#7a1a10;background:linear-gradient(180deg,#1a0504,#000)}
-#cond:not(:disabled){border-color:var(--fire);box-shadow:0 0 18px #ff3b1f40}
+button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.row2{display:flex;gap:10px;margin-bottom:10px}.row2 .up{margin:0}
+#nx:disabled{pointer-events:none}#nxw[data-tip]:hover::after{left:auto;right:0;top:calc(100% + 8px)}
+.nx{width:96px;text-align:center;flex:none;height:100%}.nx small{display:block;font-size:15px;color:var(--dim)}
+#tabs{display:flex;gap:8px;margin-top:22px}
+.tab{flex:1;padding:10px;background:#000;color:var(--dim);border:1px solid var(--line);border-bottom:0;font:inherit;font-size:17px;cursor:pointer;border-radius:4px 4px 0 0}
+.tab.on{color:var(--text);border-color:var(--fire);background:var(--bgrad)}
+.pane{border:1px solid var(--line);border-top:0;padding:14px;flex:1}
+#cond:not(:disabled){border-color:var(--fire);box-shadow:0 0 18px var(--glow)}
 .hide{display:none!important}
+.tip{display:inline-block;width:24px;height:24px;line-height:22px;text-align:center;border:1px solid var(--dim);border-radius:50%;font-size:16px;color:var(--dim);cursor:help;margin-left:8px}
+[data-tip]{position:relative}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:30px;top:-6px;width:260px;padding:10px;background:#000;border:1px solid var(--fire);color:var(--text);font-size:16px;z-index:50;border-radius:4px;white-space:normal}
 #reset{align-self:flex-start;margin-top:12px;padding:8px 14px;background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:16px;cursor:pointer}
-#cond.hide+#reset{margin-top:auto}
-#reset:hover{color:var(--text);border-color:var(--fire)}
-#reset.arm{color:#fff;background:#7a1208;border-color:var(--fire)}
+#reset:hover{color:var(--text);border-color:var(--fire)}#reset.arm{color:#fff;background:#7a1208;border-color:var(--fire)}
 #stats{display:flex;flex-direction:column;align-items:center}
-#stats .res svg{width:48px;height:48px;filter:drop-shadow(0 0 10px #ff3b1fb0)}
+#stats .res svg{width:48px;height:48px}#stats circle{fill:var(--fire)}#stats path{stroke:var(--ember)}
 #stats .row{display:flex;gap:28px;justify-content:center;margin-top:10px;font-size:23px;color:var(--dim)}
 #stats .row b{color:var(--ember);font-weight:normal}
-#stats .sub b{color:var(--ember);font-weight:normal}
 #wrap{flex:1;width:100%;min-height:420px;position:relative}
-canvas{position:absolute;inset:0;width:100%;height:100%}
-#prog{width:min(460px,100%);margin-top:8px;text-align:center}
-#eta{font-size:68px;line-height:1;color:var(--fire);text-shadow:0 0 22px #ff3b1fcc;font-variant-numeric:tabular-nums;margin:6px 0 14px}
-#bar{height:16px;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-#fill{height:100%;width:0;background:linear-gradient(90deg,#7a1208,var(--fire),var(--ember))}
+canvas#cv{position:absolute;inset:0;width:100%;height:100%}
+#prog{width:min(460px,100%);margin-top:8px;text-align:center;position:relative}
 #pl{font-size:21px;color:var(--dim)}
 #etaw{position:relative;display:inline-block}
-.shave{position:absolute;left:100%;top:8px;margin-left:16px;white-space:nowrap;pointer-events:none;z-index:5;font-size:46px;font-weight:bold;line-height:1;color:#ffd27a;text-shadow:0 0 6px #fff4,0 0 16px #ff9a2e,0 0 34px #ff3b1f;animation:shave 2.6s ease-out forwards}
+#eta{font-size:68px;line-height:1;color:var(--fire);text-shadow:0 0 22px var(--glow);font-variant-numeric:tabular-nums;margin:6px 0 14px}
+#bar{height:16px;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#fill{height:100%;width:0;background:linear-gradient(90deg,var(--line),var(--fire),var(--ember))}
+#novab{margin:8px 0;width:100%;text-align:center}#novab b{font-size:30px}
+.shave{position:absolute;left:100%;top:8px;margin-left:16px;white-space:nowrap;pointer-events:none;z-index:5;font-size:46px;font-weight:bold;line-height:1;color:#ffd27a;text-shadow:0 0 6px #fff4,0 0 16px var(--ember),0 0 34px var(--fire);animation:shave 2.6s ease-out forwards}
 @keyframes shave{0%{opacity:0;transform:translateY(10px) scale(.6)}10%{opacity:1;transform:translateY(0) scale(1.3)}30%{opacity:1;transform:translateY(-40px) scale(1.1)}100%{opacity:0;transform:translateY(-420px) scale(1)}}
-@media(max-width:700px){#app{flex-direction:column}.side{flex-basis:auto}#left{border-right:0;border-bottom:1px solid var(--line)}#right{min-height:780px}}
-@media(prefers-reduced-motion:reduce){button.up{transition:none}}
+/* edges */
+.edge{position:fixed;top:0;bottom:0;width:38px;z-index:20;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ember)}
+.edge.l{left:0}.edge.r{right:0}.edge svg{width:28px;height:28px;transition:transform .2s}
+.edge.l:hover:not(.off){background:linear-gradient(90deg,var(--glow),transparent)}
+.edge.r:hover:not(.off){background:linear-gradient(270deg,var(--glow),transparent)}
+.edge:hover:not(.off) svg{filter:drop-shadow(0 0 8px var(--ember))}
+.edge.l:hover:not(.off) svg{transform:translateX(-5px)}.edge.r:hover:not(.off) svg{transform:translateX(5px)}
+.edge.off{color:#444;cursor:not-allowed}
+.edge[data-tip]:hover::after{left:auto;right:46px;top:50%;transform:translateY(-50%)}
+.edge.l[data-tip]:hover::after{right:auto;left:46px}
+/* minigame */
+#mg{display:flex;flex-direction:column;padding:14px 48px;background:radial-gradient(ellipse at 50% 30%,var(--bgrad),var(--bg) 75%)}
+#mgtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
+#mgtop h2{margin:0;font-weight:normal;font-size:30px;color:var(--fire)}#mgtop>div{text-align:center}
+#mgtimer{font-size:68px;line-height:1;color:var(--fire);text-shadow:0 0 22px var(--glow)}
+#mgbody{flex:1;min-height:0;display:flex;gap:24px;margin-top:10px}
+#gridcol{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+#det{min-height:62px;display:flex;align-items:center;gap:6px 20px;flex-wrap:wrap;padding:0 2px 8px}
+#det b{font-weight:normal;font-size:24px;color:var(--fire)}#det span{color:var(--dim);font-size:18px}#det .up{width:auto;margin:0;padding:8px 18px}
+#gridwrap{flex:1;min-width:0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
+#grid{display:grid;gap:6px;width:min(100cqw,100cqh);height:min(100cqw,100cqh)}
+.cell{background:#000;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;min-width:0;min-height:0}
+.cell svg{width:78%;height:78%;max-width:78%;max-height:78%;display:block;pointer-events:none}.cell[draggable=true]{cursor:grab}
+.cell.sel{border-color:var(--ember);box-shadow:0 0 14px var(--glow)}
+.cell.pop svg{animation:pop .55s}
+@keyframes pop{0%{transform:scale(.4);filter:brightness(3)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+.ring{position:absolute;inset:0;border-radius:8px;pointer-events:none;animation:ring .8s ease-out forwards}
+@keyframes ring{0%{box-shadow:0 0 0 0 var(--c),0 0 24px 8px var(--c);opacity:1}100%{box-shadow:0 0 0 30px transparent,0 0 60px 30px transparent;opacity:0}}
+.ring u{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);transform:rotate(var(--a)) translateY(0);animation:sh .8s ease-out forwards}
+@keyframes sh{to{transform:rotate(var(--a)) translateY(-90px);opacity:0}}
+#mgside{width:min(380px,40%);overflow:auto;display:flex;flex-direction:column}#mgside h3{margin-top:12px}
+.hi{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:17px}.hi svg{width:34px;height:34px;flex:none}.hi i{color:var(--dim);font-style:normal}
+/* stele */
+#stele{display:flex;gap:20px;padding:14px 48px;background:radial-gradient(ellipse at 50% 0,#2c2c30,#0b0b0d 70%);color:#ccc}
+#sl,#sr{flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;min-width:0;align-items:center;text-align:center}
+#sl h3,#sr h3{border:0;color:#aaa}
+#stbody{width:min(440px,46%);display:flex;flex-direction:column;background:linear-gradient(90deg,#38383c,#55555a 50%,#323236);border:3px solid #17171a;border-radius:200px 200px 6px 6px;padding-bottom:14px;box-shadow:0 0 50px #000}
+#orb{width:100px;height:100px;margin:26px auto 4px;border-radius:50%;position:relative;overflow:hidden;box-shadow:0 0 30px #fff3;flex:none}
+#orb i{position:absolute;inset:-50%;animation:spin 16s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+#orb::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff6,transparent 45%,#000a 85%)}
+#emult{text-align:center;color:#bbb;font-size:18px;margin-bottom:6px}
+#secs{flex:1;display:flex;flex-direction:column;min-height:0}
+.sec{flex:1;margin:5px 16px;border:2px solid #202023;background:#2b2b2f;color:#777;padding:8px 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;box-shadow:inset 0 0 12px #000}
+.sec h4{margin:0;font-weight:normal;font-size:21px}.sec p{margin:2px 0;font-size:17px}.sec i{font-size:15px;opacity:.8}.sec em{font-size:15px;font-style:normal;margin-top:2px}
+.sec.lit{color:#fff;border-color:var(--c);background:linear-gradient(135deg,color-mix(in srgb,var(--c) 45%,#222),#222);box-shadow:inset 0 0 22px var(--c),0 0 20px var(--c)}
+.sec.lit h4{color:var(--e)}
+.pk{display:flex;flex-direction:column;align-items:center;gap:6px;background:#000;border:2px solid var(--c);color:var(--c);font:inherit;font-size:22px;padding:16px 20px;border-radius:6px;cursor:pointer;width:min(240px,100%)}
+.pk:hover{box-shadow:0 0 24px var(--c)}.pk svg{width:64px;height:64px}.pk small{font-size:15px;color:#aaa;max-width:200px}
+/* overlays */
+.ov{position:fixed;inset:0;background:#000e;display:none;align-items:center;justify-content:center;z-index:60;flex-direction:column;gap:18px;text-align:center;padding:20px}
+.box{background:var(--panel);border:1px solid var(--fire);padding:26px;max-width:540px;border-radius:6px;font-size:19px;box-shadow:0 0 40px var(--glow)}
+.box button{display:inline-block;width:auto;text-align:center;margin:12px 6px 0}
+#picks{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+#nova{position:fixed;inset:0;z-index:100;display:none}
+@media(max-width:700px){#app{flex-direction:column}.side{flex-basis:auto}#left{border-right:0;border-bottom:1px solid var(--line)}#right{min-height:780px}#mgbody,#stele{flex-direction:column}#mgside{width:100%}#gridwrap{height:min(92vw,520px);flex:none}#stbody{width:100%}}
 </style>
 </head>
 <body>
-<div id="app">
- <section class="side" id="left">
-  <div class="res">
-   <svg viewBox="0 0 40 50"><path d="M20 2C22 14 34 20 34 34a14 14 0 0 1-28 0c0-8 5-12 8-16 1 5 3 7 5 8C18 18 17 10 20 2z" fill="#ff3b1f"/><path d="M20 24c1 6 8 9 8 16a8 8 0 0 1-16 0c0-4 3-6 5-9 1 3 2 4 3 4-1-4-1-8 0-11z" fill="#ffa23c"/></svg>
-   <div><div class="big" id="fire">0</div><div class="sub"><span id="fps">2</span> fire / second</div></div>
-  </div>
-  <h3>Upgrades</h3>
-  <button class="up" id="u1"></button>
-  
-  <button class="up hide" id="u3"></button>
-  <div style="flex:1"></div>
-  <button class="up hide" id="cond"></button>
-  <div class="up info hide" id="u2"></div>
-  <button id="reset">Reset all progress</button>
- </section>
- <section class="side" id="right">
-  <div id="stats">
-   <div class="res"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="8" fill="#ff3b1f"/><path d="M20 1v8M20 31v8M1 20h8M31 20h8M7 7l6 6M27 27l6 6M33 7l-6 6M13 27l-6 6" stroke="#ff7a3c" stroke-width="2.5" stroke-linecap="round"/></svg><div><div class="big" id="growth">0</div><div class="sub"><span id="gps">0</span> star growth / second</div></div></div>
-   <div class="row"><span><b id="cry">0</b> Fire Crystals</span><span>Tier <b id="tier">0</b></span></div>
-  </div>
-  <div id="wrap"><canvas id="cv" aria-label="Your star"></canvas></div>
-  <div id="prog">
-   <div id="pl">Tier 0 to Tier 1</div><div id="etaw"><div id="eta">--:--</div></div><div id="bar"><div id="fill"></div></div>
+<div id="track">
+ <section class="screen" id="mg">
+  <div id="mgtop">
+   <div style="display:flex;align-items:center;gap:28px"><div style="text-align:center"><div class="sub">next element in</div><div id="mgtimer">20</div></div><div style="text-align:left"><h2>Elemental Forge</h2><div class="sub">Drag matching elements together to merge</div></div></div>
    
+   <div><div class="sub">sacrifice points</div><div class="big" id="pts">0</div></div>
   </div>
+  <div id="mgbody">
+   <div id="gridcol"><div id="det"></div><div id="gridwrap"><div id="grid"></div></div></div>
+   <aside id="mgside">
+    
+    <button class="up" id="summon"></button><button class="up" id="multb"></button><button class="up" id="expb"></button>
+    <div style="margin-top:auto"><h3>Highest creations</h3><div id="hi"></div></div>
+   </aside>
+  </div>
+ </section>
+ <section class="screen" id="app">
+  <section class="side" id="left">
+   <div class="res"><div id="ricon"></div><div><div class="big" id="fire">0</div><div class="sub"><span id="fps">0</span> <span id="rn"></span> / second</div></div></div>
+   <div class="sub" id="sf" style="color:var(--ember);margin-top:8px"></div>
+   <h3>Upgrades</h3>
+   <div id="tu">
+    <div class="row2"><button class="up" id="u1"></button><div id="nxw" style="position:relative;flex:none;display:flex"><button class="up nx" id="nx"></button></div></div>
+    <button class="up hide" id="u3"></button>
+   </div>
+   <div style="flex:1"></div><h3>Reset · permanent progress</h3><div id="tr">
+    <div class="sub" style="margin:0 0 12px">Condense your progress into a crystal <span class="tip" id="ctip" data-tip="">?</span></div>
+    <button class="up hide" id="cond"></button>
+    <div class="sub" id="cnone">Reach 100 to unlock.</div>
+   </div>
+   <button id="reset">Reset all progress</button>
+  </section>
+  <section class="side" id="right">
+   <div id="stats">
+    <div class="res"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="8"/><path d="M20 1v8M20 31v8M1 20h8M31 20h8M7 7l6 6M27 27l6 6M33 7l-6 6M13 27l-6 6" fill="none" stroke-width="2.5" stroke-linecap="round"/></svg>
+     <div><div class="big" id="growth">0</div><div class="sub"><span id="gps">0</span> star growth / second</div></div></div>
+    <div class="row"><span><b id="cry">0</b> <span id="cname"></span></span><span>Tier <b id="tier">0</b></span></div>
+   </div>
+   <div id="wrap"><canvas id="cv" aria-label="Your star"></canvas></div>
+   <div id="prog"><div id="pl">Tier 0 to Tier 1</div><div id="etaw"><div id="eta">--:--</div></div>
+    <button class="up hide" id="novab"></button><div id="bar"><div id="fill"></div></div></div>
+  </section>
+ </section>
+ <section class="screen" id="stele">
+  <div id="sl"></div>
+  <div id="stbody"><div id="orb"><i></i></div><div id="emult"></div><div id="secs"></div></div>
+  <div id="sr"><h3>Create Planet</h3><div style="max-width:260px;font-size:17px;color:#999">Your planet will be shaped by the essences you hold, and most of all by the essences you are missing.</div><button class="pk" id="mkplanet" style="--c:#cfcfd4">Create Planet</button></div>
  </section>
 </div>
+<div class="edge l" id="eL"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l-8 8 8 8"/></svg></div>
+<div class="edge r" id="eR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4l8 8-8 8"/></svg></div>
+<div class="ov" id="pick" style="background:#000"><div style="font-size:34px">Choose your element</div><div style="color:#999">Your first cycle will be built from this element.</div><div id="picks"></div></div>
+<div class="ov" id="modal"></div>
+<div class="ov" id="done"></div>
+<canvas id="nova"></canvas>
 <script>
-// ---------- state ----------
-const CUM=[10,100,500,2000,10000]; // total growth needed to reach each tier
-
-let S={fire:0,lvl:0,starUp:false,gLvl:0,crystals:0,growth:0,unlocked:false};
-try{const s=JSON.parse(localStorage.getItem('emberstar')||'null');if(s)S=Object.assign(S,s)}catch(e){}
 const $=id=>document.getElementById(id);
+const EL=['fire','water','earth','air'],CUM=[10,100,500,2000,10000];
+const TH={
+fire:{n:'Fire',k:'Kindle',c:'255,59,31',e:'255,122,60',h:'255,170,90',line:'#3a0f0c',dim:'#8a5d55',bg:'#050303',p:'#0d0707',t:'#f3d9d2',g:'#1a0505',fl:'Heat, light, and the will to burn.'},
+water:{n:'Water',k:'Stream',c:'47,139,255',e:'111,208,255',h:'190,240,255',line:'#0c2740',dim:'#5d7a8a',bg:'#030508',p:'#070d12',t:'#d9ecf3',g:'#05121f',fl:'Tides, rain, and the patience of seas.'},
+earth:{n:'Earth',k:'Sow',c:'143,191,63',e:'201,162,74',h:'230,220,140',line:'#26300f',dim:'#7a8a5d',bg:'#040503',p:'#0a0d07',t:'#e6ecd2',g:'#0f1a05',fl:'Stone, soil, and slow, certain growth.'},
+air:{n:'Air',k:'Gust',c:'190,214,235',e:'234,246,255',h:'255,255,255',line:'#26323d',dim:'#7a8a96',bg:'#040506',p:'#090c0f',t:'#e8f0f6',g:'#0f161d',fl:'Wind, sky, and the freedom to drift.'},
+none:{n:'Star',k:'Spark',c:'150,150,150',e:'200,200,200',h:'255,255,255',line:'#2a2a2d',dim:'#777',bg:'#050505',p:'#0c0c0d',t:'#ddd',g:'#111',fl:''}};
+const ST={fire:['Heat & Light','Every world needs a sun-warmed crust to cast its first shadows.'],water:['Seas & Rain','Oceans to cradle the first living thing.'],earth:['Stone & Soil','Solid ground, mountains and a core to anchor it all.'],air:['Wind & Sky','An atmosphere to breathe, to carry cloud and song.']};
+const NM={fire:['Spark','Ember','Flame','Inferno'],water:['Droplet','Puddle','Stream','Torrent'],earth:['Dust','Dirt','Rock','Boulder'],air:['Wisp','Breeze','Gust','Cyclone']};
+const DEF=()=>({el:null,fire:0,lvl:0,gLvl:0,crystals:0,growth:0,unlocked:false,ess:[],t:0,cryTot:0,nova:0,
+ mg:{init:false,grid:Array(25).fill(null),n:5,pts:0,mult:0,exp:0,timer:3,merges:0,sacs:0}});
+let S=DEF(),idx=1,sel=null,dragI=null,dirtyG=false;
+try{const s=JSON.parse(localStorage.getItem('fourel')||'null');if(s)S=Object.assign(DEF(),s)}catch(e){}
+const cur=()=>TH[S.el||'none'];
 const tierOf=g=>{let t=0;while(t<5&&g>=CUM[t])t++;return t};
-const upCost=()=>10+5*S.lvl*(S.lvl+1);
-const gCost=()=>1000*Math.pow(10,S.gLvl);
+const fmt=n=>n>=1e9?n.toExponential(2).replace('e+','e'):n<1000&&n%1?n.toFixed(1):Math.floor(n).toLocaleString('en-US');
+const fmtP=x=>+x.toFixed(2);
+const setH=(id,h)=>{const el=$(id);if(el._h!==h){el._h=h;el.innerHTML=h}};
+// ---- economy ----
+const kc=n=>10+10*n*(n+1),gCost=()=>1000*Math.pow(10,S.gLvl);
+const base=()=>{const m=Math.floor(S.lvl/10);return 2+20*(Math.pow(2,m)-1)+(S.lvl%10)*Math.pow(2,m+1)};
+const per=()=>2*Math.pow(2,Math.floor(S.lvl/10)),nextM=()=>(Math.floor(S.lvl/10)+1)*10;
+const mCost=()=>{let s=0;for(let i=S.lvl;i<nextM();i++)s+=kc(i);return s};
+const maxTier=e=>{let m=-1;S.mg.grid.forEach(c=>{if(c&&c.e===e&&c.t>m)m=c.t});return m};
+const elemMult=()=>S.el?Math.pow(2,Math.max(0,maxTier(S.el))):1;
+const starMult=()=>Math.pow(2,tierOf(S.growth));
+const fps=()=>S.el?base()*starMult()*Math.pow(2,S.ess.length)*(1+S.mg.mult)*elemMult():0;
+const gps=()=>S.crystals*Math.pow(2,S.gLvl);
+const pending=()=>S.fire>=1000?Math.floor(S.fire/1000):(S.crystals===0&&S.fire>=200?1:0);
+const tri=n=>{const a=[1,2,5,9];for(let i=4;i<=n;i++)a[i]=a[i-1]+i+1;return a[n]};
+const multCost=()=>5*tri(S.mg.mult),expCost=()=>100*Math.pow(10,S.mg.exp);
+// ---- icons ----
+function icon(e,t){const T=TH[e],c=`rgb(${T.c})`,s=`rgb(${T.e})`,h=`rgb(${T.h})`;
+ const P={
+ fire:[`<path d="M24 26l5 7-5 5-5-5z"/>`,`<path d="M24 18q9 9 7 18a7 7 0 0 1-14 0q0-7 7-18z"/>`,`<path d="M24 6q4 10 13 17c4 13-4 21-13 21S7 36 11 23q4 4 6 6 0-12 7-23z"/>`,`<path d="M24 2q6 10 15 16c6 15-4 28-15 28S3 33 9 18q4 4 6 8 0-15 9-24z"/><path d="M24 22q7 7 5 16a5 5 0 0 1-10 0q-1-7 5-16z" fill="${h}"/>`],
+ water:[`<path d="M24 14q10 12 6 20a7 7 0 0 1-12 0q-4-8 6-20z"/>`,`<ellipse cx="24" cy="34" rx="17" ry="7"/><ellipse cx="24" cy="33" rx="8" ry="2.5" fill="none"/>`,`<path d="M5 15q9-8 19 0t19 0M5 26q9-8 19 0t19 0M5 37q9-8 19 0t19 0" fill="none" stroke-width="4.5" stroke="${c}"/>`,`<path d="M3 40C3 20 15 6 35 8c-9 5-9 10-5 12 5 2 13 0 15 7v13z"/><path d="M7 38q8-6 14-2t14-3" fill="none" stroke="${h}" stroke-width="2"/>`],
+ earth:[`<circle cx="17" cy="30" r="2.5"/><circle cx="26" cy="25" r="2"/><circle cx="31" cy="33" r="3"/><circle cx="21" cy="36" r="1.6"/><circle cx="12" cy="37" r="1.2"/>`,`<path d="M6 38q5-16 18-16t18 16z"/>`,`<path d="M9 38l5-15 11-7 12 9 3 13z"/><path d="M14 23l11 4 12-2M25 27l-2 11" fill="none" stroke="${h}" stroke-width="1"/>`,`<path d="M4 42l6-21 12-13 15 6 8 15v13z"/><path d="M10 21l12-13M22 8l4 15 18 4M26 23l-3 19" fill="none" stroke="${h}" stroke-width="1.3"/>`],
+ air:[`<path d="M8 28q10-9 21-2t11-6" fill="none" stroke-width="3.5" stroke="${c}"/><circle cx="40" cy="20" r="2"/>`,`<path d="M6 20q12-8 22 0t14-2M8 30q12-8 22 0t10-2" fill="none" stroke-width="3.5" stroke="${c}"/>`,`<path d="M6 14q14-8 24 0t12-2M6 24q14-8 24 0t12-2M10 34q12-8 22 0t8-2" fill="none" stroke-width="3.5" stroke="${c}"/><circle cx="40" cy="12" r="3"/>`,`<path d="M24 5c-14 0-17 11-7 13 9 2 18-2 14-9M9 20c5 9 22 9 28 0M14 29c5 7 15 7 20 0M19 37c2 5 7 5 9 0" fill="none" stroke-width="3.5" stroke="${c}"/>`]};
+ return `<svg viewBox="0 0 48 48" fill="${c}" stroke="${s}" stroke-width="1.5" stroke-linejoin="round">${P[e][t]}</svg>`}
+// ---- theme ----
+function setTheme(){const T=cur(),s=document.documentElement.style;
+ s.setProperty('--fire',`rgb(${T.c})`);s.setProperty('--ember',`rgb(${T.e})`);s.setProperty('--glow',`rgba(${T.c},.35)`);
+ [['--line',T.line],['--dim',T.dim],['--bg',T.bg],['--panel',T.p],['--text',T.t],['--bgrad',T.g]].forEach(([k,v])=>s.setProperty(k,v))}
+// ---- navigation ----
+function go(i){if(i===0&&!S.mg.init){const g=S.mg.grid;EL.forEach((e,k)=>g[k]={e,t:0});S.mg.init=true;S.mg.timer=3;rGrid()}
+ idx=i;$('track').style.transform=`translateX(${-i*33.3333}%)`}
+$('eL').onclick=()=>{if(idx===2&&!S.el)return;if(idx>0)go(idx-1)};
+$('eR').onclick=()=>{if(idx===1&&!S.ess.length)return;if(idx<2)go(idx+1)};
 
-const base=()=>2+2*S.lvl;
-const TEST_MULT=2; // hidden testing multiplier applied to all base resources (fire and growth)
-const fps=()=>base()*TEST_MULT*Math.pow(2,tierOf(S.growth));
-const gps=()=>S.crystals*Math.pow(2,S.gLvl)*TEST_MULT;
-function fmt(n){if(n>=1e9)return n.toExponential(2).replace('e+','e');return n<1000&&n%1?n.toFixed(1):Math.floor(n).toLocaleString('en-US')}
-const crystalsPending=()=>S.fire>=1000?Math.floor(S.fire/1000):(S.crystals===0&&S.fire>=200?1:0);
-
-// ---------- actions ----------
-$('u1').onclick=()=>{if(S.fire>=upCost()){S.fire-=upCost();S.lvl++}};
-
+function choose(e){S.el=e;setTheme();$('pick').style.display='none';rStele();go(1)}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(b&&!busy)choose(b.dataset.e)});
+$('picks').innerHTML=EL.map(e=>`<button class="pk" data-e="${e}" style="--c:rgb(${TH[e].c})">${icon(e,3)}<b style="font-weight:normal">${TH[e].n}</b><small>${TH[e].fl}</small></button>`).join('');
+// ---- actions ----
+$('u1').onclick=()=>{if(S.fire>=kc(S.lvl)){S.fire-=kc(S.lvl);S.lvl++}};
+$('nx').onclick=()=>{const c=mCost();if(S.fire>=c){S.fire-=c;S.lvl=nextM()}};
 $('u3').onclick=()=>{if(S.fire>=gCost()){S.fire-=gCost();shave(()=>S.gLvl++)}};
-$('cond').onclick=()=>{const n=crystalsPending();if(!n)return;shave(()=>S.crystals+=n);S.fire=0;S.lvl=0;S.starUp=false};
+$('cond').onclick=()=>{const n=pending();if(!n)return;const old=S.crystals;shave(()=>S.crystals+=n);S.cryTot+=n;S.fire=0;S.lvl=0;burst(n/Math.max(1,old))};
 function fmtS(s){s=Math.round(s);return s>=60?Math.floor(s/60)+':'+String(s%60).padStart(2,'0'):s+'s'}
 function shave(fn){const t=tierOf(S.growth),g0=gps();fn();const g1=gps();if(t>=5||g0<=0||g1<=g0)return;
  const rem=CUM[t]-S.growth,sec=rem/g0-rem/g1;if(sec<.5)return;
- const d=document.createElement('div');d.className='shave';d.textContent='−'+fmtS(sec);d.onanimationend=()=>d.remove();$('etaw').appendChild(d)}
-
-// Only touch a button's contents when its text actually changes; rebuilding it every tick can swallow clicks.
-['u1','u2','u3','cond'].forEach(id=>{const el=$(id),d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');let last;Object.defineProperty(el,'innerHTML',{set(v){if(v!==last){last=v;d.set.call(el,v)}},get(){return d.get.call(el)}})});
+ const d=document.createElement('div');d.className='shave';d.textContent='\u2212'+fmtS(sec);d.onanimationend=()=>d.remove();$('etaw').appendChild(d)}
+let nxT=0;const nw=$('nxw');
+nw.onmouseenter=()=>{nxT=setTimeout(()=>nw.dataset.tip='Milestones occur every 10 levels. Each milestone doubles the production of every level.',5000)};
+nw.onmouseleave=()=>{clearTimeout(nxT);nw.removeAttribute('data-tip')};
 let armT=0;
 $('reset').onclick=function(){
  if(!this.classList.contains('arm')){this.classList.add('arm');this.textContent='Click again to erase everything';armT=setTimeout(()=>{this.classList.remove('arm');this.textContent='Reset all progress'},3000);return}
  clearTimeout(armT);this.classList.remove('arm');this.textContent='Reset all progress';
- S={fire:0,lvl:0,starUp:false,gLvl:0,crystals:0,growth:0,unlocked:false};flashAt=-9;
- try{localStorage.removeItem('emberstar')}catch(e){}
-};
-// ---------- UI ----------
-function ui(){
- const t=tierOf(S.growth);
+ S=DEF();sel=null;try{localStorage.removeItem('fourel')}catch(e){}setTheme();rGrid();rStele();go(1)};
+// ---- supernova ----
+let busy=false;
+$('novab').onclick=()=>{const n=cur().n;const m=$('modal');m.innerHTML=`<div class="box"><div style="font-size:28px;color:var(--fire)">Supernova</div><p>Your star will collapse and explode, granting 1 Essence of ${n}.</p><p><b style="color:var(--ember)">All progress except the minigame will be reset. This cannot be reversed.</b></p><button class="up" id="mc">Cancel</button><button class="up" id="mo">Supernova</button></div>`;m.style.display='flex';
+ $('mc').onclick=()=>m.style.display='none';$('mo').onclick=()=>{m.style.display='none';supernova()}};
+function supernova(){busy=true;const r=$('cv').getBoundingClientRect(),X=r.left+r.width/2,Y=r.top+r.height/2,T=cur();
+ const nc=$('nova');nc.width=innerWidth;nc.height=innerHeight;nc.style.display='block';nc.style.transition='none';nc.style.opacity=1;
+ const g=nc.getContext('2d'),P=Array.from({length:180},()=>({a:Math.random()*6.28,v:.3+Math.random()*1.1,s:1+Math.random()*3}));
+ const D=7000,t0=performance.now(),M=Math.hypot(innerWidth,innerHeight);
+ (function f(now){const p=Math.min(1,(now-t0)/D),e=1-Math.pow(1-p,2.2);g.clearRect(0,0,nc.width,nc.height);
+  g.globalCompositeOperation='lighter';
+  const R0=M*e*.85+20,gr=g.createRadialGradient(X,Y,0,X,Y,R0);gr.addColorStop(0,`rgba(255,255,255,${Math.min(1,p*5)})`);gr.addColorStop(.25,`rgba(${T.h},.9)`);gr.addColorStop(.6,`rgba(${T.c},.45)`);gr.addColorStop(1,`rgba(${T.c},0)`);
+  g.fillStyle=gr;g.beginPath();g.arc(X,Y,R0,0,6.28);g.fill();
+  for(let i=0;i<3;i++){g.strokeStyle=`rgba(${T.e},${.7*(1-p)})`;g.lineWidth=4-i;g.beginPath();g.arc(X,Y,M*e*(1-i*.14),0,6.28);g.stroke()}
+  P.forEach(q=>{g.fillStyle=`rgba(${T.h},${1-p})`;g.fillRect(X+Math.cos(q.a)*q.v*M*e*.9,Y+Math.sin(q.a)*q.v*M*e*.9,q.s,q.s)});
+  g.globalCompositeOperation='source-over';g.fillStyle=`rgba(0,0,0,${Math.max(0,(p-.72)/.28)})`;g.fillRect(0,0,nc.width,nc.height);
+  if(p<1)requestAnimationFrame(f);else{
+   S.ess.push(S.el);S.nova++;S.el=null;S.fire=S.lvl=S.gLvl=S.crystals=S.growth=0;S.unlocked=false;setTheme();rStele();go(2);
+   setTimeout(()=>{nc.style.transition='opacity 1.6s';nc.style.opacity=0;setTimeout(()=>{nc.style.display='none';busy=false},1700)},300)}})(performance.now())}
+// ---- stele ----
+function rStele(){const n=S.ess.length,own=e=>S.ess.includes(e);
+ const cols=EL.filter(own).map(e=>`rgb(${TH[e].c})`);const cs=cols.length?cols:['#444','#666'];
+ $('orb').firstChild.style.background=`conic-gradient(${cs.concat(cs[0]).join(',')})`;
+ $('emult').textContent=`Essences ${n}/4 · \u00d7${Math.pow(2,n)} base production`;
+ $('secs').innerHTML=EL.map(e=>{const T=TH[e];return `<div class="sec${own(e)?' lit':''}" style="--c:rgb(${T.c});--e:rgb(${T.e})"><h4>1 ${T.n} Essence</h4><p>for ${ST[e][0]}</p><i>${ST[e][1]}</i><em>${own(e)?'\u2713 Essence held \u00b7 \u00d72 production':'Not yet gathered'}</em></div>`}).join('');
+ $('sl').innerHTML=S.el===null&&n<4?`<h3>Choose a new element to restart the Cycle</h3>`+EL.filter(e=>!own(e)).map(e=>`<button class="pk" data-e="${e}" style="--c:rgb(${TH[e].c})">${icon(e,3)}<b style="font-weight:normal">${TH[e].n}</b></button>`).join(''):''}
+$('mkplanet').onclick=()=>{const have=EL.filter(e=>S.ess.includes(e)),lack=EL.filter(e=>!have.includes(e));
+ const L={fire:'cold and dark, never warmed by a sun',water:'dry and barren, its seas never formed',earth:'shapeless, a world of sea and sky with no ground',air:'airless and silent, no wind to stir it'};
+ const d=$('done');d.innerHTML=`<div class="box"><div style="font-size:30px;color:#fff">You have completed the demo</div>
+ <p>Planet made with: <b>${have.length?have.map(e=>TH[e].n+' Essence').join(', '):'no essences'}</b></p>
+ <p>${lack.length?'Missing: '+lack.map(e=>TH[e].n).join(', ')+'. Your world is '+lack.map(e=>L[e]).join('; ')+'.':'Nothing was missing. A complete, living world.'}</p>
+ <p style="color:var(--dim);font-size:17px">Time played ${Math.round(S.t/60)} min · crystals condensed ${S.cryTot} · supernovas ${S.nova} · merges ${S.mg.merges} · sacrifices ${S.mg.sacs}</p>
+ <button class="up" id="dc">Close</button></div>`;d.style.display='flex';$('dc').onclick=()=>d.style.display='none'};
+// ---- minigame ----
+const G=$('grid');
+function rGrid(){if(dragI!==null){dirtyG=true;return}const m=S.mg;G.style.gridTemplate=`repeat(${m.n},minmax(0,1fr))/repeat(${m.n},minmax(0,1fr))`;
+ G.innerHTML=m.grid.map((c,i)=>`<div class="cell${i===sel?' sel':''}" data-i="${i}"${c?' draggable="true"':''}>${c?icon(c.e,c.t):''}</div>`).join('')}
+function fx(j,e){const c=G.children[j];if(!c)return;c.classList.add('pop');
+ c.insertAdjacentHTML('beforeend',`<span class="ring" style="--c:rgb(${TH[e].c})">${[0,45,90,135,180,225,270,315].map(a=>`<u style="--a:${a}deg"></u>`).join('')}</span>`);
+ setTimeout(()=>{const r=c.querySelector('.ring');if(r)r.remove();c.classList.remove('pop')},900)}
+G.addEventListener('dragstart',e=>{const c=e.target.closest('.cell');if(!c||!S.mg.grid[+c.dataset.i])return;dragI=+c.dataset.i;e.dataTransfer.setData('text','x');e.dataTransfer.effectAllowed='move'});
+G.addEventListener('dragover',e=>{if(dragI!==null)e.preventDefault()});
+G.addEventListener('dragend',()=>{dragI=null;if(dirtyG){dirtyG=false;rGrid()}});
+G.addEventListener('drop',e=>{e.preventDefault();const c=e.target.closest('.cell');if(!c||dragI===null)return;const i=dragI,j=+c.dataset.i;dragI=null;dirtyG=false;
+ const g=S.mg.grid,a=g[i],b=g[j];if(i===j||!a){rGrid();return}
+ if(!b){g[j]=a;g[i]=null;if(sel===i)sel=j;rGrid()}
+ else if(b.e===a.e&&b.t===a.t&&b.t<3){g[j]={e:a.e,t:a.t+1};g[i]=null;S.mg.merges++;sel=null;rGrid();fx(j,a.e)}else rGrid()});
+G.addEventListener('click',e=>{const c=e.target.closest('.cell');if(!c)return;const i=+c.dataset.i;sel=S.mg.grid[i]?(sel===i?null:i):null;rGrid()});
+const free=()=>S.mg.grid.findIndex(c=>!c);
+function spawn(i){const g=S.mg.grid;if(i===undefined){i=free();if(i<0)return}g[i]={e:EL[Math.random()*4|0],t:0};rGrid()}
+$('det').onclick=e=>{if(e.target.id!=='sacb'||sel===null)return;const c=S.mg.grid[sel];if(!c)return;S.mg.pts+=Math.pow(3,c.t);S.mg.grid[sel]=null;sel=null;S.mg.sacs++;rGrid()};
+$('summon').onclick=()=>{if(S.mg.pts>=1&&free()>=0){S.mg.pts-=1;spawn(free())}};
+$('multb').onclick=()=>{if(S.mg.pts>=multCost()){S.mg.pts-=multCost();S.mg.mult++}};
+$('expb').onclick=()=>{if(S.mg.pts<expCost()||S.mg.n>=8)return;S.mg.pts-=expCost();const o=S.mg.n,n=o+1,g=Array(n*n).fill(null);
+ S.mg.grid.forEach((c,i)=>{g[Math.floor(i/o)*n+i%o]=c});S.mg.grid=g;S.mg.n=n;S.mg.exp++;sel=null;rGrid()};
+// ---- UI ----
+function ui(){const T=cur(),nl=T.n.toLowerCase(),t=tierOf(S.growth),sm=starMult(),m=Math.floor(S.lvl/10);
  if(S.fire>=100)S.unlocked=true;
- $('fire').textContent=fmt(S.fire);$('fps').textContent=fmt(fps());
- $('u1').innerHTML=`<b>Kindle (level ${S.lvl})</b><span>+2 fire/s (current: ${fmt(base())}/s) · cost ${fmt(upCost())}</span>`;
- $('u1').disabled=S.fire<upCost();
- $('u2').classList.toggle('hide',t<1);
- $('u2').innerHTML=`<b>Starfire (passive)</b><span>Fire ×${Math.pow(2,t)} from your Tier ${t} star</span>`;
- 
+ $('fire').textContent=fmt(S.fire);$('fps').textContent=fmt(fps());$('rn').textContent=nl;setH('ricon',S.el?icon(S.el,2):'');
+ $('sf').style.display=t>=1?'':'none';setH('sf',`\u00d7${sm} ${nl} production from your Tier ${t} Star`);
+ const kcs=kc(S.lvl),mc=mCost();
+ setH('u1',`<b>${T.k} (level ${S.lvl}) <small>(${Math.pow(2,m+1)}x at Lvl ${nextM()})</small></b><span>+${per()} ${nl}/s \u00b7 cost ${fmt(kcs)} </span>`);
+ $('u1').disabled=S.fire<kcs;setH('nx',`Next<small>${fmt(mc)}</small>`);$('nx').disabled=S.fire<mc;
  $('u3').classList.toggle('hide',t<2);
- $('u3').innerHTML=`<b>Crystal Resonance (level ${S.gLvl})</b><span>Permanent · each crystal makes ${Math.pow(2,S.gLvl)}/s → ${Math.pow(2,S.gLvl+1)}/s growth · cost ${fmt(gCost())}</span>`;
+ setH('u3',`<b>Crystal Resonance (level ${S.gLvl})</b><span>Permanent \u00b7 each crystal makes ${Math.pow(2,S.gLvl)}/s \u2192 ${Math.pow(2,S.gLvl+1)}/s growth \u00b7 cost ${fmt(gCost())}</span>`);
  $('u3').disabled=S.fire<gCost();
- $('cond').classList.toggle('hide',!S.unlocked);
- const n=crystalsPending();
- $('cond').innerHTML=n>1?`<b>Condense ×${n} Fire Crystals</b><span>Resets only your fire and Kindle</span>`:S.crystals===0?`<b>Condense your First Fire Crystal</b><span>Costs only 200 fire · resets only your fire and Kindle</span>`:`<b>Condense a Fire Crystal</b><span>Costs 1,000 fire · resets only your fire and Kindle</span>`;
+ const n=pending(),cn=`${T.n} Crystal`,rs=`resets only your ${nl} and ${T.k}`;
+ $('ctip').dataset.tip=`1,000 ${T.n} = 1 ${cn}. Your first crystal costs only 200. Condensing grants one crystal per 1,000 ${nl}.`;
+ $('cond').classList.toggle('hide',!S.unlocked);$('cnone').style.display=S.unlocked?'none':'';
+ setH('cond',n>1?`<b>Condense \u00d7${n} ${cn}s</b><span>${rs}</span>`:S.crystals===0?`<b>Condense your First ${cn}</b><span>Costs only 200 ${nl} \u00b7 ${rs}</span>`:`<b>Condense a ${cn}</b><span>Costs 1,000 ${nl} \u00b7 ${rs}</span>`);
  $('cond').disabled=n<1;
- $('growth').textContent=fmt(Math.floor(S.growth));$('cry').textContent=fmt(S.crystals);$('gps').textContent=fmt(gps());$('tier').textContent=t;
- if(t>=5){$('fill').style.width='100%';$('pl').textContent='Tier 5 · maximum';$('eta').textContent='';}
- else{
-  const base=t?CUM[t-1]:0,p=(S.growth-base)/(CUM[t]-base);
-  $('fill').style.width=Math.min(100,p*100)+'%';
-  $('pl').textContent=`Tier ${t} to Tier ${t+1}`;
-  const g=gps(),sec=g>0?Math.ceil((CUM[t]-S.growth)/g):-1;
-  $('eta').textContent=sec<0?'--:--':String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
- }
-}
-
-// ---------- star rendering ----------
+ $('growth').textContent=fmt(Math.floor(S.growth));$('cry').textContent=fmt(S.crystals);$('cname').textContent=cn+'s';$('gps').textContent=fmt(gps());$('tier').textContent=t;
+ if(t>=5){$('pl').textContent='Tier 5 reached';$('eta').style.display='none';$('novab').classList.remove('hide');setH('novab',`<b>Supernova</b><span>Gain 1 Essence of ${T.n}</span>`);$('fill').style.width='100%'}
+ else{$('eta').style.display='';$('novab').classList.add('hide');const b=t?CUM[t-1]:0;$('fill').style.width=Math.min(100,(S.growth-b)/(CUM[t]-b)*100)+'%';$('pl').textContent=`Tier ${t} to Tier ${t+1}`;
+  const g=gps(),sec=g>0?Math.ceil((CUM[t]-S.growth)/g):-1;$('eta').textContent=sec<0?'--:--':String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
+ // edges + pick
+ $('pick').style.display=S.el===null&&!S.ess.length?'flex':'none';
+ const L=$('eL'),R=$('eR');L.classList.toggle('hide',idx===0);R.classList.toggle('hide',idx===2);
+ const lo=idx===2&&!S.el,ro=idx===1&&!S.ess.length;L.classList.toggle('off',lo);R.classList.toggle('off',ro);
+ lo?L.dataset.tip='Choose an element first':L.removeAttribute('data-tip');ro?R.dataset.tip='Reach Star Tier 5 and Supernova to unlock.':R.removeAttribute('data-tip');
+ // minigame
+ const mg=S.mg;$('mgtimer').textContent=mg.init?Math.max(0,Math.ceil(mg.timer)):'--';$('pts').textContent=fmtP(mg.pts);
+ const c=sel!==null?mg.grid[sel]:null;
+ setH('det',c?`<b>${NM[c.e][c.t]} - Tier ${c.t} ${TH[c.e].n}</b><span>Sacrifice for ${fmtP(Math.pow(3,c.t))} point${c.t?'s':''}</span><button class="up" id="sacb">Sacrifice</button>`:`<b>Select an element</b><span>Click one to inspect or sacrifice it</span>`);
+ setH('summon',`<b>Summon Element</b><span>Cost 1 point \u00b7 random element in the first free tile</span>`);$('summon').disabled=mg.pts<1||free()<0;
+ setH('multb',`<b>Multiplier (\u00d7${1+mg.mult})</b><span>+1 to your ${nl} multiplier \u00b7 cost ${multCost()}</span>`);$('multb').disabled=mg.pts<multCost();
+ setH('expb',`<b>Expand (${mg.n}\u00d7${mg.n})</b><span>${mg.n>=8?'Maximum size':`Grow to ${mg.n+1}\u00d7${mg.n+1} \u00b7 cost ${expCost()}`}</span>`);$('expb').disabled=mg.pts<expCost()||mg.n>=8;
+ setH('hi',EL.map(e=>{const k=maxTier(e),ok=e===S.el;return `<div class="hi">${icon(e,Math.max(0,k))}<div><b style="font-weight:normal;color:rgb(${TH[e].c})">${k<0?'None':NM[e][k]+' (T'+k+')'}</b><br><i>${ok?'\u00d7'+Math.pow(2,Math.max(0,k))+' '+nl+' production':'incompatible element'}</i></div></div>`}).join(''))}
+// ---- star ----
 const cv=$('cv'),cx=cv.getContext('2d');let W=0,H=0,dpr=1;
-function size(){const r=$('wrap').getBoundingClientRect();dpr=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0)}
+function size(){const r=$('wrap').getBoundingClientRect();dpr=devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',size);size();
-const R=[0,10,18,32,54,84];          // star radius per tier
+const R=[0,10,18,32,54,84];
 const dust=Array.from({length:70},()=>({a:Math.random()*6.28,d:20+Math.random()*70,s:.05+Math.random()*.12,z:.6+Math.random()*1.4,o:.2+Math.random()*.4}));
 const sparks=Array.from({length:60},()=>({a:Math.random()*6.28,d:Math.random(),v:.15+Math.random()*.3}));
-const rays=Array.from({length:40},(_,i)=>({ph:Math.random()*6.28,sp:.6+Math.random()*1.4,len:.6+Math.random()*.8,w:.05+Math.random()*.07}));
+const rays=Array.from({length:60},()=>({ph:Math.random()*6.28,sp:.6+Math.random()*1.4,len:.6+Math.random()*.8,w:.05+Math.random()*.07}));
+let bp=[],bu=0,br=0,bacc=0,fl0=-99,fli=0;
+function burst(ratio){bu=performance.now()/1000+3;br=Math.min(500,40*(1+ratio));fl0=performance.now()/1000;fli=Math.min(2,.6+ratio*.5)}
 let dustSpin=0,lastT=0,flashAt=-9,prevTier=-1;
 function drawStar(time){
- dustSpin+=Math.min(.1,Math.max(0,time-lastT))*(1+8*Math.min(1,S.growth/10));lastT=time;
+ const dt=Math.min(.1,Math.max(0,time-lastT));dustSpin+=dt*(1+8*Math.min(1,S.growth/10));lastT=time;
  cx.clearRect(0,0,W,H);
- const t=tierOf(S.growth),X=W/2,Y=H/2,ext=t?R[t]*(1.5+.28*t)+14:100,half=Math.min(W,H)/2,sc=Math.min(1,half*.94/ext),ig=Math.min(1,S.growth/10);
+ const T=cur(),c=T.c,hh=T.h,mm=T.e,t=tierOf(S.growth),X=W/2,Y=H/2,ext=t?R[t]*(1.5+.28*t)+14:100,half=Math.min(W,H)/2,sc=Math.min(1,half*.94/ext),ig=Math.min(1,S.growth/10);
  if(prevTier===0&&t===1)flashAt=time;prevTier=t;
- cx.save();cx.translate(X,Y);cx.scale(sc,sc);
- cx.globalCompositeOperation='lighter';
- if(t===0){ // slow cloud of dust
+ cx.save();cx.translate(X,Y);cx.scale(sc,sc);cx.globalCompositeOperation='lighter';
+ if(t===0){
   for(const p of dust){const a=p.a+dustSpin*p.s*.3,rr=p.d*(1+.06*Math.sin(time*.5+p.a*3))*(1-.9*Math.pow(ig,1.5));
-   const x=Math.cos(a)*rr,y=Math.sin(a)*rr*(.7+.3*ig);
-   cx.fillStyle=`rgba(${190+65*ig|0},${90+80*ig|0},${70+10*ig|0},${Math.min(1,p.o*(.7+.3*Math.sin(time+p.a*5))*(1+1.5*ig))})`;cx.beginPath();cx.arc(x,y,p.z*(1+.6*ig),0,6.28);cx.fill()}
-  const gR=60-35*ig,g=cx.createRadialGradient(0,0,0,0,0,gR);g.addColorStop(0,`rgba(${120+135*ig|0},${30+60*ig|0},${20+10*ig|0},${.18+.7*ig*ig})`);g.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=g;cx.beginPath();cx.arc(0,0,gR,0,6.28);cx.fill();
-  if(ig>.5){const k=(ig-.5)*2,cr=R[1]*k*k*k+.01,c=cx.createRadialGradient(0,0,0,0,0,cr);c.addColorStop(0,`rgba(255,150,80,${k})`);c.addColorStop(1,'rgba(255,50,20,0)');cx.fillStyle=c;cx.beginPath();cx.arc(0,0,cr,0,6.28);cx.fill()}
+   cx.fillStyle=`rgba(${ig>.5?hh:c},${Math.min(1,p.o*(.7+.3*Math.sin(time+p.a*5))*(1+1.5*ig))})`;cx.beginPath();cx.arc(Math.cos(a)*rr,Math.sin(a)*rr*(.7+.3*ig),p.z*(1+.6*ig),0,6.28);cx.fill()}
+  const gR=60-35*ig,g=cx.createRadialGradient(0,0,0,0,0,gR);g.addColorStop(0,`rgba(${ig>.4?hh:c},${.18+.7*ig*ig})`);g.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=g;cx.beginPath();cx.arc(0,0,gR,0,6.28);cx.fill();
+  if(ig>.5){const k=(ig-.5)*2,cr=R[1]*k*k*k+.01,q=cx.createRadialGradient(0,0,0,0,0,cr);q.addColorStop(0,`rgba(${hh},${k})`);q.addColorStop(1,`rgba(${c},0)`);cx.fillStyle=q;cx.beginPath();cx.arc(0,0,cr,0,6.28);cx.fill()}
  }else{
-  const r=R[t],pulse=1+.04*Math.sin(time*2.2);
-  // escalating outer glow
-  const gr=Math.min(r*(2+t*.8)*pulse,half/sc),ga=.22+t*.08;
-  let g=cx.createRadialGradient(0,0,r*.6,0,0,gr);
-  g.addColorStop(0,`rgba(255,59,31,${ga+.2})`);g.addColorStop(.35,`rgba(200,25,10,${ga*.5})`);g.addColorStop(1,'rgba(80,0,0,0)');
+  const x=(time-fl0)/3.5,fe=t<3&&x>=0&&x<1?fli*(x<.15?x/.15:(1-x)/.85):0,r=R[t],pulse=1+.04*Math.sin(time*2.2)*(1+fe*2),gr=Math.min(r*(2+t*.8)*(1+fe*.5)*pulse,half/sc),ga=.22+t*.08+fe*.3;
+  let g=cx.createRadialGradient(0,0,r*.6,0,0,gr);g.addColorStop(0,`rgba(${c},${ga+.2})`);g.addColorStop(.35,`rgba(${c},${ga*.5})`);g.addColorStop(1,`rgba(${c},0)`);
   cx.fillStyle=g;cx.beginPath();cx.arc(0,0,gr,0,6.28);cx.fill();
-  // corona rays: more and longer with tier
   const n=8+t*7,spin=time*(.12+.03*t);
-  for(let i=0;i<n;i++){const q=rays[i%rays.length],a=spin+i/n*6.28+q.ph*.05;
-   const L=r*(.5+t*.28)*q.len*(.65+.35*Math.sin(time*q.sp+q.ph)),w=q.w*(1+t*.08);
-   cx.save();cx.rotate(a);
-   const lg=cx.createLinearGradient(r*.8,0,r+L,0);lg.addColorStop(0,`rgba(255,${90+t*18},40,${.5+.05*t})`);lg.addColorStop(1,'rgba(255,40,20,0)');
+  for(let i=0;i<n;i++){const q=rays[i%rays.length],a=spin+i/n*6.28+q.ph*.05,L=r*(.5+t*.28)*(1+fe*.9)*q.len*(.65+.35*Math.sin(time*q.sp*(1+fe*3)+q.ph)),w=q.w*(1+t*.08);
+   cx.save();cx.rotate(a);const lg=cx.createLinearGradient(r*.8,0,r+L,0);lg.addColorStop(0,`rgba(${mm},${.5+.05*t})`);lg.addColorStop(1,`rgba(${c},0)`);
    cx.fillStyle=lg;cx.beginPath();cx.moveTo(r*.8,-r*w*2.2);cx.lineTo(r+L,0);cx.lineTo(r*.8,r*w*2.2);cx.closePath();cx.fill();cx.restore()}
-  // counter-rotating thin corona ring (tier 3+)
-  if(t>=3){cx.strokeStyle=`rgba(255,80,40,${.12+.03*t})`;cx.lineWidth=1.5;
+  if(t>=3){cx.strokeStyle=`rgba(${c},${.12+.03*t})`;cx.lineWidth=1.5;
    for(let k=0;k<t-1;k++){cx.beginPath();cx.ellipse(0,0,r*(1.5+k*.45),r*(1.5+k*.45)*(.55+.1*k),-time*.15*(k%2?-1:1)+k,0,6.28);cx.stroke()}}
-  // prominences / arcs (tier 4+)
-  if(t>=4){cx.strokeStyle='rgba(255,120,50,.55)';cx.lineWidth=2+t*.4;
-   for(let k=0;k<3+t;k++){const a=time*.1+k*6.28/(3+t),h=r*(.35+.25*Math.abs(Math.sin(time*.7+k*2)));
-    cx.beginPath();cx.arc(Math.cos(a)*r,Math.sin(a)*r,h,a-1.5,a+1.5);cx.stroke()}}
-  // ejected sparks (tier 3+)
+  if(t>=4){cx.strokeStyle=`rgba(${mm},.55)`;cx.lineWidth=2+t*.4;
+   for(let k=0;k<3+t;k++){const a=time*.1+k*6.28/(3+t),h=r*(.35+.25*Math.abs(Math.sin(time*.7+k*2)));cx.beginPath();cx.arc(Math.cos(a)*r,Math.sin(a)*r,h,a-1.5,a+1.5);cx.stroke()}}
   if(t>=3)for(const s of sparks){s.d+=s.v*.004*(1+t*.3);if(s.d>1){s.d=0;s.a=Math.random()*6.28}
-   const d=r*(1+s.d*(2+t*.6));cx.fillStyle=`rgba(255,${150+t*15},80,${(1-s.d)*.8})`;cx.fillRect(Math.cos(s.a)*d,Math.sin(s.a)*d,2,2)}
-  // star body: hot core, red limb
-  g=cx.createRadialGradient(0,0,0,0,0,r*pulse);
-  const hot=Math.min(255,150+t*35);
-  g.addColorStop(0,`rgb(255,${hot},${t>=4?200:90})`);g.addColorStop(.55,'rgb(255,70,30)');g.addColorStop(1,'rgb(200,20,10)');
-  cx.globalCompositeOperation='source-over';
-  cx.shadowColor='#ff2a10';cx.shadowBlur=8+t*10;
-  cx.fillStyle=g;cx.beginPath();cx.arc(0,0,r*pulse,0,6.28);cx.fill();cx.shadowBlur=0;
-  // surface granulation
-  if(t>=2){cx.globalCompositeOperation='lighter';cx.fillStyle='rgba(255,200,120,.12)';
-   for(let k=0;k<4+t*3;k++){const a=k*2.4+time*.2*(k%2?1:-1),d=r*.55*Math.abs(Math.sin(k*1.7+time*.3));
-    cx.beginPath();cx.arc(Math.cos(a)*d,Math.sin(a)*d,r*.18,0,6.28);cx.fill()}}
+   const d=r*(1+s.d*(2+t*.6));cx.fillStyle=`rgba(${hh},${(1-s.d)*.8})`;cx.fillRect(Math.cos(s.a)*d,Math.sin(s.a)*d,2,2)}
+  g=cx.createRadialGradient(0,0,0,0,0,r*pulse);g.addColorStop(0,`rgb(${t>=4?'255,255,255':hh})`);g.addColorStop(.55,`rgb(${mm})`);g.addColorStop(1,`rgb(${c})`);
+  cx.globalCompositeOperation='source-over';cx.shadowColor=`rgb(${c})`;cx.shadowBlur=8+t*10;cx.fillStyle=g;cx.beginPath();cx.arc(0,0,r*pulse,0,6.28);cx.fill();cx.shadowBlur=0;
+  if(t>=2){cx.globalCompositeOperation='lighter';cx.fillStyle=`rgba(${hh},.12)`;
+   for(let k=0;k<4+t*3;k++){const a=k*2.4+time*.2*(k%2?1:-1),d=r*.55*Math.abs(Math.sin(k*1.7+time*.3));cx.beginPath();cx.arc(Math.cos(a)*d,Math.sin(a)*d,r*.18,0,6.28);cx.fill()}}
   const f=(time-flashAt)/1.8;
-  if(f>=0&&f<1){cx.globalCompositeOperation='lighter';const fr=r*(3+f*14),fg=cx.createRadialGradient(0,0,0,0,0,fr);fg.addColorStop(0,`rgba(255,210,150,${.9*(1-f)})`);fg.addColorStop(.4,`rgba(255,80,30,${.4*(1-f)})`);fg.addColorStop(1,'rgba(255,40,10,0)');cx.fillStyle=fg;cx.beginPath();cx.arc(0,0,fr,0,6.28);cx.fill();cx.strokeStyle=`rgba(255,160,90,${.7*(1-f)})`;cx.lineWidth=3;cx.beginPath();cx.arc(0,0,r*(1+f*10),0,6.28);cx.stroke()}
+  if(f>=0&&f<1){cx.globalCompositeOperation='lighter';const fr=r*(3+f*14),fg=cx.createRadialGradient(0,0,0,0,0,fr);fg.addColorStop(0,`rgba(${hh},${.9*(1-f)})`);fg.addColorStop(.4,`rgba(${c},${.4*(1-f)})`);fg.addColorStop(1,`rgba(${c},0)`);cx.fillStyle=fg;cx.beginPath();cx.arc(0,0,fr,0,6.28);cx.fill();cx.strokeStyle=`rgba(${mm},${.7*(1-f)})`;cx.lineWidth=3;cx.beginPath();cx.arc(0,0,r*(1+f*10),0,6.28);cx.stroke()}
  }
+ // condense spray (works at every tier)
+ cx.globalCompositeOperation='lighter';
+ if(time<bu&&t>=3){bacc+=br*dt;while(bacc>=1){bacc--;const a=Math.random()*6.28,v=80+Math.random()*220;bp.push({x:0,y:0,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:1+Math.random()*1.2,a:0})}}
+ bp=bp.filter(p=>(p.a+=dt)<p.l);
+ for(const p of bp){p.x+=p.vx*dt;p.y+=p.vy*dt;cx.fillStyle=`rgba(${hh},${1-p.a/p.l})`;cx.fillRect(p.x,p.y,2.5,2.5)}
  cx.restore();
 }
-
-// ---------- loop ----------
+// ---- loop ----
 let last=performance.now(),acc=0,saveT=0;
-function frame(now){
- const dt=Math.min(.25,(now-last)/1000);last=now;
- S.fire+=fps()*dt;S.growth+=gps()*dt;
- drawStar(now/1000);
- acc+=dt;if(acc>.1){acc=0;ui()}
- saveT+=dt;if(saveT>3){saveT=0;try{localStorage.setItem('emberstar',JSON.stringify(S))}catch(e){}}
- requestAnimationFrame(frame);
-}
-ui();requestAnimationFrame(frame);
+function frame(now){const dt=Math.min(.25,(now-last)/1000);last=now;
+ if(S.el){S.fire+=fps()*dt;S.growth+=gps()*dt}S.t+=dt;
+ if(S.mg.init){S.mg.timer-=dt;if(S.mg.timer<=0){S.mg.timer+=20;spawn()}}
+ drawStar(now/1000);acc+=dt;if(acc>.1){acc=0;ui()}
+ saveT+=dt;if(saveT>3){saveT=0;try{localStorage.setItem('fourel',JSON.stringify(S))}catch(e){}}
+ requestAnimationFrame(frame)}
+setTheme();rGrid();rStele();ui();requestAnimationFrame(frame);
 </script>
 </body>
 </html>
