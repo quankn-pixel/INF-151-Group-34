@@ -2,8 +2,13 @@
 FE.module(function (FE) {
   const $ = FE.$;
 
-  // ---- back, and return to title on the end message: save, then go to the home page ----
-  const toTitle = () => { FE.save(); window.location.href = 'index.html'; };
+  // ---- back, and return to title on the end message: save, then go to the home page. The element goes in the address
+  // (?el=air) so the home page can show it even when the browser keeps the two files' storage apart. ----
+  const toTitle = () => {
+    FE.save();
+    const first = FE.state.owned[0];
+    window.location.href = 'index.html' + (first ? '?el=' + first : '');
+  };
   $('back-btn').addEventListener('click', toTitle);
   $('end-home').addEventListener('click', toTitle);
 
@@ -24,7 +29,7 @@ FE.module(function (FE) {
   $('size-up').addEventListener('click', () => { if (sizeIdx < SIZES.length - 1) { sizeIdx++; applySize(); } });
   applySize();
 
-  // ---- restart ----
+  // ---- restart: erase the save and go back to the home page, which starts over with its opening sequence ----
   function showConfirm(on) {
     $('restart-wrap').hidden = on;
     $('restart-confirm').hidden = !on;
@@ -34,13 +39,8 @@ FE.module(function (FE) {
   $('restart-no').addEventListener('click', () => showConfirm(false));
   $('restart-yes').addEventListener('click', () => {
     try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {}
-    FE.state = FE.freshState();
-    FE.clearIcons();
-    FE.hideEnd();
-    FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(performance.now());
-    FE.render();
-    $('save-status').textContent = 'not saved yet.';
-    showConfirm(false);
+    FE.BUILD = null;          // FE.save does nothing from here, so leaving the page cannot write the old game back
+    window.location.href = 'index.html?reset=1';
   });
 
   // ---- keyboard: a / w / e / f investigate or gather that element. Escape closes the end message or the restart question. ----

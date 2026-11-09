@@ -108,6 +108,23 @@ FE.module(function (FE) {
   function start() {
     FE.buildStatic();
     FE.BUILD = FE.computeBuild();   // game.js loads last, so every file has registered by now
+
+    // The home page's opening sequence opens the game as game.html?new=1&el=fire (a new game that starts with that element)
+    // and "continue." as game.html?el=fire. The address is cleaned right away, so a refresh never repeats it. The element
+    // is also left in sessionStorage; either one will do, because a browser may not share storage between the two files.
+    let chosen = null, fresh = false;
+    try {
+      const q = new URLSearchParams(location.search);
+      chosen = q.get('el'); fresh = !!q.get('new');
+      if (q.has('el') || q.has('new')) history.replaceState(null, '', location.pathname);
+    } catch (e) {}
+    try {
+      const s = sessionStorage.getItem('fe-chosen');
+      sessionStorage.removeItem('fe-chosen');
+      if (!chosen) chosen = s;
+    } catch (e) {}
+    if (fresh) { try { localStorage.removeItem(FE.SAVE_KEY); } catch (e) {} }
+
     const saved = FE.loadStored();
     if (saved) {
       FE.adopt(saved);
@@ -116,6 +133,11 @@ FE.module(function (FE) {
     }
     FE.drawLog(); FE.renderChoices(); FE.scheduleIntro(0);
     if (FE.clearedOldSave) FE.note('The game was updated, so your old save was cleared.', 'dim');
+
+    // A game with nothing chosen yet starts with the home page's element already investigated, exactly as if it had been
+    // clicked here. (A save that exists but has no element yet, from an earlier visit, counts as nothing chosen.)
+    if (chosen && FE.state.picking && !FE.state.owned.length && FE.ELEMENTS.some(e => e.id === chosen)) discover(chosen);
+
     FE.render();
   }
 
