@@ -126,9 +126,14 @@ button.link:disabled { color: var(--muted); text-decoration: none; cursor: defau
 .threat-note { margin-top: 4px; font-size: 0.8125em; color: var(--muted); }
 
 .footer { width: 100%; margin: 24px 0 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 18px; font-size: 0.875em; color: var(--muted); }
-.footer .size { display: flex; gap: 10px; align-items: baseline; }
-.footer .size button { font-size: 1.15em; min-width: 1.2em; }
-.footer .confirm { color: var(--fg); display: flex; gap: 10px; }
+.settings-box { width: min(26em, 100%); gap: 16px; }
+.set-row { display: grid; grid-template-columns: 7em 1fr 3em; gap: 12px; align-items: baseline; }
+.set-row .set-val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.875em; }
+.set-row input[type="range"] { width: 100%; accent-color: var(--fg); margin: 0; }
+.set-row.size .size-btns { grid-column: 2 / 4; display: flex; gap: 14px; }
+.set-row.size button { font-size: 1.15em; min-width: 1.2em; }
+.set-row .confirm, .set-row #restart-wrap { grid-column: 1 / 4; }
+.set-row .confirm { color: var(--fg); display: flex; gap: 10px; }
 
 /* multiplier above the elements */
 .mult { font-size: 2em; line-height: 1.05; font-weight: bold; font-variant-numeric: tabular-nums; color: var(--c, var(--fg)); text-shadow: 0 0 16px color-mix(in srgb, var(--c, var(--fg)) 45%, transparent); margin: 2px 0 2px; }

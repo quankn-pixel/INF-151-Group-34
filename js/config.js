@@ -38,6 +38,7 @@ FE.module(function (FE) {
   FE.SIZE_KEY = 'four-elements-size-v1';
   FE.SOUND_KEY = 'four-elements-sound-v1';
   FE.MUSIC_KEY = 'four-elements-music-v1';
+  FE.VOL_KEY = 'four-elements-volume-v1';   // {sound, music}: 0-1 multipliers on the volumes below
 
   FE.OPTIONS = { air: 'Breeze', water: 'Puddle', earth: 'Patch of Dirt', fire: 'Embers' };
   FE.FIRST_MSG = {

@@ -82,19 +82,40 @@
 
 <div class="footer">
   <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
-  <span><button class="link" id="music-btn" type="button" aria-pressed="true">music on.</button></span>
-  <span><button class="link" id="sound-btn" type="button" aria-pressed="true">sound on.</button></span>
-  <span class="size">text size
-    <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
-    <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
-  </span>
   <span id="save-status">not saved yet.</span>
-  <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
-  <span class="confirm" id="restart-confirm" hidden>
-    <span>lose everything?</span>
-    <button class="link" id="restart-yes" type="button">yes.</button>
-    <button class="link" id="restart-no" type="button">no.</button>
-  </span>
+  <span><button class="link" id="settings-btn" type="button" aria-haspopup="dialog">settings.</button></span>
+</div>
+
+<div class="overlay" id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+  <div class="box end-box settings-box">
+    <span class="label" id="settings-title">settings</span>
+    <div class="set-row">
+      <button class="link" id="music-btn" type="button" aria-pressed="true">music on.</button>
+      <input type="range" id="music-vol" min="0" max="100" step="5" value="100" aria-label="Music volume">
+      <span class="set-val" id="music-val">100%</span>
+    </div>
+    <div class="set-row">
+      <button class="link" id="sound-btn" type="button" aria-pressed="true">sound on.</button>
+      <input type="range" id="sound-vol" min="0" max="100" step="5" value="100" aria-label="Sound effects volume">
+      <span class="set-val" id="sound-val">100%</span>
+    </div>
+    <div class="set-row size">
+      <span>text size</span>
+      <span class="size-btns">
+        <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
+        <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
+      </span>
+    </div>
+    <div class="set-row">
+      <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
+      <span class="confirm" id="restart-confirm" hidden>
+        <span>lose everything?</span>
+        <button class="link" id="restart-yes" type="button">yes.</button>
+        <button class="link" id="restart-no" type="button">no.</button>
+      </span>
+    </div>
+    <div class="end-btns"><button class="el" id="settings-close" type="button">close.</button></div>
+  </div>
 </div>
 
 <div class="overlay" id="end-overlay" role="dialog" aria-modal="true" aria-labelledby="end-title" hidden>

@@ -9,6 +9,11 @@ FE.module(function (FE) {
   const pools = {};          // file -> its <audio> copies
   let on = true;
   try { on = localStorage.getItem(FE.SOUND_KEY) !== 'off'; } catch (e) {}
+  const vol = { sound: 1, music: 1 };      // player's volume sliders, 0-1, on top of each sound's own volume
+  try {
+    const v = JSON.parse(localStorage.getItem(FE.VOL_KEY));
+    if (v) ['sound', 'music'].forEach(k => { if (typeof v[k] === 'number' && v[k] >= 0 && v[k] <= 1) vol[k] = v[k]; });
+  } catch (e) {}
 
   Object.values(FE.SOUNDS).forEach(snd => snd.files.forEach(f => {
     const a = new Audio(`audio/${f}.wav`);
@@ -25,7 +30,7 @@ FE.module(function (FE) {
       if (pool.length < COPIES) { a = pool[0].cloneNode(); pool.push(a); }
       else a = pool.reduce((x, y) => x.currentTime > y.currentTime ? x : y);   // restart the one furthest along
     }
-    a.volume = snd.vol;
+    a.volume = snd.vol * vol.sound;
     a.currentTime = 0;
     const p = a.play();
     if (p) p.catch(() => {});   // before the first click on the page the browser may refuse: just stay quiet
@@ -37,6 +42,7 @@ FE.module(function (FE) {
   music.loop = true;
   music.preload = 'auto';
   let musicOn = true, fade = 0;
+  const musicTop = () => FE.MUSIC.vol * vol.music;
   try { musicOn = localStorage.getItem(FE.MUSIC_KEY) !== 'off'; } catch (e) {}
 
   function playMusic() {
@@ -45,10 +51,10 @@ FE.module(function (FE) {
     music.volume = 0;
     const p = music.play();
     if (p) p.catch(() => {});
-    const step = FE.MUSIC.vol / (FE.MUSIC.fadeIn * 10);
+    const step = FE.MUSIC.vol / (FE.MUSIC.fadeIn * 10);   // fade in towards the current slider volume
     fade = setInterval(() => {
-      music.volume = Math.min(FE.MUSIC.vol, music.volume + step);
-      if (music.volume >= FE.MUSIC.vol) clearInterval(fade);
+      music.volume = Math.min(musicTop(), music.volume + step);
+      if (music.volume >= musicTop()) clearInterval(fade);
     }, 100);
   }
   function stopMusic() { clearInterval(fade); music.pause(); }
@@ -74,6 +80,21 @@ FE.module(function (FE) {
     if (musicOn) playMusic(); else stopMusic();
     label();
   });
+  // ---- volume sliders, remembered ----
+  function showVol() {
+    ['sound', 'music'].forEach(k => {
+      $(k + '-vol').value = Math.round(vol[k] * 100);
+      $(k + '-val').textContent = Math.round(vol[k] * 100) + '%';
+    });
+  }
+  ['sound', 'music'].forEach(k => $(k + '-vol').addEventListener('input', () => {
+    vol[k] = $(k + '-vol').value / 100;
+    $(k + '-val').textContent = $(k + '-vol').value + '%';
+    if (k === 'music' && !music.paused && music.volume > 0) music.volume = musicTop();
+    try { localStorage.setItem(FE.VOL_KEY, JSON.stringify(vol)); } catch (e) {}
+  }));
+  $('sound-vol').addEventListener('change', () => FE.sfx('ui'));   // a sample of the new level
+  showVol();
   label();
 
   // footer links, the builds pager, works switches and the end message's buttons all tick
