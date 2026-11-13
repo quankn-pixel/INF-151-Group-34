@@ -3,7 +3,7 @@
 const W = 1920, H = 1080;
 const FIELD = { x0: 40, y0: 110, y1: 1000 };
 const WALL = { x: 1650, w: 60, y0: 110, y1: 1000 };
-const AURA_R = 180, SQUAD_CAP = 100, DEPLOY_X = 700, UNIT_SCALE = 1.3, SPEED_SCALE = 1.3, SAVE_KEY = 'wallbreakers-save-v1';
+const AURA_R = 180, SQUAD_CAP = 500, DEPLOY_X = 700, UNIT_SCALE = 1.3, SPEED_SCALE = 1.3, SAVE_KEY = 'wallbreakers-save-v1';
 
 const EL = {
   fire:  { n: 'Fire',  c: '#ff7a3a', d: '#8a2c0c' },

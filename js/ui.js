@@ -5,7 +5,7 @@ let screen = 'title';
 const gem = el => '<svg class="gem" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,1 14,6 8,15 2,6" fill="' + EL[el].c + '"/><polygon points="8,1 14,6 8,7 2,6" fill="#fff" fill-opacity=".38"/><polygon points="8,7 14,6 8,15" fill="#000" fill-opacity=".2"/></svg>';
 
 /* ---------- save ---------- */
-function newSave() { return { v: 1, crystals: { fire: 500, water: 500, earth: 500, air: 500 }, units: [], squads: [[], []], cleared: {}, next: 1 }; }
+function newSave() { return { v: 1, crystals: { fire: 9999, water: 9999, earth: 9999, air: 9999 }, units: [], squads: [[], []], cleared: {}, next: 1 }; }
 function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && Array.isArray(s.units)) return s; } catch (e) { } return null; }
 function migrate(s) {
   s.units.forEach(i => { if (!i.weight) i.weight = Math.round(i.comps.reduce((a, id) => a + UNITS[id].weight, 0) * (i.comps.length > 1 ? .85 : 1) * Math.pow(1.4, i.tier - 1)); });
