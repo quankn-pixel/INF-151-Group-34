@@ -33,7 +33,7 @@ function renderBattle(g) {
   }
   drawWall(g, B.wall, B.boss && !B.boss.dead);
   // interaction radius: faint circle in the unit's own element colour
-  if (B.showAura !== false) {
+  if (FEATURES.interactions && B.showAura !== false) {
     for (const u of B.units) {
       if (u.dead || (u.rod && u.rod.state === 'fly')) continue;
       const sel = B.sel.includes(u);

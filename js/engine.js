@@ -35,9 +35,9 @@ function makeUnit(inst, x, y, o) {
   computeEff(u);
   return u;
 }
-function makeEnemy(type, x, y) {
-  const d = ENEMY[type];
-  const e = { isEnemy: true, team: 1, type, uid: ++UID, name: d.name, x, y, r: d.r * UNIT_SCALE, hp: d.hp, maxHp: d.hp, atk: d.atk, def: d.def, iv: d.iv,
+function makeEnemy(type, x, y, sc) {
+  const d = ENEMY[type]; sc = sc || 1;
+  const e = { isEnemy: true, team: 1, type, uid: ++UID, name: d.name, x, y, r: d.r * UNIT_SCALE, hp: d.hp * sc, maxHp: d.hp * sc, atk: d.atk * sc, def: d.def, iv: d.iv,
     range: d.range, immuneSlug: !!d.immuneSlug, cd: d.iv * rnd(.3, 1), dd: null, slug: 0, fdot: null, dots: [], paralyzed: false,
     dead: false, flash: 0, aim: Math.PI, mod: null, e: null, shT: 5, smT: 12 };
   computeEff(e);
@@ -46,7 +46,7 @@ function makeEnemy(type, x, y) {
 function layoutSquad(insts) {
   const base = { tank: 620, dps: 480, heal: 340, util: 230 }, groups = { tank: [], dps: [], heal: [], util: [] };
   insts.forEach(i => {
-    const roles = instRoles(i); const r = roles.includes('util') ? 'util' : roles.includes('tank') ? 'tank' : roles.includes('dps') ? 'dps' : 'heal';
+    const roles = instRoles(i); const r = roles.includes('util') ? 'util' : (roles.includes('tank') || roles.includes('basic')) ? 'tank' : roles.includes('dps') ? 'dps' : 'heal';
     groups[r].push(i);
   });
   const cy = (FIELD.y0 + FIELD.y1) / 2, maxRows = Math.floor((FIELD.y1 - FIELD.y0 - 100) / 72);
@@ -73,9 +73,9 @@ function loadWave(i) {
   B.units = []; B.enemies = []; B.projs = []; B.fx = []; B.mounds = []; B.tele = []; B.marks = []; B.links = [];
   B.sel = []; B.targeting = null; B.phase = 'deploy'; B.loseT = 0; B.auraT = 0;
   B.wall = { isWall: true, team: 1, x: WALL.x, y: (WALL.y0 + WALL.y1) / 2, hp: wv.wall.hp, maxHp: wv.wall.hp, def: wv.wall.def, dd: null, fdot: null, dots: null, dead: false, flash: 0, e: { def: wv.wall.def } };
-  wv.enemies.forEach(a => B.enemies.push(makeEnemy(a[0], a[1], a[2])));
+  wv.enemies.forEach(a => B.enemies.push(makeEnemy(a[0], a[1], a[2], a[3])));
   B.boss = B.enemies.find(e => e.type === 'boss') || null;
-  const insts = (G.squads[i] || []).map(id => G.units.find(u => u.uid === id)).filter(Boolean);
+  const insts = (G.squads[i] || []).map(id => G.units.find(u => u.uid === id)).filter(Boolean).filter(i => !instLocked(i));
   layoutSquad(insts);
   recomputeAuras();
 }
@@ -85,7 +85,7 @@ function beginFight() { if (B.phase === 'deploy' && B.units.length) { B.phase = 
 function computeEff(o) {
   if (o.isWall) { o.e = { def: o.def * (1 - (o.dd ? o.dd.pct : 0)) }; return; }
   if (o.isEnemy) { o.e = { atk: o.atk, def: o.def * (1 - (o.dd ? o.dd.pct : 0)), iv: o.iv * (o.slug > 0 && !o.immuneSlug ? 1.5 : 1) }; return; }
-  const m = o.mod, mom = o.els.includes('air') ? o.mom : 0, ab = 1 + .25 * mom;
+  const m = o.mod, mom = 0, ab = 1 + .25 * mom;
   let atk = (m.atkSet != null ? m.atkSet : o.atk) * m.atkMul * ab;
   let def = (m.defSet != null ? m.defSet : o.def) * m.defMul * ab * (1 - (o.dd ? o.dd.pct : 0));
   const spd = o.spd * m.spdMul * (1 + .3 * mom);
@@ -115,6 +115,7 @@ function recomputeAuras() {
   const us = B.units.filter(u => !u.dead && !(u.rod && u.rod.state === 'fly'));
   us.forEach(u => { u.mod = newMod(); });
   B.links = [];
+  if (!FEATURES.interactions) return;
   for (const T of us) {
     const near = us.filter(S => S !== T && dist(S, T) <= AURA_R).sort((a, b) => dist(a, T) - dist(b, T));
     for (const S of near) for (const se of S.els) for (const te of T.els) {
@@ -144,15 +145,6 @@ function updateFx(dt) {
 
 /* ---------- damage ---------- */
 function setDD(t, pct) { if (!t.dd || pct >= t.dd.pct) t.dd = { pct, t: 3.5 }; }
-function onHitAttr(src, tgt) {
-  if (src.els.includes('fire') && !src.mod.dotOff) {
-    const f = tgt.fdot || (tgt.fdot = { active: false, ticks: 0, timer: .7, src: {} });
-    if (!f.active) { f.active = true; f.timer = .7; }
-    f.ticks = 3; f.src[src.uid] = { v: src.e.atk * .22, exp: B.t + 3.2 };
-  }
-  if (src.els.includes('water')) setDD(tgt, src.comps.includes('water_dps') ? .30 : .15);
-  if (src.els.includes('earth') && !tgt.isWall && !tgt.immuneSlug) tgt.slug = Math.max(tgt.slug || 0, 3);
-}
 function applyDamage(t, dmg, src, o) {
   o = o || {};
   if (t.dead || !(dmg > 0)) return 0;
@@ -185,7 +177,6 @@ function hit(src, tgt, raw, o) {
   const dmg = ign ? raw : Math.max(raw - df, raw * .05);
   const dealt = applyDamage(tgt, dmg, src, { crit });
   if (src.isUnit) {
-    onHitAttr(src, tgt);
     if (sm.bonus > 0 && dealt > 0) applyDamage(tgt, dealt * sm.bonus, src, { col: '#7cc4ff' });
   } else if (src.type === 'ballista' && tgt.isUnit) tgt.dots.push({ dps: raw * .3 / 3, t: 3 });
   if (tgt.isUnit) {
@@ -203,7 +194,6 @@ function heal(src, tgt, amt, o) {
   const real = Math.min(amt, tgt.maxHp - tgt.hp);
   if (real <= .2) return;
   tgt.hp += real; txt(tgt.x, tgt.y - tgt.r - 8, '+' + Math.round(real), '#6ee7a0', 11);
-  if (src.els.includes('water') && !o.noDD) setDD(tgt, .15);
 }
 function killUnit(u) {
   u.dead = true; u.hp = 0; burst(u.x, u.y, EL[u.els[0]].c, 14);
@@ -353,7 +343,6 @@ function runHeals(u, dt) {
       const t = lowShield(allies);
       if (t && dist(u, t) - t.r <= h.rng) {
         h.t = h.iv; t.shield = Math.min(t.shield + h.pow * u.e.heal, t.maxHp * .5);
-        if (u.els.includes('earth')) t.slug = Math.max(t.slug, 1.5);
         beam(u.x, u.y, t.x, t.y, '#c99a45', 3); ring(t.x, t.y, 6, t.r + 14, '#c99a45', .4);
       } else h.t = .1;
     }

@@ -5,11 +5,11 @@ let screen = 'title';
 const gem = el => '<svg class="gem" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,1 14,6 8,15 2,6" fill="' + EL[el].c + '"/><polygon points="8,1 14,6 8,7 2,6" fill="#fff" fill-opacity=".38"/><polygon points="8,7 14,6 8,15" fill="#000" fill-opacity=".2"/></svg>';
 
 /* ---------- save ---------- */
-function newSave() { return { v: 1, crystals: { fire: 9999, water: 9999, earth: 9999, air: 9999 }, units: [], squads: [[], []], cleared: {}, next: 1 }; }
+function newSave() { return { v: 1, crystals: { fire: START_CRYSTALS, water: START_CRYSTALS, earth: START_CRYSTALS, air: START_CRYSTALS }, units: [], squads: [[], []], cleared: {}, next: 1 }; }
 function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && Array.isArray(s.units)) return s; } catch (e) { } return null; }
 function migrate(s) {
   s.units.forEach(i => { if (!i.weight) i.weight = Math.round(i.comps.reduce((a, id) => a + UNITS[id].weight, 0) * (i.comps.length > 1 ? .85 : 1) * Math.pow(1.4, i.tier - 1)); });
-  s.squads = s.squads.map(q => { let w = 0; return q.filter(id => { const u = s.units.find(x => x.uid === id); if (!u || w + u.weight > SQUAD_CAP) return false; w += u.weight; return true; }); });
+  s.squads = s.squads.map(q => { let w = 0; return q.filter(id => { const u = s.units.find(x => x.uid === id); if (!u || instLocked(u) || w + u.weight > SQUAD_CAP) return false; w += u.weight; return true; }); });
 }
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) { } }
 const crysHTML = () => ELS.map(e => '<span title="' + EL[e].n + ' crystals">' + gem(e) + G.crystals[e] + '</span>').join('');
@@ -54,11 +54,11 @@ function sqOf(uid) { return G.squads[0].includes(uid) ? 0 : G.squads[1].includes
 function renderShop() {
   $('#shopCrys').innerHTML = crysHTML();
   $('#elTabs').innerHTML = ELS.map(e => '<button class="tab" data-el="' + e + '" aria-pressed="' + (e === shopEl) + '">' + gem(e) + EL[e].n + '</button>').join('');
-  $('#elAttr').style.borderLeftColor = EL[shopEl].c;
-  $('#elAttr').innerHTML = '<b style="color:' + EL[shopEl].c + '">' + EL[shopEl].n + ' attribute.</b> ' + ATTR[shopEl];
+  $('#linksBox').hidden = !FEATURES.interactions;
   $('#cards').innerHTML = BY_EL[shopEl].map(c => {
     const afford = G.crystals[c.el] >= c.cost;
-    return '<div class="card"><div class="top"><span class="ico" data-c="' + c.id + '"></span><div><div class="nm">' + c.name + '</div><div class="role">' + ROLES[c.role] + '</div></div></div><p>' + c.blurb + '</p><div class="stats">' + statsHTML(baseStats(c), [c.id], c.weight) + '</div><div class="buyrow"><span class="cost">' + gem(c.el) + c.cost + '</span><button class="btn primary sm" data-buy="' + c.id + '"' + (afford ? '' : ' disabled') + '>Buy</button></div></div>';
+    return '<div class="card' + (c.locked ? ' locked' : '') + '"><div class="top"><span class="ico" data-c="' + c.id + '"></span><div><div class="nm">' + c.name + '</div><div class="role">' + ROLES[c.role] + '</div></div></div><p>' + c.blurb + '</p><div class="stats">' + statsHTML(baseStats(c), [c.id], c.weight) + '</div><div class="buyrow"><span class="cost">' + gem(c.el) + c.cost + '</span>' +
+      (c.locked ? '<span class="lockbadge">Locked</span>' : '<button class="btn primary sm" data-buy="' + c.id + '"' + (afford ? '' : ' disabled') + '>Buy</button>') + '</div></div>';
   }).join('');
   fillIcons($('#cards'));
   renderBarracks();
@@ -70,31 +70,30 @@ function rowHTML(i) {
     '<button class="btn sm' + (s === 0 ? ' on' : '') + '" data-act="sq" data-v="0" title="Squad 1 fights wave 1">Squad 1</button>' +
     '<button class="btn sm' + (s === 1 ? ' on' : '') + '" data-act="sq" data-v="1" title="Squad 2 fights wave 2">Squad 2</button>' +
     '<button class="btn sm' + (s === -1 ? ' on' : '') + '" data-act="sq" data-v="-1">Bench</button>' +
-    '<button class="btn sm' + (fs ? ' on' : '') + '" data-act="fuse">Fuse</button>' +
-    '<button class="btn sm ghost" data-act="sell" title="Refund 50%">Sell</button></div></div>';
+    (G.cleared[1] ? '<button class="btn sm' + (fs ? ' on' : '') + '" data-act="fuse" title="Combine two identical units">Ascend</button>' : '') +
+    '<button class="btn sm ghost" data-act="sell" title="Refund 50%, rounded down">Sell</button></div></div>';
 }
-const ATTR_SHORT = { fire: 'burn', water: 'defense shred', earth: 'sluggish', air: 'momentum' };
 function fuseHTML() {
+  if (!G.cleared[1]) return '<div class="fuse"><h3>Ascension</h3><div class="empty">Locked. Clear Broken Rampart to ascend units.</div></div>';
   const a = G.units.find(u => u.uid === fuseSel[0]), b = G.units.find(u => u.uid === fuseSel[1]);
   let body;
-  if (!a) body = '<div class="empty">Press Fuse on two units. Two identical units upgrade a tier (x1.5 HP, x1.4 ATK, x1.3 DEF). Two different units merge into one that carries both elements. Fusions are free.</div>';
-  else if (!b) body = '<div class="empty"><b>' + a.name + '</b> is selected. Pick a second unit.</div>';
+  if (!a) body = '<div class="empty">Press Ascend on two identical units to raise them one tier. HP, ATK and DEF double. Fusing different units is paused for now.</div>';
+  else if (!b) body = '<div class="empty"><b>' + a.name + '</b> is selected. Pick a second identical unit.</div>';
   else {
     const r = fuseInsts(a, b, -1);
     if (r.error) body = '<div class="err">' + r.error + '</div><div class="row"><button class="btn sm ghost" data-act="clearfuse">Clear</button></div>';
     else {
-      const i = r.inst, els = instElements(i);
-      const note = i.kind === 'tier' ? 'Becomes tier ' + i.tier + '.' : 'Carries ' + els.map(e => EL[e].n + ' ' + ATTR_SHORT[e]).join(' and ') + '. Its elements affect other units, not itself. Roles: ' + instRoles(i).map(x => ROLES[x]).join(' + ') + '.';
-      body = '<div class="urow"><span class="ico" data-c="' + i.comps.join(',') + '"></span><div style="min-width:0"><div class="nm">' + i.name + '</div><div class="stats">' + statsHTML(i.stats, i.comps, i.weight) + '</div><div class="muted" style="font-size:12px;margin-top:4px">' + note + '</div></div></div><div style="display:flex;gap:8px"><button class="btn primary sm" data-act="dofuse">Fuse now</button><button class="btn sm ghost" data-act="clearfuse">Clear</button></div>';
+      const i = r.inst;
+      body = '<div class="urow"><span class="ico" data-c="' + i.comps.join(',') + '"></span><div style="min-width:0"><div class="nm">' + i.name + '</div><div class="stats">' + statsHTML(i.stats, i.comps, i.weight) + '</div><div class="muted" style="font-size:12px;margin-top:4px">Becomes tier ' + i.tier + '. Both units are consumed.</div></div></div><div style="display:flex;gap:8px"><button class="btn primary sm" data-act="dofuse">Ascend now</button><button class="btn sm ghost" data-act="clearfuse">Clear</button></div>';
     }
   }
-  return '<div class="fuse"><h3>Fusion</h3>' + body + '</div>';
+  return '<div class="fuse"><h3>Ascension</h3>' + body + '</div>';
 }
 function squadWeight(n) { return G.squads[n].reduce((s, id) => { const u = G.units.find(x => x.uid === id); return s + (u ? u.weight : 0); }, 0); }
 function renderBarracks() {
   const by = id => G.units.find(u => u.uid === id);
   const sq = n => G.squads[n].map(by).filter(Boolean);
-  const bench = G.units.filter(u => sqOf(u.uid) < 0);
+  const bench = G.units.filter(u => sqOf(u.uid) < 0 && !instLocked(u));
   const sec = (title, sub, list, wt) => '<div class="sq"><header><h3>' + title + '</h3><span>' + sub + '</span></header>' +
     (wt === undefined ? '' : '<div class="wbar' + (wt >= SQUAD_CAP * .95 ? ' full' : '') + '"><i style="width:' + Math.min(100, wt / SQUAD_CAP * 100) + '%"></i></div>') +
     (list.length ? list.map(rowHTML).join('') : '<div class="empty">Empty.</div>') + '</div>';
@@ -107,7 +106,7 @@ function renderBarracks() {
   fillIcons($('#barInner'));
 }
 function buyUnit(id) {
-  const c = UNITS[id]; if (G.crystals[c.el] < c.cost) return;
+  const c = UNITS[id]; if (c.locked || G.crystals[c.el] < c.cost) return;
   G.crystals[c.el] -= c.cost;
   const inst = mkInst(id, G.next++); G.units.push(inst);
   const sq = squadWeight(0) + inst.weight <= SQUAD_CAP ? 0 : squadWeight(1) + inst.weight <= SQUAD_CAP ? 1 : -1;
@@ -123,10 +122,10 @@ function initShop() {
     if (act === 'sq') {
       const v = +b.dataset.v; G.squads = G.squads.map(s => s.filter(id => id !== uid));
       if (v >= 0) { const un = G.units.find(x => x.uid === uid); if (squadWeight(v) + un.weight > SQUAD_CAP) { shopMsg = '!Squad ' + (v + 1) + ' is at its weight limit (' + squadWeight(v) + ' / ' + SQUAD_CAP + '). ' + un.name + ' weighs ' + un.weight + '.'; renderShop(); return; } G.squads[v].push(uid); }
-    } else if (act === 'fuse') {
+    } else if (act === 'fuse' && G.cleared[1]) {
       fuseSel = fuseSel.includes(uid) ? fuseSel.filter(x => x !== uid) : (fuseSel.length >= 2 ? [fuseSel[1], uid] : fuseSel.concat(uid));
     } else if (act === 'clearfuse') fuseSel = [];
-    else if (act === 'dofuse') {
+    else if (act === 'dofuse' && G.cleared[1]) {
       const a = G.units.find(u => u.uid === fuseSel[0]), bb = G.units.find(u => u.uid === fuseSel[1]);
       const r = a && bb ? fuseInsts(a, bb, G.next) : null;
       if (r && r.inst) {
@@ -165,7 +164,8 @@ function renderStages() {
   $('#squadNote').innerHTML = '<span>Squad 1: ' + G.squads[0].length + ' units, weight ' + squadWeight(0) + ' / ' + SQUAD_CAP + ' (wall 1)</span><span>Squad 2: ' + G.squads[1].length + ' units, weight ' + squadWeight(1) + ' / ' + SQUAD_CAP + ' (wall 2)</span>';
   $('#stageGrid').innerHTML = STAGES.map((s, i) => {
     const blk = stageBlock(i), cl = G.cleared[i];
-    const rew = ELS.map(e => '<span class="cost">' + gem(e) + Math.round(s.reward[e] * (cl ? .5 : 1)) + '</span>').join(' ');
+    const amt = e => Math.round(s.reward[e] * (cl ? .5 : 1)), any = ELS.some(e => amt(e) > 0);
+    const rew = (any ? ELS.map(e => '<span class="cost">' + gem(e) + amt(e) + '</span>').join(' ') : '') + (s.unlock && !cl ? '<span class="cost" style="color:var(--brass)">Unlocks ascension</span>' : (any ? '' : '<span class="muted">No crystals</span>'));
     return '<div class="stage"><header><h3>' + s.name + '</h3><span class="badge' + (cl ? ' clr' : '') + '">' + (cl ? 'Cleared' : s.waves.length + (s.waves.length > 1 ? ' walls' : ' wall')) + '</span></header><div class="muted" style="font-size:13px">' + s.blurb + '</div><div class="wave">' +
       s.waves.map((w, k) => '<div><b>Wall ' + (k + 1) + '</b> · ' + w.wall.hp + ' HP, ' + w.wall.def + ' DEF</div><div>' + waveSummary(w) + '</div>').join('') + '</div><div class="crys" style="gap:10px">' + rew + '</div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" data-stage="' + i + '"' + (blk ? ' disabled' : '') + '>Deploy</button>' + (blk ? '<span class="err">' + blk + '</span>' : '') + '</div></div>';
@@ -189,7 +189,7 @@ function resizeCanvas() {
 function openBattle(si) {
   startBattle(si); B.onPhase = onPhase;
   $('#overlay').hidden = true; sideSig = ''; show('battle');
-  $('#bStage').textContent = STAGES[si].name; setPauseUI(); $('#bAura').classList.add('on');
+  $('#bStage').textContent = STAGES[si].name; setPauseUI(); $('#bAura').classList.add('on'); $('#bAura').hidden = !FEATURES.interactions;
 }
 function setPauseUI() { $('#bPause').textContent = B && B.paused ? 'Resume' : 'Pause'; $('#bSpeed').textContent = (B ? B.speed : 1) + '×'; }
 function onPhase(ph) {
@@ -201,7 +201,7 @@ function onPhase(ph) {
     ELS.forEach(e => { rw[e] = Math.round(STAGES[B.si].reward[e] * (full ? 1 : .5)); G.crystals[e] += rw[e]; });
     G.cleared[B.si] = true; save();
     const nx = B.si + 1 < STAGES.length && !stageBlock(B.si + 1);
-    h = '<div class="modal win"><h2>Wall down</h2><p class="muted" style="margin:0">' + STAGES[B.si].name + ' is yours. ' + (full ? 'First clear reward:' : 'Repeat reward (half):') + '</p><div class="crys">' + ELS.map(e => '<span>' + gem(e) + '+' + rw[e] + '</span>').join('') + '</div><div class="row">' + (nx ? '<button class="btn primary" data-m="nextstage">Next stage</button>' : '') + '<button class="btn" data-m="shop">Armory</button><button class="btn" data-m="stages">Stages</button><button class="btn ghost" data-m="retry">Replay</button></div></div>';
+    h = '<div class="modal win"><h2>Wall down</h2><p class="muted" style="margin:0">' + STAGES[B.si].name + ' is yours.' + (ELS.some(e => rw[e] > 0) ? (full ? ' First clear reward:' : ' Repeat reward (half):') : '') + '</p>' + (ELS.some(e => rw[e] > 0) ? '<div class="crys">' + ELS.map(e => '<span>' + gem(e) + '+' + rw[e] + '</span>').join('') + '</div>' : '') + (B.si === 1 && full ? '<p class="ok" style="margin:0">Ascension unlocked. Combine two identical units in the Armory.</p>' : '') + '<div class="row">' + (nx ? '<button class="btn primary" data-m="nextstage">Next stage</button>' : '') + '<button class="btn" data-m="shop">Armory</button><button class="btn" data-m="stages">Stages</button><button class="btn ghost" data-m="retry">Replay</button></div></div>';
   } else if (ph === 'lost') {
     h = '<div class="modal lose"><h2>Squad lost</h2><p class="muted" style="margin:0">No units left on the field. Adjust your squads or tactics and try again.</p><div class="row"><button class="btn primary" data-m="retry">Retry</button><button class="btn" data-m="shop">Armory</button><button class="btn" data-m="stages">Stages</button></div></div>';
   }
@@ -348,6 +348,7 @@ function boot() {
   G = loadSave(); if (G) migrate(G);
   DEMO.g = $('#demo').getContext('2d');
   $('#gemsRow').innerHTML = ELS.map(gem).join('');
+  $('.start-note').textContent = 'New games start with ' + START_CRYSTALS + ' of each crystal and a squad weight limit of ' + SQUAD_CAP + '.';
   initTitle(); initShop(); initStages(); initBattle();
   show('title');
   requestAnimationFrame(frame);

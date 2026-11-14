@@ -19,6 +19,7 @@ function shapePts(id, role, r) {
   else if (id === 'water_crab') ngon(8, r * 1.08, .3927);
   else if (id === 'earth_ram') P.push([r * 1.25, 0], [r * .2, -r], [-r, -r * .8], [-r * .5, 0], [-r, r * .8], [r * .2, r]);
   else if (id === 'air_rod') { for (let i = 0; i < 8; i++) { const a = i * .7854 - 1.5708, rad = i % 2 ? r * .5 : r * 1.2; P.push([Math.cos(a) * rad, Math.sin(a) * rad]); } }
+  else if (role === 'basic') P.push([-r * .92, -r * .92], [r * .92, -r * .92], [r * .92, r * .92], [-r * .92, r * .92]);
   else if (role === 'tank') ngon(6, r * 1.08, 0);
   else if (role === 'dps') P.push([r * 1.2, 0], [-r * .85, -r * .95], [-r * .85, r * .95]);
   return P;
