@@ -15,25 +15,44 @@ const EL = {
   air:   { n: 'Air',   c: '#6fe3c1', d: '#13755f' }
 };
 const ELS = ['fire', 'water', 'earth', 'air'];
+/* premise shown on the title screen. Ties to the incremental layer: the vagrants who raided your stores. */
+const LORE = 'The elements woke, and the vagrants came for them. Driven off, they fell back behind old stone, raised wall after wall, and followed a warlord. Shape soldiers from crystal and bring the walls down.';
 const ROLES = { basic: 'Recruit', tank: 'Tank', dps: 'Damage', heal: 'Healer', util: 'Utility' };
 
 const UNITS = {};
 function def(id, o) { UNITS[id] = Object.assign({ id, heal: null, atk: 0, hits: 0, locked: true }, o); }
 
 /* range is the gap between edges. melee ~14, ranged ~200 */
-/* the four recruits are the only units */
-def('fire_basic', { el: 'fire', role: 'basic', name: 'Fire Recruit', short: 'Fire', cost: 1, weight: 2, kind: 'melee', hp: 100, atk: 12, def: 3, spd: 50, range: 14, iv: 1.2, taunt: 1, r: 15, locked: false,
-  blurb: 'A plain melee soldier. No abilities, average everything.' });
-def('water_basic', { el: 'water', role: 'basic', name: 'Water Recruit', short: 'Water', cost: 1, weight: 2, kind: 'melee', hp: 100, atk: 12, def: 3, spd: 50, range: 14, iv: 1.2, taunt: 1, r: 15, locked: false,
-  blurb: 'A plain melee soldier. No abilities, average everything.' });
-def('earth_basic', { el: 'earth', role: 'basic', name: 'Earth Recruit', short: 'Earth', cost: 1, weight: 2, kind: 'melee', hp: 100, atk: 12, def: 3, spd: 50, range: 14, iv: 1.2, taunt: 1, r: 15, locked: false,
-  blurb: 'A plain melee soldier. No abilities, average everything.' });
-def('air_basic', { el: 'air', role: 'basic', name: 'Air Recruit', short: 'Air', cost: 1, weight: 2, kind: 'melee', hp: 100, atk: 12, def: 3, spd: 50, range: 14, iv: 1.2, taunt: 1, r: 15, locked: false,
-  blurb: 'A plain melee soldier. No abilities, average everything.' });
-function instLocked(i) { return i.comps.some(id => UNITS[id].locked); }
+/* Recruits are open from the start. Each element's specialist unlocks when a stage with unlock 'specials' is cleared. */
+const RECRUIT = { hp: 100, atk: 12, def: 3, spd: 50, range: 14, iv: 1.2, taunt: 1, r: 15, cost: 1, weight: 2, kind: 'melee', role: 'basic', locked: false };
+def('fire_basic',  Object.assign({}, RECRUIT, { el: 'fire',  name: 'Fire Recruit',  short: 'Fire',
+  blurb: 'An ember pressed into the shape of a soldier. Plain melee: no abilities, average everything.' }));
+def('water_basic', Object.assign({}, RECRUIT, { el: 'water', name: 'Water Recruit', short: 'Water',
+  blurb: 'Puddle water that learned to stand up. Plain melee: no abilities, average everything.' }));
+def('earth_basic', Object.assign({}, RECRUIT, { el: 'earth', name: 'Earth Recruit', short: 'Earth',
+  blurb: 'A clod of dirt with somewhere to be. Plain melee: no abilities, average everything.' }));
+def('air_basic',   Object.assign({}, RECRUIT, { el: 'air',   name: 'Air Recruit',   short: 'Air',
+  blurb: 'A breeze that picked a fight. Plain melee: no abilities, average everything.' }));
+
+/* specialists: one per element, each with a single clear trait */
+def('fire_dps',   { el: 'fire', role: 'dps', name: 'Burning Skull', short: 'Skull', cost: 3, weight: 3, kind: 'proj', hp: 120, atk: 15, def: 2, spd: 56, range: 200, iv: 1.1, taunt: 1, r: 14, unlock: 'specials', burn: .3,
+  blurb: 'What the first fire left behind. Ranged. Its fireballs leave a burn, and burns from several skulls stack.' });
+def('water_heal', { el: 'water', role: 'heal', name: 'Siren', short: 'Siren', cost: 3, weight: 3, kind: 'spring', hp: 100, atk: 0, def: 2, spd: 56, range: 0, iv: 1.8, taunt: 0, r: 15, unlock: 'specials',
+  heal: { kind: 'spring', pow: 24, iv: 1.8, rng: 175, splash: 70 }, blurb: 'She once sang floods into the valley. Now she sings wounds shut: heals the weakest ally and splashes its neighbors.' });
+def('earth_tank', { el: 'earth', role: 'tank', name: 'Earth Golem', short: 'Golem', cost: 4, weight: 6, kind: 'melee', hp: 320, atk: 15, def: 3, spd: 34, range: 14, iv: 2.0, taunt: 3, r: 21, unlock: 'specials',
+  blurb: 'A hillside that stood up. Draws enemy fire. Below 40% HP it hits harder and takes less damage.' });
+def('air_dps',    { el: 'air', role: 'dps', name: 'Eagle', short: 'Eagle', cost: 3, weight: 3, kind: 'proj', hp: 100, atk: 12, def: 2, spd: 118, range: 205, iv: .8, taunt: 1, r: 14, unlock: 'specials',
+  blurb: 'Rides the wind it makes. Fast ranged attacks, and its slipstream deflects or weakens enemy shots nearby.' });
+
+/* unlocks come from cleared stages (stage.unlock), so a new stage can grant them without touching the UI */
+function hasUnlock(key) { return !!(typeof G !== 'undefined' && G) && STAGES.some((s, i) => G.cleared[i] && (s.unlock || []).includes(key)); }
+function unitLocked(id) { const c = UNITS[id]; return !!c.locked && !(c.unlock && hasUnlock(c.unlock)); }
+function instLocked(i) { return i.comps.some(unitLocked); }
+const UNLOCK_TEXT = { ascend: 'ascension', specials: 'one specialist per element' };
+function unlockSource(key) { const s = STAGES.find(s => (s.unlock || []).includes(key)); return s ? s.name : '?'; }
 
 const BY_EL = {};
-ELS.forEach(e => BY_EL[e] = Object.values(UNITS).filter(u => u.el === e).sort((a, b) => a.locked - b.locked));
+ELS.forEach(e => BY_EL[e] = Object.values(UNITS).filter(u => u.el === e).sort((a, b) => !!a.locked - !!b.locked));
 
 const LINKS = [
   ['fire', 'earth', 'Earth loses 20% defense. When it falls it splits into two smaller copies at half HP.'],
@@ -53,15 +72,22 @@ const LINKS = [
 /* ---- enemies ---- */
 const ENEMY = {
   archer:   { name: 'Archer', hp: 60, atk: 10, def: 0, iv: 0.6, range: 270, r: 11, immuneSlug: true, speed: 620,
-              note: 'Rapid fire at the highest aggro. Ignores sluggish.' },
+              note: 'Vagrant lookouts. Rapid fire at whoever draws the most attention.' },
   ballista: { name: 'Ballista', hp: 300, atk: 38, def: 7, iv: 3, range: 340, r: 17, speed: 760,
               note: 'Hunts ranged units. Bolts cause bleeding.' },
   cannon:   { name: 'Cannon', hp: 340, atk: 46, def: 9, iv: 5, range: 370, r: 18, speed: 430, aoe: 68,
               note: 'Area blasts on high-aggro targets.' },
   catapult: { name: 'Catapult', hp: 560, atk: 72, def: 10, iv: 8, range: 520, r: 22, speed: 300, aoe: 112,
               note: 'Huge area hits on your backline.' },
+  /* structures never shoot. Each does one thing on its own timer. */
+  cauldron: { name: 'Oil Cauldron', hp: 140, atk: 85, def: 2, iv: 6, range: 0, r: 16, structure: true, pour: { r: 95, warn: 1.6, reach: 260 },
+              note: 'Tips boiling pitch onto the biggest crowd at the wall. Move out of the amber circle before it lands. Destroying the cauldron cancels its pour.' },
+  shrine:   { name: 'Mender’s Shrine', hp: 220, atk: 0, def: 4, iv: 1, range: 0, r: 17, structure: true, repair: .015,
+              note: 'A stonewright altar. Repairs 1.5% of the wall each second while it stands. Out of melee reach, so send ranged units.' },
+  banner:   { name: 'War Banner', hp: 160, atk: 0, def: 3, iv: 1, range: 0, r: 15, structure: true, rally: { r: 300, iv: .7 },
+              note: 'While it flies, defenders near it shoot 30% faster. Bring it down first.' },
   boss:     { name: 'Warlord Gorrath', hp: 2300, atk: 56, def: 14, iv: 1.8, range: 150, r: 34, boss: true,
-              note: 'The wall stands while he lives. Shockwaves and reinforcements.' }
+              note: 'He took the vagrants in when no one else would. The wall stands while he lives. Shockwaves and reinforcements.' }
 };
 
 /* enemies stand ON the wall or BEHIND it, never in front */
@@ -69,18 +95,25 @@ const row = (t, n, x, y0, y1, sc) => { const a = []; for (let i = 0; i < n; i++)
 const ON = WALL.x + WALL.w / 2, BK = WALL.x + WALL.w + 80, BK2 = BK + 90;
 const cat = (...l) => [].concat(...l);
 /* enemy entry = [type, x, y, strength]; strength scales that enemy's HP and attack */
+/* unlock: keys granted on first clear (see UNLOCK_TEXT). Stages open in order. */
 const STAGES = [
-  { name: 'Outer Gate', blurb: 'A thin wall and a lone archer. Learn the controls.',
+  { name: 'Outer Gate', blurb: 'The vagrants’ first line: a thin wall and one lookout. Learn the controls.',
     reward: { fire: 3, water: 3, earth: 3, air: 3 },
     waves: [{ wall: { hp: 150, def: 1 }, enemies: row('archer', 1, ON, 540, 540, .5) }] },
-  { name: 'Broken Rampart', blurb: 'A sturdier wall, archers and a ballista behind it. Bring a big squad. Clearing it unlocks ascension.',
-    reward: { fire: 0, water: 0, earth: 0, air: 0 }, unlock: 'ascend',
+  { name: 'Broken Rampart', blurb: 'A sturdier wall, archers and a ballista behind it. Bring a big squad.',
+    reward: { fire: 4, water: 4, earth: 4, air: 4 }, unlock: ['ascend', 'specials'],
     waves: [{ wall: { hp: 900, def: 3 }, enemies: cat(row('archer', 4, ON, 400, 680, .6), row('ballista', 2, BK, 460, 620, .5)) }] },
+  { name: 'Boiling Gate', blurb: 'The gatehouse keeps cauldrons of pitch. Watch for the amber circles and pull your squad out from under them.',
+    reward: { fire: 4, water: 4, earth: 4, air: 4 },
+    waves: [{ wall: { hp: 1400, def: 3 }, enemies: cat(row('cauldron', 2, ON, 380, 700, .6), row('archer', 3, ON, 300, 780, .6)) }] },
+  { name: 'Mender’s Wall', blurb: 'Stonewrights patch this wall as fast as you break it. Their shrines sit out of melee reach, so bring ranged units and click a shrine to focus it.',
+    reward: { fire: 5, water: 5, earth: 5, air: 5 },
+    waves: [{ wall: { hp: 1200, def: 4 }, enemies: cat(row('shrine', 2, BK, 400, 680, .7), row('banner', 1, ON, 540, 540, .7), row('archer', 4, ON, 300, 780, .6)) }] },
   { name: 'The Last Bastion', blurb: 'Two walls, two squads. The final challenge. Ascend your units first.',
     reward: { fire: 10, water: 10, earth: 10, air: 10 },
     waves: [
       { wall: { hp: 1200, def: 4 }, enemies: cat(row('archer', 5, ON, 380, 700, .65), row('ballista', 2, BK, 460, 620, .55)) },
-      { wall: { hp: 1500, def: 5 }, enemies: cat(row('archer', 6, ON, 360, 720, .65), row('ballista', 2, BK, 460, 620, .55), row('cannon', 1, BK2, 540, 540, .35)) }] }
+      { wall: { hp: 1500, def: 5 }, enemies: cat(row('archer', 6, ON, 360, 720, .65), row('banner', 1, ON, 540, 540, .6), row('ballista', 2, BK, 460, 620, .55), row('cannon', 1, BK2, 540, 540, .35)) }] }
 ];
 
 /* ---- unit instances and fusion ---- */

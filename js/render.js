@@ -29,7 +29,7 @@ function renderBattle(g) {
     g.strokeStyle = 'rgba(242,193,78,.5)'; g.setLineDash([8, 8]); g.lineWidth = 2; g.beginPath(); g.moveTo(DEPLOY_X, FIELD.y0 - 8); g.lineTo(DEPLOY_X, FIELD.y1 + 8); g.stroke();
     g.strokeStyle = 'rgba(255,122,58,.35)'; g.beginPath(); g.moveTo(WALL.x - 70, FIELD.y0 - 8); g.lineTo(WALL.x - 70, FIELD.y1 + 8); g.stroke(); g.setLineDash([]);
     g.fillStyle = 'rgba(242,193,78,.75)'; g.font = '600 17px "IBM Plex Mono",monospace'; g.fillText('DEPLOYMENT ZONE', FIELD.x0, FIELD.y0 - 18);
-    g.fillStyle = 'rgba(255,122,58,.7)'; g.fillText('FLAMETHROWERS MAY GO UP TO HERE', WALL.x - 70 - 340, FIELD.y0 - 18);
+    if (B.units.some(u => u.stationary)) { g.fillStyle = 'rgba(255,122,58,.7)'; g.fillText('FLAMETHROWERS MAY GO UP TO HERE', WALL.x - 70 - 340, FIELD.y0 - 18); }
   }
   drawWall(g, B.wall, B.boss && !B.boss.dead);
   // interaction radius: faint circle in the unit's own element colour
@@ -57,7 +57,7 @@ function renderBattle(g) {
     hpBar(g, m.x, m.y - m.r - 8, 30, m.hp / m.max, '#c99a45');
   }
   // telegraphs
-  for (const tl of B.tele) { const k = 1 - tl.t / tl.max; g.fillStyle = 'rgba(229,72,106,' + (.06 + .14 * k) + ')'; g.strokeStyle = 'rgba(229,72,106,.8)'; g.lineWidth = 2; g.beginPath(); g.arc(tl.x, tl.y, tl.r, 0, 6.28); g.fill(); g.stroke(); g.beginPath(); g.arc(tl.x, tl.y, tl.r * k, 0, 6.28); g.stroke(); }
+  for (const tl of B.tele) { const k = 1 - tl.t / tl.max, rgb = tl.k === 'oil' ? '242,170,60' : '229,72,106'; g.fillStyle = 'rgba(' + rgb + ',' + (.06 + .14 * k) + ')'; g.strokeStyle = 'rgba(' + rgb + ',.8)'; g.lineWidth = 2; g.beginPath(); g.arc(tl.x, tl.y, tl.r, 0, 6.28); g.fill(); g.stroke(); g.beginPath(); g.arc(tl.x, tl.y, tl.r * k, 0, 6.28); g.stroke(); }
   // enemies
   for (const e of B.enemies) {
     if (e.dead) continue;

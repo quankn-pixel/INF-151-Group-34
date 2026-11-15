@@ -5,9 +5,12 @@ let screen = 'title';
 const gem = el => '<svg class="gem" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,1 14,6 8,15 2,6" fill="' + EL[el].c + '"/><polygon points="8,1 14,6 8,7 2,6" fill="#fff" fill-opacity=".38"/><polygon points="8,7 14,6 8,15" fill="#000" fill-opacity=".2"/></svg>';
 
 /* ---------- save ---------- */
-function newSave() { return { v: 1, crystals: { fire: START_CRYSTALS, water: START_CRYSTALS, earth: START_CRYSTALS, air: START_CRYSTALS }, units: [], squads: [[], []], cleared: {}, next: 1 }; }
+const STAGE_LAYOUT = 2;   // bump and extend migrate() whenever stages are inserted or reordered, since clears are stored by index
+function newSave() { return { v: 1, sv: STAGE_LAYOUT, crystals: { fire: START_CRYSTALS, water: START_CRYSTALS, earth: START_CRYSTALS, air: START_CRYSTALS }, units: [], squads: [[], []], cleared: {}, next: 1 }; }
 function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && Array.isArray(s.units)) return s; } catch (e) { } return null; }
 function migrate(s) {
+  /* stage layout 2 inserted two stages before The Last Bastion: move an old clear of it from index 2 to 4 */
+  if (!s.sv) { if (s.cleared[2]) { s.cleared[4] = true; delete s.cleared[2]; } s.sv = STAGE_LAYOUT; }
   s.units.forEach(i => { if (!i.weight) i.weight = Math.round(i.comps.reduce((a, id) => a + UNITS[id].weight, 0) * (i.comps.length > 1 ? .85 : 1) * Math.pow(1.4, i.tier - 1)); });
   s.squads = s.squads.map(q => { let w = 0; return q.filter(id => { const u = s.units.find(x => x.uid === id); if (!u || instLocked(u) || w + u.weight > SQUAD_CAP) return false; w += u.weight; return true; }); });
 }
@@ -57,8 +60,9 @@ function renderShop() {
   $('#linksBox').hidden = !FEATURES.interactions;
   $('#cards').innerHTML = BY_EL[shopEl].map(c => {
     const afford = G.crystals[c.el] >= c.cost;
-    return '<div class="card' + (c.locked ? ' locked' : '') + '"><div class="top"><span class="ico" data-c="' + c.id + '"></span><div><div class="nm">' + c.name + '</div><div class="role">' + ROLES[c.role] + '</div></div></div><p>' + c.blurb + '</p><div class="stats">' + statsHTML(baseStats(c), [c.id], c.weight) + '</div><div class="buyrow"><span class="cost">' + gem(c.el) + c.cost + '</span>' +
-      (c.locked ? '<span class="lockbadge">Locked</span>' : '<button class="btn primary sm" data-buy="' + c.id + '"' + (afford ? '' : ' disabled') + '>Buy</button>') + '</div></div>';
+    const lk = unitLocked(c.id);
+    return '<div class="card' + (lk ? ' locked' : '') + '"><div class="top"><span class="ico" data-c="' + c.id + '"></span><div><div class="nm">' + c.name + '</div><div class="role">' + ROLES[c.role] + '</div></div></div><p>' + c.blurb + '</p><div class="stats">' + statsHTML(baseStats(c), [c.id], c.weight) + '</div><div class="buyrow"><span class="cost">' + gem(c.el) + c.cost + '</span>' +
+      (lk ? '<span class="lockbadge" title="Unlocks when you clear ' + unlockSource(c.unlock) + '">Clear ' + unlockSource(c.unlock) + '</span>' : '<button class="btn primary sm" data-buy="' + c.id + '"' + (afford ? '' : ' disabled') + '>Buy</button>') + '</div></div>';
   }).join('');
   fillIcons($('#cards'));
   renderBarracks();
@@ -70,11 +74,11 @@ function rowHTML(i) {
     '<button class="btn sm' + (s === 0 ? ' on' : '') + '" data-act="sq" data-v="0" title="Squad 1 fights wave 1">Squad 1</button>' +
     '<button class="btn sm' + (s === 1 ? ' on' : '') + '" data-act="sq" data-v="1" title="Squad 2 fights wave 2">Squad 2</button>' +
     '<button class="btn sm' + (s === -1 ? ' on' : '') + '" data-act="sq" data-v="-1">Bench</button>' +
-    (G.cleared[1] ? '<button class="btn sm' + (fs ? ' on' : '') + '" data-act="fuse" title="Combine two identical units">Ascend</button>' : '') +
+    (hasUnlock('ascend') ? '<button class="btn sm' + (fs ? ' on' : '') + '" data-act="fuse" title="Combine two identical units">Ascend</button>' : '') +
     '<button class="btn sm ghost" data-act="sell" title="Refund 50%, rounded down">Sell</button></div></div>';
 }
 function fuseHTML() {
-  if (!G.cleared[1]) return '<div class="fuse"><h3>Ascension</h3><div class="empty">Locked. Clear Broken Rampart to ascend units.</div></div>';
+  if (!hasUnlock('ascend')) return '<div class="fuse"><h3>Ascension</h3><div class="empty">Locked. Clear ' + unlockSource('ascend') + ' to ascend units.</div></div>';
   const a = G.units.find(u => u.uid === fuseSel[0]), b = G.units.find(u => u.uid === fuseSel[1]);
   let body;
   if (!a) body = '<div class="empty">Press Ascend on two identical units to raise them one tier. HP, ATK and DEF double. Fusing different units is paused for now.</div>';
@@ -106,7 +110,7 @@ function renderBarracks() {
   fillIcons($('#barInner'));
 }
 function buyUnit(id) {
-  const c = UNITS[id]; if (c.locked || G.crystals[c.el] < c.cost) return;
+  const c = UNITS[id]; if (unitLocked(id) || G.crystals[c.el] < c.cost) return;
   G.crystals[c.el] -= c.cost;
   const inst = mkInst(id, G.next++); G.units.push(inst);
   const sq = squadWeight(0) + inst.weight <= SQUAD_CAP ? 0 : squadWeight(1) + inst.weight <= SQUAD_CAP ? 1 : -1;
@@ -122,10 +126,10 @@ function initShop() {
     if (act === 'sq') {
       const v = +b.dataset.v; G.squads = G.squads.map(s => s.filter(id => id !== uid));
       if (v >= 0) { const un = G.units.find(x => x.uid === uid); if (squadWeight(v) + un.weight > SQUAD_CAP) { shopMsg = '!Squad ' + (v + 1) + ' is at its weight limit (' + squadWeight(v) + ' / ' + SQUAD_CAP + '). ' + un.name + ' weighs ' + un.weight + '.'; renderShop(); return; } G.squads[v].push(uid); }
-    } else if (act === 'fuse' && G.cleared[1]) {
+    } else if (act === 'fuse' && hasUnlock('ascend')) {
       fuseSel = fuseSel.includes(uid) ? fuseSel.filter(x => x !== uid) : (fuseSel.length >= 2 ? [fuseSel[1], uid] : fuseSel.concat(uid));
     } else if (act === 'clearfuse') fuseSel = [];
-    else if (act === 'dofuse' && G.cleared[1]) {
+    else if (act === 'dofuse' && hasUnlock('ascend')) {
       const a = G.units.find(u => u.uid === fuseSel[0]), bb = G.units.find(u => u.uid === fuseSel[1]);
       const r = a && bb ? fuseInsts(a, bb, G.next) : null;
       if (r && r.inst) {
@@ -155,6 +159,7 @@ function waveSummary(w) {
 }
 function stageBlock(i) {
   const st = STAGES[i];
+  if (i > 0 && !G.cleared[i - 1]) return 'Clear ' + STAGES[i - 1].name + ' first';
   if (!G.squads[0].length) return 'Put units in Squad 1';
   if (st.waves.length > 1 && !G.squads[1].length) return 'Put units in Squad 2';
   return '';
@@ -165,7 +170,7 @@ function renderStages() {
   $('#stageGrid').innerHTML = STAGES.map((s, i) => {
     const blk = stageBlock(i), cl = G.cleared[i];
     const amt = e => Math.round(s.reward[e] * (cl ? .5 : 1)), any = ELS.some(e => amt(e) > 0);
-    const rew = (any ? ELS.map(e => '<span class="cost">' + gem(e) + amt(e) + '</span>').join(' ') : '') + (s.unlock && !cl ? '<span class="cost" style="color:var(--brass)">Unlocks ascension</span>' : (any ? '' : '<span class="muted">No crystals</span>'));
+    const rew = (any ? ELS.map(e => '<span class="cost">' + gem(e) + amt(e) + '</span>').join(' ') : '') + (s.unlock && !cl ? '<span class="cost" style="color:var(--brass)">Unlocks ' + s.unlock.map(k => UNLOCK_TEXT[k]).join(' and ') + '</span>' : (any ? '' : '<span class="muted">No crystals</span>'));
     return '<div class="stage"><header><h3>' + s.name + '</h3><span class="badge' + (cl ? ' clr' : '') + '">' + (cl ? 'Cleared' : s.waves.length + (s.waves.length > 1 ? ' walls' : ' wall')) + '</span></header><div class="muted" style="font-size:13px">' + s.blurb + '</div><div class="wave">' +
       s.waves.map((w, k) => '<div><b>Wall ' + (k + 1) + '</b> · ' + w.wall.hp + ' HP, ' + w.wall.def + ' DEF</div><div>' + waveSummary(w) + '</div>').join('') + '</div><div class="crys" style="gap:10px">' + rew + '</div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" data-stage="' + i + '"' + (blk ? ' disabled' : '') + '>Deploy</button>' + (blk ? '<span class="err">' + blk + '</span>' : '') + '</div></div>';
@@ -192,6 +197,11 @@ function openBattle(si) {
   $('#bStage').textContent = STAGES[si].name; setPauseUI(); $('#bAura').classList.add('on'); $('#bAura').hidden = !FEATURES.interactions;
 }
 function setPauseUI() { $('#bPause').textContent = B && B.paused ? 'Resume' : 'Pause'; $('#bSpeed').textContent = (B ? B.speed : 1) + '×'; }
+const UNLOCK_NOTE = {
+  ascend: 'Ascension unlocked. Combine two identical units in the Armory.',
+  specials: 'Specialists unlocked: Burning Skull, Siren, Earth Golem and Eagle are in the Armory.'
+};
+function unlockNotes(keys) { return (keys || []).map(k => '<p class="ok" style="margin:0">' + UNLOCK_NOTE[k] + '</p>').join(''); }
 function onPhase(ph) {
   const ov = $('#overlay'); ov.hidden = false; let h = '';
   if (ph === 'wavewin') {
@@ -201,7 +211,7 @@ function onPhase(ph) {
     ELS.forEach(e => { rw[e] = Math.round(STAGES[B.si].reward[e] * (full ? 1 : .5)); G.crystals[e] += rw[e]; });
     G.cleared[B.si] = true; save();
     const nx = B.si + 1 < STAGES.length && !stageBlock(B.si + 1);
-    h = '<div class="modal win"><h2>Wall down</h2><p class="muted" style="margin:0">' + STAGES[B.si].name + ' is yours.' + (ELS.some(e => rw[e] > 0) ? (full ? ' First clear reward:' : ' Repeat reward (half):') : '') + '</p>' + (ELS.some(e => rw[e] > 0) ? '<div class="crys">' + ELS.map(e => '<span>' + gem(e) + '+' + rw[e] + '</span>').join('') + '</div>' : '') + (B.si === 1 && full ? '<p class="ok" style="margin:0">Ascension unlocked. Combine two identical units in the Armory.</p>' : '') + '<div class="row">' + (nx ? '<button class="btn primary" data-m="nextstage">Next stage</button>' : '') + '<button class="btn" data-m="shop">Armory</button><button class="btn" data-m="stages">Stages</button><button class="btn ghost" data-m="retry">Replay</button></div></div>';
+    h = '<div class="modal win"><h2>Wall down</h2><p class="muted" style="margin:0">' + STAGES[B.si].name + ' is yours.' + (ELS.some(e => rw[e] > 0) ? (full ? ' First clear reward:' : ' Repeat reward (half):') : '') + '</p>' + (ELS.some(e => rw[e] > 0) ? '<div class="crys">' + ELS.map(e => '<span>' + gem(e) + '+' + rw[e] + '</span>').join('') + '</div>' : '') + (full ? unlockNotes(STAGES[B.si].unlock) : '') + '<div class="row">' + (nx ? '<button class="btn primary" data-m="nextstage">Next stage</button>' : '') + '<button class="btn" data-m="shop">Armory</button><button class="btn" data-m="stages">Stages</button><button class="btn ghost" data-m="retry">Replay</button></div></div>';
   } else if (ph === 'lost') {
     h = '<div class="modal lose"><h2>Squad lost</h2><p class="muted" style="margin:0">No units left on the field. Adjust your squads or tactics and try again.</p><div class="row"><button class="btn primary" data-m="retry">Retry</button><button class="btn" data-m="shop">Armory</button><button class="btn" data-m="stages">Stages</button></div></div>';
   }
@@ -242,7 +252,7 @@ function renderSide() {
   if (!B) return;
   if (B.phase === 'deploy') {
     const foes = {}; B.enemies.forEach(e => foes[e.type] = (foes[e.type] || 0) + 1);
-    el.innerHTML = '<button class="btn primary" data-act="start"' + (B.units.length ? '' : ' disabled') + '>Start battle</button><p class="hint"><b>Deploy.</b> Select units and click to place them in the gold zone. Flamethrowers can go further forward.</p><div class="foes">' +
+    el.innerHTML = '<button class="btn primary" data-act="start"' + (B.units.length ? '' : ' disabled') + '>Start battle</button><p class="hint"><b>Deploy.</b> Select units and click to place them in the gold zone.' + (B.units.some(u => u.stationary) ? ' Flamethrowers can go further forward.' : '') + '</p><div class="foes">' +
       Object.keys(foes).map(k => '<span class="foe" title="' + ENEMY[k].note + '">' + foes[k] + '× ' + ENEMY[k].name + '</span>').join('') + '</div>';
     return;
   }
@@ -349,6 +359,7 @@ function boot() {
   DEMO.g = $('#demo').getContext('2d');
   $('#gemsRow').innerHTML = ELS.map(gem).join('');
   $('.start-note').textContent = 'New games start with ' + START_CRYSTALS + ' of each crystal and a squad weight limit of ' + SQUAD_CAP + '.';
+  $('#lore').textContent = LORE;
   initTitle(); initShop(); initStages(); initBattle();
   show('title');
   requestAnimationFrame(frame);

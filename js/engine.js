@@ -29,7 +29,7 @@ function makeUnit(inst, x, y, o) {
     cd: rnd(.1, .6), order: null, mod: newMod(), e: null, mom: 0, idle: 0, moving: false,
     dd: null, slug: 0, fdot: null, dots: [], paralyzed: false, forced: 0, reflectCd: 0, shCd: {}, flash: 0,
     noSplit: !!o.noSplit, dead: false, spent: false, mT: rnd(2, 5), vr: 25, ramSt: 'charge', rod: null, abilityUsed: false,
-    wind: inst.comps.includes('air_dps'), aim: 0, small: !!o.scale
+    wind: inst.comps.includes('air_dps'), aim: 0, small: !!o.scale, burn: Math.max(0, ...cs.map(c => c.burn || 0))
   };
   u.order = u.dormant ? { t: 'idle' } : (u.stationary || ak === 'crab' || ak === 'rod') ? { t: 'hold' } : { t: 'wall' };
   computeEff(u);
@@ -84,7 +84,7 @@ function beginFight() { if (B.phase === 'deploy' && B.units.length) { B.phase = 
 /* ---------- stats ---------- */
 function computeEff(o) {
   if (o.isWall) { o.e = { def: o.def * (1 - (o.dd ? o.dd.pct : 0)) }; return; }
-  if (o.isEnemy) { o.e = { atk: o.atk, def: o.def * (1 - (o.dd ? o.dd.pct : 0)), iv: o.iv * (o.slug > 0 && !o.immuneSlug ? 1.5 : 1) }; return; }
+  if (o.isEnemy) { o.e = { atk: o.atk, def: o.def * (1 - (o.dd ? o.dd.pct : 0)), iv: o.iv * (o.slug > 0 && !o.immuneSlug ? 1.5 : 1) * rallyMul(o) }; return; }
   const m = o.mod, mom = 0, ab = 1 + .25 * mom;
   let atk = (m.atkSet != null ? m.atkSet : o.atk) * m.atkMul * ab;
   let def = (m.defSet != null ? m.defSet : o.def) * m.defMul * ab * (1 - (o.dd ? o.dd.pct : 0));
@@ -93,6 +93,12 @@ function computeEff(o) {
   let taken = m.takenMul / (1 + .25 * mom);
   if (o.comps.includes('earth_tank') && o.hp < o.maxHp * .4) { atk *= 1.4; taken *= .7; }
   o.e = { atk, def: Math.max(0, def), spd, iv, taken, heal: o.healMul * m.healMul, tn: o.taunt + m.tauntAdd };
+}
+/* War Banner: shooters within its radius fire faster. Banners don't stack. */
+function rallyMul(o) {
+  if (ENEMY[o.type].structure || !B) return 1;
+  for (const b of B.enemies) if (b.type === 'banner' && !b.dead && dist(b, o) <= ENEMY.banner.rally.r) return ENEMY.banner.rally.iv;
+  return 1;
 }
 function grantShield(T, key, amt) {
   if (B.t - (T.shCd[key] === undefined ? -99 : T.shCd[key]) >= 20) { T.shCd[key] = B.t; T.shield = Math.min(T.shield + amt, T.maxHp * .5); }
@@ -178,6 +184,7 @@ function hit(src, tgt, raw, o) {
   const dealt = applyDamage(tgt, dmg, src, { crit });
   if (src.isUnit) {
     if (sm.bonus > 0 && dealt > 0) applyDamage(tgt, dealt * sm.bonus, src, { col: '#7cc4ff' });
+    if (src.burn > 0 && !tgt.dead) addBurn(src, tgt);
   } else if (src.type === 'ballista' && tgt.isUnit) tgt.dots.push({ dps: raw * .3 / 3, t: 3 });
   if (tgt.isUnit) {
     if (tgt.mod.reflect > 0 && tgt.reflectCd <= 0 && src.team === 1 && !o.noReflect) { tgt.reflectCd = .35; applyDamage(src, tgt.e.def * tgt.mod.reflect, tgt, { col: '#7fe6c6' }); }
@@ -187,6 +194,12 @@ function hit(src, tgt, raw, o) {
     tgt.flash = .1;
   } else tgt.flash = .08;
   return dealt;
+}
+/* Burning Skull: 3 ticks of burn per hit. Each skull is its own source, so several skulls stack. */
+function addBurn(src, tgt) {
+  const f = tgt.fdot || (tgt.fdot = { active: false, ticks: 0, timer: .7, src: {} });
+  if (!f.active) { f.active = true; f.timer = .7; }
+  f.ticks = 3; f.src[src.uid] = { v: src.e.atk * src.burn, exp: B.t + 3.2 };
 }
 function heal(src, tgt, amt, o) {
   o = o || {};
@@ -446,10 +459,38 @@ function bossUpdate(e, dt) {
     txt(e.x, e.y - 60, 'Reinforcements!', '#e5486a', 14);
   }
 }
+/* ---------- enemy structures ---------- */
+function crowdAtWall(reach, rad) {
+  let best = null, bn = 0;
+  const near = B.units.filter(u => !u.dead && !(u.rod && u.rod.state === 'fly') && u.x >= WALL.x - reach);
+  for (const u of near) { const n = near.filter(a => Math.hypot(a.x - u.x, a.y - u.y) <= rad).length; if (n > bn) { bn = n; best = u; } }
+  return best;
+}
+function structureUpdate(e, dt) {
+  const d = ENEMY[e.type];
+  if (e.cd > 0) return;
+  if (d.pour) {
+    const t = crowdAtWall(d.pour.reach, d.pour.r);
+    if (!t) { e.cd = .5; return; }
+    e.cd = e.e.iv;
+    B.tele.push({ x: t.x, y: t.y, r: d.pour.r, t: d.pour.warn, max: d.pour.warn, raw: e.e.atk, src: e, k: 'oil' });
+    beam(e.x, e.y, t.x, t.y, 'rgba(242,170,60,.5)', 2);
+  } else if (d.repair) {
+    e.cd = e.e.iv;
+    const w = B.wall;
+    if (w.dead || w.hp >= w.maxHp || (B.boss && !B.boss.dead)) return;   // a boss-held wall stays at 1 HP
+    const amt = Math.min(w.maxHp - w.hp, w.maxHp * d.repair * e.e.iv);
+    w.hp += amt;
+    const wy = clamp(e.y, WALL.y0 + 20, WALL.y1 - 20);
+    beam(e.x, e.y, WALL.x + WALL.w, wy, '#6ee7a0', 2);
+    txt(WALL.x + WALL.w / 2, wy, '+' + Math.round(amt), '#6ee7a0', 11);
+  } else e.cd = e.e.iv;
+}
 function updateEnemy(e, dt) {
   tickStatus(e, dt);
   if (e.dead) return;
   e.cd -= dt;
+  if (ENEMY[e.type].structure) { structureUpdate(e, dt); return; }
   if (e.type === 'boss') bossUpdate(e, dt);
   if (e.cd > 0) return;
   const tgt = pickTarget(e);
