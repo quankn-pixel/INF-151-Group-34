@@ -22,6 +22,8 @@
   .play:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .play:active { transform: translateY(1px); }
   .saved { margin: 0; color: var(--muted); font-size: 0.8125em; }
+  .demo-link { color: var(--muted); font-size: 0.875em; }
+  .demo-link:hover, .demo-link:focus-visible { color: var(--fg); }
   .menu .confirm { display: flex; gap: 10px; align-items: baseline; font-size: 0.875em; }
   .hint { margin: 0; color: var(--muted); font-size: 0.875em; max-width: 26em; line-height: 1.5; }
   .credits { margin: 0; color: var(--muted); font-size: 0.8125em; text-align: center; line-height: 1.5; }
@@ -120,6 +122,7 @@
     <div class="menu">
       <a class="play" id="play" href="game.html" aria-label="play">play.</a>
       <p class="saved" id="saved" hidden></p>
+      <a class="demo-link" href="combat/index.html">combat demo (layer 3).</a>
     </div>
     <p class="hint">Gather the elements, keep them in balance, and fend off the vagrants. Click an element to gather it, or press a, w, e or f. Progress saves as you play.</p>
   </main>

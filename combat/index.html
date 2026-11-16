@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wallbreakers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+<section id="title" class="screen">
+  <canvas id="demo" width="1920" height="1080"></canvas><div class="shade"></div>
+  <div class="title-inner">
+    <div class="gems-row" id="gemsRow"></div>
+    <h1>Wallbreakers</h1>
+    <p class="lede">Lead fire, water, earth and air across the field. Bring the wall down before your squad falls.</p>
+    <p class="lore" id="lore"></p>
+    <div class="cta"><button id="btnContinue" class="btn primary big">Continue siege</button><button id="btnNew" class="btn big">New game</button></div>
+    <ul class="how">
+      <li><b>Click or drag</b> to select units, then <b>click the ground</b> to move them.</li>
+      <li><b>Click an enemy</b> to focus it with ranged units. Melee units keep hitting the wall.</li>
+      <li><b>Right-click</b> cancels the selection. <b>Space</b> pauses.</li>
+    </ul>
+    <div class="start-note">New games start with 500 of each crystal.</div>
+    <a class="home-link" href="../index.html">&larr; back to Four Elements</a>
+  </div>
+</section>
+<section id="shop" class="screen">
+  <header class="bar"><h2>Armory</h2><div class="crys grow" id="shopCrys"></div><nav><button class="btn ghost" id="shopHome">Title</button><button class="btn primary" id="toStages">Choose a stage</button></nav></header>
+  <div class="shop-body">
+    <div class="pane" id="armory"><div class="tabs" id="elTabs"></div><div class="cards" id="cards"></div>
+      <details class="links" id="linksBox"><summary>Element links (allies close together)</summary><ul id="linksList"></ul></details></div>
+    <div class="pane" id="barracks"><div id="barInner" style="display:flex;flex-direction:column;gap:12px"></div></div>
+  </div>
+</section>
+<section id="stages" class="screen">
+  <header class="bar"><h2>Stages</h2><div class="crys grow" id="stCrys"></div><nav><button class="btn" id="backShop">Back to armory</button></nav></header>
+  <div class="stage-body"><div class="squadnote" id="squadNote"></div><div class="stage-grid" id="stageGrid"></div></div>
+</section>
+<section id="battle" class="screen">
+  <div class="hud-top">
+    <button class="btn sm ghost" id="bRetreat">Retreat</button>
+    <div class="stage-title"><b id="bStage"></b><span id="bWave"></span></div>
+    <div class="wallbar" id="wallBar"><div class="wallfill" id="wallFill"></div><span id="wallTxt"></span></div>
+    <div class="hud-ctl"><button class="btn sm" id="bAura" title="Show interaction radius (R)">Auras</button><button class="btn sm" id="bPause">Pause</button><button class="btn sm" id="bSpeed">1&times;</button></div>
+  </div>
+  <div id="field"><canvas id="cv" width="1920" height="1080"></canvas><div id="overlay" hidden></div></div>
+  <div class="hud-bot"><div id="roster"></div><button class="btn sm" id="selAll" style="align-self:flex-start">Select all</button><div class="side" id="side"></div></div>
+</section>
+</div>
+<script src="js/data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+
+</body>
+</html>
