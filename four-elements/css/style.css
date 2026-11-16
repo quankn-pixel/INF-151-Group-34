@@ -164,7 +164,7 @@ body.v2 .footer { color: #8d9bc4; } body.v2 .footer button.link, body.v2 .footer
 .tab.active { background: color-mix(in srgb, #000 24%, var(--bg)); border-color: var(--tc); box-shadow: inset 4px 0 0 var(--tc); font-weight: bold; cursor: default; }
 .tab.active .t-mark { opacity: 1; }
 
-/* layer 1 -> layer 2 link: grey until the first crystal, then white with a black outline */
+/* layer 1 -> layer 2 link: hidden until the first crystal (ui.js), then white with a black outline */
 .nav.up:not(.unlocked) { cursor: default; text-decoration: none; }
 .nav.up.unlocked { color: #fff; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px #000; }
 .nav.up.unlocked:hover { color: #fff; }

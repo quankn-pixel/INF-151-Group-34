@@ -204,9 +204,9 @@ FE.module(function (FE) {
       af.classList.toggle('owned', owned);
     }
 
-    // layer 2: the link is grey until the first crystal, then white; and the crystal counts
+    // layer 2: the link stays hidden until the first crystal unlocks layer 2; and the crystal counts
     const up = $('nav-up');
-    up.hidden = FE.view !== 1;
+    up.hidden = FE.view !== 1 || !s.layer2;
     up.classList.toggle('unlocked', s.layer2);
     up.setAttribute('aria-disabled', String(!s.layer2));
     FE.ELEMENTS.forEach(({ id }) => text('cr-' + id, `${id} crystals: ${FE.fmt(s.crystals[id])}`));
