@@ -59,11 +59,12 @@ FE.module(function (FE) {
     if (e.key !== 'Escape' && e.target.closest && e.target.closest('input, textarea')) return;
     if (e.key === 'Escape') {
       if (!$('end-overlay').hidden) FE.hideEnd();
+      else if (!$('guide-overlay').hidden) FE.closeGuide();
       else if (!$('restart-confirm').hidden) showConfirm(false);
       else if (!settings.hidden) closeSettings();
       return;
     }
-    if (!$('end-overlay').hidden || !settings.hidden || FE.surgeOpen) return;   // while the end message or settings are up, keys only close them
+    if (!$('end-overlay').hidden || !settings.hidden || !$('guide-overlay').hidden || FE.surgeOpen) return;   // while a dialog is up, keys only close it
     const el = FE.ELEMENTS.find(x => x.key === e.key.toLowerCase());
     if (el && (FE.state.owned.includes(el.id) || FE.state.picking)) { e.preventDefault(); FE.act(el.id); }
   });

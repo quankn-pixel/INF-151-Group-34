@@ -10,6 +10,7 @@ FE.module(function (FE) {
       balanceShown: false,  // the balance box appears once BALANCE_AT elements exist
       full: false,          // storage has been filled
       up: perElement(() => ({ res: 0, struct: 0 })),   // per element: resonance level, structures owned (reset by condensing)
+      tips: {},             // tutorial tips already seen: 'gather', 'mult', ... -> true (see tips.js)
       seen: {},             // 'res-air', 'struct-air', 'cond' -> true once that build has faded in (kept when condensing)
       crystals: 0,          // tier 1 crystals; each raises the max multiplier
       surge: { wait: FE.SURGE.first, buffLeft: 0, buffMult: 1 },   // seconds to the next surge; the boost it left (see surge.js)
