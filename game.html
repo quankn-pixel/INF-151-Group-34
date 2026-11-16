@@ -93,7 +93,30 @@
 <div class="footer">
   <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
   <span id="save-status">not saved yet.</span>
+  <span><button class="link" id="guide-btn" type="button" aria-haspopup="dialog">how to play.</button></span>
   <span><button class="link" id="settings-btn" type="button" aria-haspopup="dialog">settings.</button></span>
+</div>
+
+<div class="box tip" id="tip" role="status" aria-live="polite" hidden>
+  <span class="label">tip</span>
+  <b class="tip-title" id="tip-title"></b>
+  <p id="tip-text"></p>
+  <button class="link" id="tip-ok" type="button">got it.</button>
+</div>
+
+<div class="overlay" id="guide-overlay" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
+  <div class="box end-box guide-box">
+    <span class="label" id="guide-title">how to play</span>
+    <div class="guide-tip"><b>the basics</b>
+      <p>Click an element, or press its key (a, w, e or f), to gather it. Spend what you gather on builds in the middle. The italic line under the title always says what to do next. The game saves by itself.</p>
+    </div>
+    <div id="guide-tips"></div>
+    <div class="end-btns">
+      <button class="el" id="guide-close" type="button">close.</button>
+      <button class="link" id="tips-btn" type="button" aria-pressed="true">tips on.</button>
+      <button class="link" id="tips-replay" type="button">show every tip again.</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="surge-overlay" role="dialog" aria-modal="true" aria-labelledby="surge-title" hidden>
@@ -164,6 +187,7 @@
 <script src="js/ui.js"></script>
 <script src="js/combat.js"></script>
 <script src="js/crafting.js"></script>
+<script src="js/tips.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/game.js"></script>
 </body>
