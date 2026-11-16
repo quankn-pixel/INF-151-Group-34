@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Elements</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="pages">
+
+  <!-- ===== layer 2: above layer 1. Left: army / stardust tabs. Right: units. ===== -->
+  <section class="page" id="page2" aria-label="layer 2" aria-hidden="true">
+    <div class="l2-left">
+      <div class="l2-tabs" role="tablist">
+        <button class="l2-tab active" id="l2t-army" type="button" role="tab" aria-selected="true">Army</button>
+        <button class="l2-tab" id="l2t-stardust" type="button" role="tab" aria-selected="false">Stardust</button>
+      </div>
+      <div class="l2-pane" id="pane-army">
+        <canvas id="army-cv" aria-hidden="true"></canvas>
+        <div class="crystals" id="crystals"></div>
+      </div>
+      <div class="l2-pane" id="pane-dust" hidden>
+        <div class="dust-n" id="dust-n"></div>
+        <div class="tree" id="tree"></div>
+      </div>
+    </div>
+    <div class="l2-right">
+      <h2 class="tier-label">Tier 1 Units <span>(1 stardust on death)</span></h2>
+      <div class="units" id="units"></div>
+      <div class="venture">
+        <button class="el wide" id="btn-venture" type="button" aria-describedby="venture-tip">Venture Forth</button>
+        <span class="tip" id="venture-tip" role="tooltip">All units are sent into combat. <b>Units killed in combat are lost for good</b>, but grant stardust when they die.</span>
+      </div>
+    </div>
+    <button class="nav down" id="nav-down" type="button">&#9660; layer 1</button>
+  </section>
+
+  <!-- ===== layer 3: the battlefield, to the right of layer 2 ===== -->
+  <section class="page" id="page3" aria-label="combat" aria-hidden="true">
+    <header class="c-top">
+      <div class="c-side"><button class="el" id="c-retreat" type="button">Retreat</button></div>
+      <h2 class="c-title" id="c-title"></h2>
+      <div class="c-side right"><button class="el" id="c-pause" type="button">Pause</button><button class="el" id="c-speed" type="button">1&times;</button></div>
+    </header>
+    <div class="c-field" id="c-field"><canvas id="c-cv"></canvas><div class="c-paused" id="c-paused" hidden>paused</div></div>
+    <div class="c-tags" id="c-tags"></div>
+    <div class="c-modal" id="c-modal" hidden><div class="c-panel" id="c-panel"></div></div>
+  </section>
+
+  <!-- ===== layer 1 ===== -->
+  <section class="page" id="page1" aria-label="layer 1">
+    <header class="l1-top">
+      <h1 class="game-title">Four Elements</h1>
+      <p class="goal" id="goal" aria-live="polite"></p>
+    </header>
+
+    <div class="l1-main">
+      <nav class="tabs" id="tabs" role="tablist" aria-label="elements"></nav>
+
+      <div class="stage" id="stage">
+        <div class="core-wrap">
+          <canvas id="core" aria-hidden="true"></canvas>
+          <button id="core-btn" type="button" aria-label="gather"></button>
+        </div>
+        <div class="cond" id="cond">
+          <div class="cond-info" id="cond-info"></div>
+          <div class="cond-bar" aria-hidden="true"><i id="cond-fill"></i></div>
+          <div class="cond-btns">
+            <button class="el wide" id="btn-condense" type="button"></button>
+            <button class="el wide collapse" id="btn-collapse" type="button" hidden></button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="box upgrades" id="upgrades">
+        <span class="label">builds</span>
+        <div class="cards scroll" id="cards"></div>
+      </aside>
+    </div>
+
+    <aside class="box store" id="store">
+      <span class="label">stores</span>
+      <div id="store-rows"></div>
+    </aside>
+
+    <button class="nav up" id="nav-up" type="button" aria-disabled="true">&#9650; layer 2</button>
+  </section>
+</div>
+
+<div class="footer" id="footer">
+  <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
+  <span class="size">text size
+    <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
+    <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
+  </span>
+  <span id="save-status">not saved yet.</span>
+  <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
+  <span class="confirm" id="restart-confirm" hidden>
+    <span>lose everything?</span>
+    <button class="link" id="restart-yes" type="button">yes.</button>
+    <button class="link" id="restart-no" type="button">no.</button>
+  </span>
+</div>
+
+<canvas id="nova" aria-hidden="true"></canvas>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Plain scripts (no modules) so the game opens straight from the file system. Order matters. -->
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/army.js"></script>
+<script src="js/tree.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
