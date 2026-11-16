@@ -117,22 +117,44 @@ FE.module(function (FE) {
     FE.UNITS.forEach(u => {
       const r = document.createElement('div');
       r.className = 'unit'; r.dataset.el = u.id; r.id = 'unit-' + u.id;
-      r.innerHTML = `<span class="u-name">${u.name}</span><span class="u-stat">health ${u.hp} · attack ${u.atk} · ${FE.UNIT_APS} hit per second</span>`
-        + `<span class="u-n" id="un-${u.id}">0</span><button class="el" id="ub-${u.id}" type="button">1 ${u.id} crystal &rarr; ${u.per}</button>`;
+      r.innerHTML = `<span class="u-name">${u.name}</span><span class="u-stat" id="us-${u.id}"></span><span class="u-desc">${FE.unitBlurb(u)}</span>`
+        + `<span class="u-n" id="un-${u.id}">0</span><button class="el" id="ub-${u.id}" type="button">1 ${u.id} crystal</button>`;
       r.querySelector('button').addEventListener('click', () => FE.buyUnit(u.id));
       $('units').appendChild(r);
     });
     $('btn-venture').addEventListener('click', () => FE.venture());
+    $('tgt-prev').addEventListener('click', () => FE.cycleTarget(-1));            // TESTING ONLY
+    $('tgt-next').addEventListener('click', () => FE.cycleTarget(1));
     requestAnimationFrame(frame);
+  };
+
+  // ---- TESTING ONLY: the arrows under Venture Forth choose which map you venture to. Normally you are sent to the next map that
+  // is not cleared yet; this lets you jump to any map to try it out. Delete this, the #tgt block in game.html and renderArmy's
+  // part of it before release. ----
+  FE.cycleTarget = function (dir) {
+    const s = FE.state, i = FE.targetIdx(), j = Math.max(0, Math.min(FE.MAPS.length - 1, i + dir));
+    if (j === i) return;
+    s.target = j; FE.save(); FE.render();
   };
 
   FE.renderArmy = function () {
     FE.UNITS.forEach(({ id }) => {
+      const st = FE.unitStats(id);
+      text($('us-' + id), `health ${st.hp} · attack ${st.atk}`);
       text($('un-' + id), FE.fmt(FE.state.units[id]));
       const b = $('ub-' + id), off = FE.state.crystals[id] < 1;
       if (b.disabled !== off) b.disabled = off;
     });
     const v = $('btn-venture'), none = FE.UNITS.every(u => !FE.state.units[u.id]);
     if (v.disabled !== none) v.disabled = none;
+
+    // the target map, listed under Venture Forth once the first map is beaten (the arrows are TESTING ONLY, see cycleTarget)
+    const tg = $('tgt'), shown = !!FE.state.cleared[FE.MAPS[0].id];
+    if (tg.hidden === shown) tg.hidden = !shown;
+    if (shown) {
+      const i = FE.targetIdx();
+      text($('tgt-name'), FE.MAPS[i].name);
+      $('tgt-prev').disabled = i === 0; $('tgt-next').disabled = i === FE.MAPS.length - 1;
+    }
   };
 });

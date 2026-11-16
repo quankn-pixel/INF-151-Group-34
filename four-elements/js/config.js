@@ -43,7 +43,7 @@ FE.module(function (FE) {
   FE.AFFINITY = { cost: 1000000, show: 100000, mult: 2 };
   FE.GATHER_RATE = 1;
   FE.ENGINE_RATE = 30;
-  FE.HOLD_MS = 100;                   // holding the mouse on the star clicks every 100 ms (10 per second)
+  FE.HOLD_MS = 100;                   // holding the mouse on the star, or the space bar, clicks every 100 ms (10 per second)
   FE.NAMES = {
     air:   { gath: 'windmill', eng: 'cyclone tower' },
     water: { gath: 'stream',   eng: 'waterfall' },
@@ -53,42 +53,88 @@ FE.module(function (FE) {
 
   // ---- layer 2: tier 1 units (Army tab) and stardust skills (Stardust tab) ----
   // per: units one crystal of that element makes. hp / atk: health and damage. Every unit attacks UNIT_APS times a second.
-  // dust: stardust a unit grants when it dies (or is abandoned with a retreat).
+  // dust: stardust a unit grants when it dies (or is abandoned with a retreat). blurb: the short line under the unit's stats.
+  // Water does not attack while an ally nearby is hurt: it heals that ally instead (see FE.COMBAT.heal*).
   FE.UNIT_APS = 1;
   FE.UNITS = [
-    { id: 'air',   name: 'Speck of Air',   per: 2, hp: 1, atk: 1, dust: 1 },
-    { id: 'water', name: 'Speck of Water', per: 1, hp: 2, atk: 2, dust: 1 },
-    { id: 'earth', name: 'Speck of Earth', per: 1, hp: 5, atk: 1, dust: 1 },
-    { id: 'fire',  name: 'Speck of Fire',  per: 1, hp: 1, atk: 3, dust: 1 }
+    { id: 'air',   name: 'Speck of Air',   per: 3, hp: 1, atk: 1, dust: 1, blurb: 'Swarm your enemies.' },
+    { id: 'water', name: 'Speck of Water', per: 1, hp: 3, atk: 1, dust: 1, blurb: 'Heals hurt allies nearby instead of attacking.' },
+    { id: 'earth', name: 'Speck of Earth', per: 1, hp: 5, atk: 1, dust: 1, blurb: 'Slow to fall. Soaks up the hits.' },
+    { id: 'fire',  name: 'Speck of Fire',  per: 1, hp: 1, atk: 4, dust: 1, blurb: 'Hits hard, burns out fast.' }
   ];
+  FE.POWER_MULT = 2;                  // the Powerful Units skill multiplies every unit's health and damage by this
+  const NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  // "Swarm your enemies. One crystal makes three specks of air, instead of one." (only said of a unit that makes more than one)
+  FE.unitBlurb = u => u.per > 1 ? `${u.blurb} One crystal makes ${NUM[u.per] || u.per} specks of ${u.id}, instead of one.` : u.blurb;
 
   // ---- combat ----
   // Everything on a battlefield is measured in map units, and one unit is the same size on every map, so a bigger map
   // (width) simply feels bigger: units take longer to cross it. The screen scale is worked out from the map width.
   FE.COMBAT = {
-    unitSpeed: 12,        // map units per second
+    timeScale: .5,        // all combat runs at this fraction of real time (the speed button multiplies it)
+    unitSpeed: 10,        // map units per second (at full combat speed)
+    settleSpeed: 2,       // a unit already in range creeps toward its spot at about this speed (plus a bit more the farther off it is), so it only drifts around the enemy a little
     unitSize: .84,        // side of a unit's square, in map units
     sepDist: 1.0,         // units are pushed apart when closer than this
-    range: 1.6,           // how close to an enemy a unit must be to hit it
-    spawnGap: .07,        // seconds between spawns (a spawn waits for free space at the left edge)
+    range: 2.4,           // how close to an enemy a unit must be to hit it (a bit past the crowd, so units can hit over each other)
+    approach: 1.44,       // how close a unit walks up to a wall before it stops and swings
     spawnX: 1.5,          // where units appear
+    colGap: .4,           // seconds between one column of units appearing and the next
+    colSpacing: 1.05,     // map units between the units of a column
+    healRange: 9,         // a water speck can heal a hurt ally this close
+    healAmount: 2,        // hit points a water orb restores (it never heals past full health, and Powerful Units does not change it)
+    orbSpeed: 26,         // map units per second
     speeds: [1, 2, 4]     // the speed button cycles through these
   };
-  // walls: at = where the middle of the wall stands, as a fraction of the map width; the wall is a thin curve that
-  // bends back toward the left (toward your units) by bow map units at its ends. hp = wall health. Walls do not attack.
+
+  // Enemy kinds. r: body radius in map units. hp. atk and every (seconds between hits). reach: how far past its own body a melee
+  // enemy can hit; range: how far a ranged one can hit. aggro: how far away it notices your units while nobody is hurting it
+  // (low on purpose, so one group never comes to help another); once something has hit it, it chases whatever hit it from much
+  // farther. speed: map units per second (0 = it never moves). A sleeper never moves or fights. Walls are a map thing: see below.
+  FE.ENEMIES = {
+    sleeper: { r: 1.4, hp: 4,  sleeps: true },
+    brute:   { r: 2.3, hp: 10, atk: 1, every: 1, reach: 1.2, aggro: 9,  speed: 5, weapon: 'club' },
+    stick:   { r: 1.4, hp: 4,  atk: 1, every: 1, reach: .9,  aggro: 9,  speed: 7, weapon: 'stick' },
+    mage:    { r: 1.5, hp: 4,  atk: 2, every: 3, range: 20,  aggro: 20, speed: 0, ranged: true },
+    giant:   { r: 4.4, hp: 100, atk: 4, every: 2, reach: 2,  aggro: 12, speed: 3, weapon: 'club' }
+  };
+
+  // A map is a list of enemies. Everything is placed from the middle of the map's height. For walls, at = where the wall stands
+  // as a fraction of the map width (the wall is a thin curve that bends back toward your units by bow map units at its ends).
+  // Everything else: x = a fraction of the width, dx / dy = a nudge in map units (dy is measured from the middle of the height).
+  // title = the heading of the victory panel. reward = a key of FE.REWARDS; placeholder = shows <Unlocked: Not Implemented Yet>.
+  // What you destroy stays destroyed until the whole map is cleared (see state.mapProg): walls keep their damage, anything
+  // that died stays dead, and enemies that are still alive come back at full health.
   FE.MAPS = [
-    { id: 'breach', name: 'Breach the Surface', width: 50, height: 28, bow: 2.6,
-      walls: [{ at: 1 / 3, hp: 5 }, { at: 2 / 3, hp: 10 }],
-      reward: 'stabilizer', next: 'Reclaim the Surface (1/3)' }
+    { id: 'breach', name: 'Breach the Surface', title: 'Surface Breached', width: 50, height: 28, bow: 2.6,
+      enemies: [{ type: 'wall', at: 1 / 3, hp: 5 }, { type: 'wall', at: 2 / 3, hp: 10 }],
+      reward: 'stabilizer' },
+    { id: 'reclaim1', name: 'Reclaim the Surface 1/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
+      enemies: [
+        { type: 'wall', at: .2, hp: 10 },
+        { type: 'sleeper', x: .42, dy: -5 }, { type: 'sleeper', x: .42, dy: 5 },      // a colon  :
+        { type: 'brute', x: .7, dy: 0 }
+      ], placeholder: true },
+    { id: 'reclaim2', name: 'Reclaim the Surface 2/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
+      enemies: [
+        { type: 'wall', at: .16, hp: 40 },
+        { type: 'mage', x: .25, dy: 0 },
+        // a clump of five stick fighters
+        { type: 'stick', x: .6, dx: 0, dy: 0 }, { type: 'stick', x: .6, dx: -3, dy: -2 }, { type: 'stick', x: .6, dx: -3, dy: 2 },
+        { type: 'stick', x: .6, dx: 3, dy: -2 }, { type: 'stick', x: .6, dx: 3, dy: 2 }
+      ], placeholder: true },
+    { id: 'reclaim3', name: 'Reclaim the Surface 3/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
+      enemies: [{ type: 'giant', x: .5, dy: 0 }], placeholder: true }
   ];
   FE.REWARDS = {
     stabilizer: { name: 'Star Stabilizer', desc: 'You may now condense stars to Tier 4, for 3 crystals on supernova.' }
   };
   // x, y in a 100 x 100 box; req = the skill that must be bought first
   FE.SKILLS = [
-    { id: 'prod', name: '2x All Production',         cost: 1,  req: null,   x: 50, y: 76, desc: 'all production x2' },
-    { id: 'dbl',  name: 'Double Crystal Generation', cost: 3,  req: 'prod', x: 26, y: 26, desc: 'every star drops double crystals' },
-    { id: 'asc',  name: 'Unlock Unit Ascension',     cost: 10, req: 'prod', x: 74, y: 26, desc: 'opens unit ascension' }
+    { id: 'prod', name: '2x All Production',         cost: 1,  req: null,    x: 50, y: 86, desc: 'all production x2' },
+    { id: 'dbl',  name: 'Double Crystal Generation', cost: 3,  req: 'prod',  x: 26, y: 50, desc: 'every star drops double crystals' },
+    { id: 'power', name: 'Powerful Units',          cost: 5,  req: 'prod',  x: 74, y: 50, desc: 'doubles unit health and damage' },
+    { id: 'asc',  name: 'Unit Ascension',            cost: 10, req: 'power', x: 74, y: 14, desc: 'does nothing yet' }
   ];
 
   FE.ICONS = {

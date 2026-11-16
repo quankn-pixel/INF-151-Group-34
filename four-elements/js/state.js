@@ -16,7 +16,10 @@ FE.module(function (FE) {
       affinity: Object.fromEntries(ids.map(k => [k, false])),   // Elemental Affinity, per element: permanent, never reset
       stabilizer: false,    // Star Stabilizer (reward for Breach the Surface): stars may reach tier 4
       cleared: {},          // maps beaten
+      mapProg: {},          // what you have already destroyed on a map you have not cleared yet (see combat.js)
+      target: null,         // the map Venture Forth sends you to. null = the first map not cleared yet (the arrows under Venture Forth set it: testing only)
       expedition: null,     // units currently out in combat ({air: n, ...}); a reload while this is set counts as a retreat
+      expStarted: false,    // false while the battle is waiting for a click: closing the page then hands the units back instead
       skills: {},           // skill tree nodes bought (permanent)
       played: 0,            // seconds played with the tab visible
       savedAt: 0
@@ -31,6 +34,16 @@ FE.module(function (FE) {
   FE.crystalYield = tier => (tier >= FE.STABILIZED_TIER ? FE.TIER4_CRYSTALS : 1) * (FE.has('dbl') ? 2 : 1);   // crystals a collapsing star drops
   FE.maxTier = () => S().stabilizer ? FE.STABILIZED_TIER : FE.MAX_TIER;
   FE.affinityCount = () => ids.filter(k => S().affinity[k]).length;
+
+  // ---- layer 2 ----
+  // a unit's health and damage, with the Powerful Units skill applied
+  FE.unitStats = id => {
+    const u = FE.UNITS.find(x => x.id === id), m = FE.has('power') ? FE.POWER_MULT : 1;
+    return { hp: u.hp * m, atk: u.atk * m };
+  };
+  // the map Venture Forth sends you to: the one the testing arrows picked, otherwise the first map not cleared (or the last, once all are)
+  FE.firstOpenMap = () => { const i = FE.MAPS.findIndex(m => !S().cleared[m.id]); return i < 0 ? FE.MAPS.length - 1 : i; };
+  FE.targetIdx = () => { const t = S().target; return Number.isInteger(t) && t >= 0 && t < FE.MAPS.length ? t : FE.firstOpenMap(); };
 
   // ---- production (each takes an element, the current one by default) ----
   FE.starMult = k => { const t = FE.E(k).tier; return t ? Math.pow(FE.STAR_MULT, t) : 1; };

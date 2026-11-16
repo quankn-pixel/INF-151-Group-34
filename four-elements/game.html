@@ -32,6 +32,12 @@
       <div class="venture">
         <button class="el wide" id="btn-venture" type="button" aria-describedby="venture-tip">Venture Forth</button>
         <span class="tip" id="venture-tip" role="tooltip">All units are sent into combat. <b>Units killed in combat are lost for good</b>, but grant stardust when they die.</span>
+        <!-- TESTING ONLY: the arrows pick which map Venture Forth goes to (see FE.cycleTarget in army.js). Shown once the first map is beaten. -->
+        <div class="target" id="tgt" hidden>
+          <button class="arrow" id="tgt-prev" type="button" aria-label="Previous map">&#9664;&#xFE0E;</button>
+          <span class="t-name" id="tgt-name"></span>
+          <button class="arrow" id="tgt-next" type="button" aria-label="Next map">&#9654;&#xFE0E;</button>
+        </div>
       </div>
     </div>
     <button class="nav down" id="nav-down" type="button">&#9660; layer 1</button>
@@ -44,7 +50,11 @@
       <h2 class="c-title" id="c-title"></h2>
       <div class="c-side right"><button class="el" id="c-pause" type="button">Pause</button><button class="el" id="c-speed" type="button">1&times;</button></div>
     </header>
-    <div class="c-field" id="c-field"><canvas id="c-cv"></canvas><div class="c-paused" id="c-paused" hidden>paused</div></div>
+    <div class="c-field" id="c-field">
+      <canvas id="c-cv"></canvas>
+      <div class="c-paused" id="c-paused" hidden>paused</div>
+      <button class="c-start" id="c-start" type="button" hidden><b>Click anywhere to start the battle</b><span>your units spawn and attack automatically</span></button>
+    </div>
     <div class="c-tags" id="c-tags"></div>
     <div class="c-modal" id="c-modal" hidden><div class="c-panel" id="c-panel"></div></div>
   </section>
@@ -102,6 +112,8 @@
     <button class="link" id="restart-yes" type="button">yes.</button>
     <button class="link" id="restart-no" type="button">no.</button>
   </span>
+  <!-- TESTING ONLY: opens layer 2 with no animation and gives 100 of every crystal each press (FE.testingUnlock in game.js) -->
+  <button class="link testing" id="testing-btn" type="button">TESTING ONLY</button>
 </div>
 
 <canvas id="nova" aria-hidden="true"></canvas>

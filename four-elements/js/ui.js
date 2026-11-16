@@ -16,6 +16,7 @@ FE.module(function (FE) {
     if (v === 3 && !FE.combat.active) return;                // layer 3 is the battlefield, to the right of layer 2
     FE.view = v;
     const pages = $('pages');
+    pages.scrollTop = 0; pages.scrollLeft = 0;                // (belt and braces: the pages must never be scrolled out of place)
     pages.classList.toggle('instant', !!instant);
     pages.dataset.view = String(v);
     document.body.classList.toggle('v2', v >= 2);
@@ -49,10 +50,10 @@ FE.module(function (FE) {
     af.addEventListener('click', () => FE.buyAffinity());
     $('cards').appendChild(af);
 
-    // the round button / star: a click gathers; holding the mouse down clicks 5 times a second
+    // the round button / star: a click gathers; holding the mouse down clicks 10 times a second (holding the space bar does too: controls.js)
     const cb = $('core-btn');
-    let hold = null, hx = 280, hy = 280;
-    const aim = e => { const r = $('core').getBoundingClientRect(); hx = (e.clientX - r.left) * 560 / r.width; hy = (e.clientY - r.top) * 560 / r.height; };
+    let hold = null, hx = 0, hy = 0;
+    const aim = e => { [hx, hy] = FE.core.toLocal(e.clientX, e.clientY); };           // measured from the middle of the star
     const stop = () => { clearInterval(hold); hold = null; };
     cb.addEventListener('pointerdown', e => {
       if (e.button) return;
@@ -63,12 +64,13 @@ FE.module(function (FE) {
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => cb.addEventListener(t, stop));
     addEventListener('blur', stop);
     document.addEventListener('visibilitychange', stop);
-    cb.addEventListener('click', e => { if (e.detail === 0) FE.gather(280, 280); });          // the keyboard: Enter or Space
+    cb.addEventListener('click', e => { if (e.detail === 0) FE.gather(); });          // the keyboard: Enter
     cb.addEventListener('pointerenter', () => { FE.core.hoverOn = true; });
     cb.addEventListener('pointerleave', () => { FE.core.hoverOn = false; });
     cb.addEventListener('focus', () => { FE.core.hoverOn = true; }); cb.addEventListener('blur', () => { FE.core.hoverOn = false; });
     $('btn-condense').addEventListener('click', () => FE.condense());
     $('btn-collapse').addEventListener('click', () => FE.collapse());
+    $('testing-btn').addEventListener('click', () => FE.testingUnlock());          // TESTING ONLY
     $('nav-up').addEventListener('click', () => FE.goto(2));
     $('nav-down').addEventListener('click', () => FE.goto(1));
 
@@ -156,7 +158,7 @@ FE.module(function (FE) {
     const maxed = cost == null;
     $('cond-info').textContent = maxed ? `tier ${e.tier} star` : `tier ${e.tier + 1} star: ${FE.fmt(e.count)} / ${FE.fmt(cost)} ${el}`;
     $('cond-fill').style.width = (prog * 100).toFixed(1) + '%';
-    $('stage').style.setProperty('--cm', (-(280 - FE.core.radius() * 1.3) / 560).toFixed(3));
+    $('stage').style.setProperty('--sr', (FE.core.radius() * FE.core.s).toFixed(1) + 'px');          // the star's radius on screen: the condense panel sits just under it
     const cb = $('btn-condense');
     cb.hidden = maxed;
     if (!maxed) { cb.disabled = e.count < cost || FE.collapsing; text('btn-condense', e.tier === 0 ? 'condense a star' : `condense: tier ${e.tier + 1}`); }

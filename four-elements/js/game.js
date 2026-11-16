@@ -14,13 +14,13 @@ FE.module(function (FE) {
     FE.render(); FE.save();
   };
 
-  // a click on the button or star (x, y in the 560-unit box the star is drawn in)
+  // a click on the button or star (x, y measured from the middle of the star, in the star's own units; the keyboard passes nothing)
   FE.gather = function (x, y) {
     const s = FE.state;
     if (!s.cur || FE.collapsing) return;
     const g = FE.clickGain();
     FE.E().count += g;
-    FE.core.click(x, y, FE.fmt(g));
+    FE.core.click(x || 0, y || 0, FE.fmt(g));
     FE.render();
   };
 
@@ -72,6 +72,19 @@ FE.module(function (FE) {
       FE.toast(first ? `${what} condensed. Layer 2 is above layer 1: scroll or click to move between them.` : `${what} condensed (${s.crystals[el]} in all).`, 5200);
       FE.render();
     });
+  };
+
+  // ---- TESTING ONLY (the button in the bottom right corner; delete this and #testing-btn before release) ----
+  // Opens layer 2 with no star and no animation, and gives 100 of every crystal. It can be pressed over and over for more.
+  FE.testingUnlock = function () {
+    const s = FE.state;
+    if (!s.cur || FE.collapsing || FE.combat.active) return;
+    const first = !s.layer2;
+    s.layer2 = true;
+    FE.ELEMENTS.forEach(({ id }) => { s.crystals[id] += 100; });
+    if (first) FE.goto(2, true);                      // like the real unlock, the first time only
+    FE.save(); FE.render();
+    FE.toast('TESTING ONLY: +100 of every crystal.', 2600);
   };
 
   // ---- every 100ms: what is built makes its element, on every tab, not only the one you are looking at ----

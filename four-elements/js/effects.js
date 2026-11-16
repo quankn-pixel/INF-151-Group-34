@@ -1,7 +1,9 @@
 /* effects.js - the middle of layer 1: the round button, the three tiers of star for each element, the bits of element that
- * stick to it, the condensing animation, and the supernova. All drawn on canvas, in a 560 x 560 box scaled to the screen. */
+ * stick to it, the condensing animation, and the supernova. All drawn on one canvas that fills the whole middle of the page
+ * (so ripples, flying bits and glows have all the room there is). Drawing happens around the origin, which is the middle of the
+ * star; sizes are in "star units" (a star is designed to fit a 560 unit box) and core.s is how many pixels one unit is. */
 FE.module(function (FE) {
-  const $ = FE.$, TAU = Math.PI * 2, BOX = 560, C0 = BOX / 2;
+  const $ = FE.$, TAU = Math.PI * 2, BOX = 560, C0 = 0;          // C0: the star's middle, which is the origin
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const rand = (a, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
@@ -28,7 +30,7 @@ FE.module(function (FE) {
   const glyph = el => glyphs[el] || (glyphs[el] = [...FE.ICONS[el].matchAll(/<path d="([^"]+)"[^>]*?stroke-width="([\d.]+)"/g)].map(m => [new Path2D(m[1]), +m[2]]));
 
   const core = FE.core = {
-    cv: null, ctx: null, k: 1, T: 0, vis: 0, pending: null, animT: 0, popT: 9, press: 0, hover: 0, shake: 0, charge: 0, btnR: 0,
+    cv: null, ctx: null, k: 1, s: 1, W: BOX, H: BOX, T: 0, vis: 0, pending: null, animT: 0, popT: 9, press: 0, hover: 0, shake: 0, charge: 0, btnR: 0,
     stuck: [], fly: [], rips: [], floats: [], puffs: []
   };
   const N_STUCK = 150;
@@ -179,7 +181,7 @@ FE.module(function (FE) {
     const p = PAL[el], T = core.T, dk = dark();
     const gr = R * (1.6 + .3 * tier) * (1 + .12 * boost), pulse = .9 + .1 * Math.sin(T * 1.6);
     ctx.save(); ctx.globalCompositeOperation = dk ? 'lighter' : 'source-over';
-    glowAt(ctx, C0, C0, Math.min(C0, gr), p.glow, (.5 + .08 * tier + .3 * boost) * pulse);
+    glowAt(ctx, C0, C0, gr, p.glow, (.5 + .08 * tier + .3 * boost) * pulse);
     ctx.restore();
     ctx.save(); ctx.translate(C0, C0);
     decor(ctx, el, R, tier, T, boost);
@@ -198,7 +200,7 @@ FE.module(function (FE) {
   function spawnFly(x, y, ghost) {
     core.fly.push({ sx: x, sy: y, a: rand(TAU), off: rand(-1, 3.5), t: 0, dur: rand(.45, .85), r: rand(3, 6.5), seed: Math.random() * 1000, ghost: !!ghost, bend: rand(-1, 1) });
   }
-  function farPoint() { const a = rand(TAU), d = rand(250, 300); return [C0 + Math.cos(a) * d, C0 + Math.sin(a) * d]; }
+  function farPoint() { const a = rand(TAU), d = rand(250, 340); return [C0 + Math.cos(a) * d, C0 + Math.sin(a) * d]; }
   function stuckPos(b, spin) { const a = b.a + spin, r = rimR() + b.off + b.r * .4; return [C0 + Math.cos(a) * r, C0 + Math.sin(a) * r, a]; }
   function puff(x, y, el) { core.puffs.push({ x, y, t: 0 }); }
 
@@ -220,10 +222,28 @@ FE.module(function (FE) {
     for (let i = 0; i < n; i++) core.stuck.push({ a: rand(TAU), off: rand(-1, 3.5), r: rand(3, 6.5), seed: Math.random() * 1000 });   // the rim is already full: no animation
   };
 
+  // The canvas fills the whole stage (the middle of the page, behind the side panels), so the star sits at the exact middle of
+  // the screen and effects can use all the space. How big the star is drawn depends on the room: not taller than 60% of the
+  // screen, and (on wide layouts) never wider than the free space between the tabs and the builds, measured from the middle.
+  core.toLocal = (px, py) => { const r = core.cv.getBoundingClientRect(); return [(px - r.left - r.width / 2) / core.s, (py - r.top - r.height / 2) / core.s]; };
   function resize() {
-    const cv = core.cv, w = cv.clientWidth || BOX, dpr = Math.min(2, devicePixelRatio || 1);
-    cv.width = cv.height = Math.round(w * dpr); core.k = cv.width / BOX;
+    const cv = core.cv, st = $('stage'), dpr = Math.min(1.5, devicePixelRatio || 1);
+    const w = st.clientWidth, h = st.clientHeight;
+    if (!w || !h) return;
+    let size, free = w;
+    if (matchMedia('(max-width: 860px)').matches) size = Math.min(440, w * .92, h * .8);          // narrow layout: the stage is its own box
+    else {
+      const sr = st.getBoundingClientRect(), tr = $('tabs').getBoundingClientRect(), ur = $('upgrades').getBoundingClientRect();
+      const mid = sr.left + sr.width / 2, half = Math.max(60, Math.min(mid - tr.right, ur.left - mid));
+      free = half * 2;
+      size = Math.min(BOX, h * .6, free * 1.29);                                                      // the tallest star with its flames reaches about 0.39 of the box from its middle, so the box may be 1.29 x the free width
+    }
+    core.s = Math.max(120, size) / BOX;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    core.k = core.s * dpr; core.W = w / core.s; core.H = h / core.s;
+    st.style.setProperty('--free', Math.max(240, Math.min(440, free - 8)) + 'px');                   // how wide the condense panel may be
   }
+  core.resize = resize;
 
   let last = performance.now();
   function frame(now) {
@@ -236,8 +256,9 @@ FE.module(function (FE) {
     const cost = FE.nextStarCost(), prog = cost ? clamp(e.count / cost, 0, 1) : 0, target = Math.floor(prog * N_STUCK);
     core.press += (0 - core.press) * Math.min(1, dt * 9);
     core.hover += ((core.hoverOn ? 1 : 0) - core.hover) * Math.min(1, dt * 8);
-    ctx.setTransform(core.k, 0, 0, core.k, 0, 0);
-    ctx.clearRect(0, 0, BOX, BOX);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, core.cv.width, core.cv.height);
+    ctx.setTransform(core.k, 0, 0, core.k, core.cv.width / 2, core.cv.height / 2);
     let shx = 0, shy = 0;
     if (core.shake) { shx = rand(-1, 1) * core.shake; shy = rand(-1, 1) * core.shake; ctx.translate(shx, shy); }
 
@@ -310,13 +331,16 @@ FE.module(function (FE) {
     }
 
     // the clickable disc follows the body
-    const br = Math.round((core.pending ? RADIUS[core.vis] : RADIUS[core.vis]) * (core.cv.clientWidth / BOX) * 2 + 8);
+    const br = Math.round(RADIUS[core.vis] * core.s * 2 + 8);
     if (br !== core.btnR) { core.btnR = br; const b = $('core-btn'); b.style.width = b.style.height = br + 'px'; }
   }
 
   core.init = function () {
     core.cv = $('core'); core.ctx = core.cv.getContext('2d');
-    resize(); new ResizeObserver(resize).observe(core.cv);
+    const ro = new ResizeObserver(resize);
+    ro.observe($('stage')); ro.observe($('tabs')); ro.observe($('upgrades'));
+    addEventListener('resize', resize); addEventListener('load', resize);
+    resize();
     requestAnimationFrame(frame);
   };
 
