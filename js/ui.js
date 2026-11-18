@@ -1,5 +1,6 @@
-/* ui.js - building and drawing the page: the two layers and the way between them, the builds, the stores, the goal line,
- * the layer 2 stardust and starfield, and small notices. The star itself is drawn by effects.js. */
+/* ui.js - building and drawing the page: the two layers and the way between them, the element tabs, the builds, the
+ * stores, the goal line, the layer 2 crystal counts, and small notices. The star itself is drawn by effects.js, the space
+ * around it by space.js, and the quest / mini-game panel and notices by quests.js. */
 FE.module(function (FE) {
   const $ = FE.$;
   FE.view = 1;                                                   // 1 = layer 1, 2 = layer 2 (above it)
@@ -12,13 +13,17 @@ FE.module(function (FE) {
 
   // ---- moving between the layers ----
   FE.goto = function (v, instant) {
-    if (v === 2 && (!FE.state.layer2 || !$('page2'))) return;
+    if (v === 2 && !FE.state.layer2) return;
+    if (v === 3 && !FE.combat.active) return;                // layer 3 is the battlefield, to the right of layer 2
     FE.view = v;
     const pages = $('pages');
+    pages.scrollTop = 0; pages.scrollLeft = 0;                // (belt and braces: the pages must never be scrolled out of place)
     pages.classList.toggle('instant', !!instant);
     pages.dataset.view = String(v);
-    document.body.classList.toggle('v2', v === 2);
-    [1, 2].forEach(n => { const p = $('page' + n); if (!p) return; p.inert = v !== n; p.setAttribute('aria-hidden', String(v !== n)); });
+    document.body.classList.toggle('v2', v >= 2);
+    document.body.classList.toggle('v3', v === 3);
+    if (v === 2) FE.scatterDots();
+    [1, 2, 3].forEach(n => { const p = $('page' + n); p.inert = v !== n; p.setAttribute('aria-hidden', String(v !== n)); });
     if (instant) requestAnimationFrame(() => requestAnimationFrame(() => pages.classList.remove('instant')));
     FE.render();
   };
@@ -31,37 +36,7 @@ FE.module(function (FE) {
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, ms || 3600);
   };
 
-  // ---- layer 2's starfield: always dark, tinted by the element ----
-  function startSpace() {
-    const cv = $('space'); if (!cv) return;
-    const c = cv.getContext('2d');
-    const hs = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
-    let W = 0, H = 0;
-    const size = () => { W = cv.width = innerWidth; H = cv.height = innerHeight; };
-    size(); addEventListener('resize', size);
-    let T = 0, prev = performance.now();
-    requestAnimationFrame(function loop(now) {
-      requestAnimationFrame(loop);
-      const dt = Math.min(.05, (now - prev) / 1000); prev = now;
-      if (FE.view !== 2 || document.hidden) return;
-      T += dt;
-      const el = FE.el() || 'air', p = FE.PAL[el];
-      const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#04060f'); g.addColorStop(1, '#0d1430');
-      c.fillStyle = g; c.fillRect(0, 0, W, H);
-      for (let i = 0; i < 4; i++) {                              // faint nebula clouds in the element's colour
-        const x = (hs(i, 1) * 1.2 - .1) * W + Math.sin(T * .05 + i) * 40, y = hs(i, 2) * H, r = Math.max(W, H) * (.25 + .15 * hs(i, 3));
-        const gg = c.createRadialGradient(x, y, 0, x, y, r); gg.addColorStop(0, p.glow + '2e'); gg.addColorStop(1, p.glow + '00');
-        c.fillStyle = gg; c.fillRect(x - r, y - r, r * 2, r * 2);
-      }
-      for (let i = 0; i < 170; i++) {
-        const x = hs(i, 4) * W, y = (hs(i, 5) * H + T * (2 + 6 * hs(i, 6))) % H, a = .25 + .75 * Math.abs(Math.sin(T * (.4 + hs(i, 7) * 1.6) + i)), s = hs(i, 8) < .1 ? 2.2 : 1.2;
-        c.fillStyle = `rgba(${i % 5 ? '255,255,255' : '190,210,255'},${a * .85})`; c.fillRect(x, y, s, s);
-      }
-    });
-  }
-
   FE.buildStatic = function () {
-    const name = k => FE.NAMES[FE.el()] ? FE.NAMES[FE.el()][k] : k;
     // builds: one card each, shown as they become reachable
     Object.keys(FE.UPS).forEach(k => {
       const b = document.createElement('button');
@@ -70,162 +45,217 @@ FE.module(function (FE) {
       b.addEventListener('click', () => FE.buy(k));
       $('cards').appendChild(b);
     });
-    // special upgrades (after the auxiliary element is chosen): each costs both elements and makes the fused resource
-    const h = document.createElement('div'); h.className = 'cards-h'; h.id = 'sec-fz'; h.textContent = 'fusion'; h.hidden = true; $('cards').appendChild(h);
-    Object.keys(FE.FZ).forEach(k => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'card fz'; b.id = 'fz-' + k; b.hidden = true;
-      b.innerHTML = '<span class="card-title"></span><span class="card-cost"></span><span class="card-note"></span>';
-      b.addEventListener('click', () => FE.buyFz(k));
-      $('cards').appendChild(b);
-    });
-    $('fz-run').addEventListener('click', () => { FE.state.fzOn = !FE.state.fzOn; FE.render(); });
-    // the round button / star
+    const af = document.createElement('button');             // Elemental Affinity: last in the list
+    af.type = 'button'; af.className = 'card excl'; af.id = 'up-aff'; af.hidden = true;
+    af.innerHTML = '<span class="card-title"></span><span class="card-cost"></span><span class="card-note"></span>';
+    af.addEventListener('click', () => FE.buyAffinity());
+    $('cards').appendChild(af);
+
+    // the round button / star: a click gathers; holding the mouse down clicks 10 times a second (holding the space bar does too: controls.js)
     const cb = $('core-btn');
+    let hold = null, hx = 0, hy = 0;
+    const aim = e => { [hx, hy] = FE.core.toLocal(e.clientX, e.clientY); };           // measured from the middle of the star
+    const stop = () => { clearInterval(hold); hold = null; };
     cb.addEventListener('pointerdown', e => {
       if (e.button) return;
-      const r = $('core').getBoundingClientRect();
-      FE.gather((e.clientX - r.left) * 560 / r.width, (e.clientY - r.top) * 560 / r.height);
+      aim(e); FE.gather(hx, hy);
+      stop(); hold = setInterval(() => FE.gather(hx, hy), FE.HOLD_MS);
     });
-    cb.addEventListener('click', e => { if (e.detail === 0) FE.gather(280, 280); });          // the keyboard: Enter or Space
+    cb.addEventListener('pointermove', e => { if (hold) aim(e); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => cb.addEventListener(t, stop));
+    addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', stop);
+    cb.addEventListener('click', e => { if (e.detail === 0) FE.gather(); });          // the keyboard: Enter
     cb.addEventListener('pointerenter', () => { FE.core.hoverOn = true; });
     cb.addEventListener('pointerleave', () => { FE.core.hoverOn = false; });
     cb.addEventListener('focus', () => { FE.core.hoverOn = true; }); cb.addEventListener('blur', () => { FE.core.hoverOn = false; });
-    $('btn-condense').addEventListener('click', () => FE.condense());
+    $('cbtn').addEventListener('click', () => FE.space.startCondense());          // the hands do the rest (space.js), then FE.condense runs
     $('btn-collapse').addEventListener('click', () => FE.collapse());
-    if ($('nav-up')) { $('nav-up').addEventListener('click', () => FE.goto(2)); $('nav-down').addEventListener('click', () => FE.goto(1)); }
-    // choosing (only when the game is opened without the home page)
+    $('exo-btns').addEventListener('click', ev => {                                    // neutron star / black hole / antimatter buttons
+      const b = ev.target.closest('button[data-act]');
+      if (!b || b.disabled) return;
+      const a = b.dataset.act;
+      if (a === 'exo') FE.goExotic(); else if (a === 'extend') FE.extendHole(); else if (a === 'amplify') FE.amplifyHole(); else if (a === 'ignite') FE.reignite(+b.dataset.tier);
+    });
+    $('testing-btn').addEventListener('click', () => FE.testingUnlock());          // TESTING ONLY
+    $('nav-up').addEventListener('click', () => FE.goto(2));
+    $('nav-down').addEventListener('click', () => FE.goto(1));
+
+    // one tab per element, on the left
     FE.ELEMENTS.forEach(({ id, key }) => {
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'el pick pick-' + id; b.id = 'pick-' + id;
-      b.innerHTML = `Investigate the <span class="ink-${id}"><b>${FE.OPTIONS[id]}</b></span><span class="key" aria-hidden="true">(${key})</span>`;
-      b.addEventListener('click', () => FE.discover(id));
-      $('choose-btns').appendChild(b);
+      b.type = 'button'; b.className = 'tab'; b.id = 'tab-' + id; b.dataset.el = id; b.setAttribute('role', 'tab'); b.title = `${id} (${key})`;
+      b.innerHTML = `<span class="t-ico">${svg(FE.ICONS[id])}</span><span class="t-name">${id}</span><span class="t-mark" aria-hidden="true">&#9679;</span>`;
+      b.addEventListener('click', () => FE.switchTo(id));
+      $('tabs').appendChild(b);
     });
-    // layer 2
-    if ($('skill')) buildLayer2();
+
+    // layer 2 (for now): one line per crystal
+    FE.ELEMENTS.forEach(({ id }) => {
+      const d = document.createElement('div');
+      d.className = 'crystal'; d.dataset.el = id; d.id = 'cr-' + id;
+      $('crystals').appendChild(d);
+    });
+
+    // stores: every element, in order; only the current one opens to show its rate, click and star
+    FE.ELEMENTS.forEach(({ id }) => {
+      const r = document.createElement('div');
+      r.className = 's-row'; r.dataset.el = id; r.id = 'srow-' + id;
+      r.innerHTML = `<div class="s-main"><span class="s-ico">${svg(FE.ICONS[id])}</span><span class="s-name">${id}</span><span class="s-n" id="sn-${id}">0</span></div>`
+        + `<div class="s-more" id="sm-${id}"><div class="s-line" id="sr-${id}"></div><div class="s-line" id="sc-${id}"></div><div class="s-line" id="ss-${id}"></div></div>`;
+      $('store-rows').appendChild(r);
+    });
+
+    // layer 2: two tabs on the left (army / stardust), units on the right
+    const setTab = t => {
+      $('pane-army').hidden = t !== 'army'; $('pane-dust').hidden = t !== 'stardust';
+      if (t === 'army') FE.scatterDots();
+      ['army', 'stardust'].forEach(k => { const b = $('l2t-' + k); b.classList.toggle('active', k === t); b.setAttribute('aria-selected', String(k === t)); });
+    };
+    $('l2t-army').addEventListener('click', () => setTab('army'));
+    $('l2t-stardust').addEventListener('click', () => setTab('stardust'));
+    FE.buildArmy();
+    FE.buildTree();
+    FE.buildCombat();
+
     FE.core.init();
-    startSpace();
+    FE.buildSpace();          // the background and what orbits (space.js)
+    FE.buildQuests();         // the panel, quests and notices (quests.js)
+    FE.buildMinigames();      // (minigames.js)
     FE.goto(1, true);
   };
 
-  function buildLayer2() {
-    FE.buildSkills();
-    const sk = $('skill');
-    const setOpen = on => { sk.classList.toggle('open', on); sk.setAttribute('aria-expanded', String(on)); sk.setAttribute('aria-label', on ? 'skill tree: click empty space to close' : 'skill tree: click to open'); };
-    FE.closeSkills = () => setOpen(false);
-    sk.addEventListener('click', e => {
-      if (!sk.classList.contains('open')) { setOpen(true); return; }
-      if (e.target.closest('.skill-info')) return;
-      const node = e.target.closest('.node');
-      if (node) FE.selectSkill(node.dataset.id); else setOpen(false);
-    });
-    sk.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === sk) { e.preventDefault(); setOpen(!sk.classList.contains('open')); } });
-    FE.buildMini();
+  // ---- the goal line ----
+  const readyToCondense = () => { const e = FE.E(), c = FE.nextStarCost(); return c != null && !e.exo && !e.strange && e.count >= c; };
+  function goal() {
+    const s = FE.state, e = FE.E(), el = FE.el(), cost = FE.nextStarCost();
+    if (readyToCondense()) return e.tier === 0 ? 'Hark! The elements are gathered. Condense thy star now, noble one, ere the moment doth pass.' : `Lo! Thy star is ripe for ascension. Condense it, brave soul, and behold a tier ${e.tier + 1} star.`;
+    if (e.exo) return `your ${el} star is a ${FE.EXO[e.exo.kind].name}: click it for antimatter.`;
+    if (e.strange) return 'a strange star: everything you hold is draining into strange matter.';
+    if (s.layer2) return 'Layer 2: Raise an Army';
+    if (cost == null) return 'your star is as large as it can grow. collapse it for crystals.';
+    const have = e.count >= cost ? 'ready.' : `${FE.fmt(e.count)} / ${FE.fmt(cost)}.`;
+    if (e.tier === 0) return `gather ${FE.fmt(cost)} ${el} and condense it into a star: ${have}`;
+    return `condense a tier ${e.tier + 1} star: ${have}${e.tier >= FE.COLLAPSE_TIER ? ' or collapse this one.' : ''}`;
   }
 
-  // ---- the goal line ----
-  function goal() {
-    const s = FE.state, el = FE.el(), cost = FE.nextStarCost();
-    if (!el) return '';
-    if (cost == null) return 'your star is as large as it can grow. collapse it for stardust.';
-    const have = s.count >= cost ? 'ready.' : `${FE.fmt(s.count)} / ${FE.fmt(cost)}.`;
-    if (s.tier === 0) return `gather ${FE.fmt(cost)} ${el} and condense it into a star: ${have}`;
-    return `condense a tier ${s.tier + 1} star: ${have}${s.tier >= FE.COLLAPSE_TIER ? ' or collapse this one.' : ''}`;
+  // the neutron star / black hole / antimatter buttons under the star
+  function exoButtons(s, e, el) {
+    const b = [];
+    if (FE.canExo()) {
+      const k = FE.exoKind(e), d = FE.EXO[k];
+      b.push(`<button type="button" class="el wide exo" data-act="exo" title="${d.dur} s of antimatter: ${d.passive}/s and ${d.click} a click. ${el} stops.">compress into a ${d.name}</button>`);
+    }
+    if (e.exo && e.exo.kind === 'hole') {
+      b.push(`<button type="button" class="el wide sm" data-act="extend" ${s.strangeCrystals < 1 ? 'disabled' : ''}>+${FE.EXO_EXTEND} s (1 strange crystal)</button>`);
+      b.push(`<button type="button" class="el wide sm" data-act="amplify" ${s.strangeCrystals < 1 ? 'disabled' : ''}>antimatter ×${FE.EXO_AMPLIFY} (1 strange crystal)</button>`);
+    }
+    if (!e.exo && !e.strange && s.antimatter > 0) {
+      for (let t = 1; t < FE.REIGNITE.length; t++) {
+        if (e.tier >= t) continue;
+        b.push(`<button type="button" class="el wide sm" data-act="ignite" data-tier="${t}" ${s.antimatter < FE.REIGNITE[t] ? 'disabled' : ''}>light a tier ${t} star: ${FE.fmt(FE.REIGNITE[t])} antimatter</button>`);
+      }
+    }
+    return b.join('');
   }
 
   FE.render = function () {
     const s = FE.state, el = FE.el();
-    document.body.classList.toggle('choosing', !el);
-    $('choose').hidden = !!el;
     if (!el) return;
+    const e = FE.E();
     document.body.dataset.el = el;
-    const names = FE.NAMES[el], cost = FE.nextStarCost(), prog = cost ? Math.min(1, s.count / cost) : 1;
+    if (e.strange) document.body.dataset.strange = '1'; else delete document.body.dataset.strange;
+    const names = FE.NAMES[el], cost = FE.nextStarCost(), prog = cost ? Math.min(1, e.count / cost) : 1;
 
-    put($('goal'), goal());
-    // buffs
-    const now = Date.now();
-    put($('buffs'), Object.keys(FE.BUFFS).filter(b => (s.buffs[b] || 0) > now).map(b => `<span class="buff" title="${FE.BUFFS[b].note}">${FE.BUFFS[b].name} &middot; ${Math.ceil((s.buffs[b] - now) / 1000)}s</span>`).join(''));
+    const g = $('goal');
+    put(g, goal());
+    g.classList.toggle('glow', s.layer2);
+    g.classList.toggle('ready', readyToCondense());
 
-    // stores (bottom left)
-    put($('s-ico'), svg(FE.ICONS[el]));
-    text('s-name', el); text('s-n', FE.fmt(s.count));
-    text('s-rate', `+${FE.fmt(FE.rate())}/s`);
-    text('s-click', `click: +${FE.fmt(FE.clickGain())}`);
-    text('s-star', s.tier ? `${FE.STAR_NAMES[s.tier]} star, tier ${s.tier} · production ×${FE.multiplier().toFixed(1)}` : `no star yet · production ×${FE.multiplier().toFixed(1)}`);
+    // tabs: the one you are on is darkened and marked
+    FE.ELEMENTS.forEach(({ id }) => {
+      const t = $('tab-' + id), on = id === el, st = s.els[id];
+      t.classList.toggle('active', on);
+      t.classList.toggle('exo', !!st.exo); t.classList.toggle('strange', !!st.strange);
+      t.setAttribute('aria-selected', String(on));
+    });
 
-    // the star: progress, condense, collapse
-    const maxed = cost == null;
-    $('cond-info').textContent = maxed ? `tier ${s.tier} star` : `tier ${s.tier + 1} star: ${FE.fmt(s.count)} / ${FE.fmt(cost)} ${el}`;
+    // stores (bottom left): every element in order; the current one opens
+    FE.ELEMENTS.forEach(({ id }) => {
+      const on = id === el;
+      text('sn-' + id, FE.fmt(s.els[id].count));
+      $('srow-' + id).classList.toggle('cur', on);
+      $('sm-' + id).hidden = !on;
+    });
+    text('sr-' + el, e.exo ? `makes no ${el}: antimatter +${FE.fmt(FE.exoPassive(e))}/s` : `+${FE.fmt(FE.rate())}/s`);
+    text('sc-' + el, e.exo ? `click: +${FE.fmt(FE.exoClick(e))} antimatter` : `click: +${FE.fmt(FE.clickGain())}`);
+    text('ss-' + el, e.exo ? `${FE.EXO[e.exo.kind].name} · ${Math.ceil(FE.exoLeft(e))} s left`
+      : e.tier ? `${FE.STAR_NAMES[e.tier]} star, tier ${e.tier} · production ×${FE.multiplier().toFixed(1)}` : `no star yet · production ×${FE.multiplier().toFixed(1)}`);
+
+    // the star: progress (the ring in space.js; the bar is hidden), condense (not offered past tier 3), collapse
+    const maxed = cost == null || !!e.exo || !!e.strange;
+    $('cond-info').textContent = e.exo ? `${FE.EXO[e.exo.kind].name}: ${Math.ceil(FE.exoLeft(e))} s left` : e.strange ? `strange star: ${Math.max(0, Math.ceil((e.strange.end - Date.now()) / 1000))} s left`
+      : maxed ? `tier ${e.tier} star` : `tier ${e.tier + 1} star: ${FE.fmt(e.count)} / ${FE.fmt(cost)} ${el}`;
     $('cond-fill').style.width = (prog * 100).toFixed(1) + '%';
-    $('stage').style.setProperty('--cm', (-(280 - FE.core.radius() * 1.3) / 560).toFixed(3));
-    const cb = $('btn-condense');
+    $('stage').style.setProperty('--sr', (FE.core.radius() * FE.core.s).toFixed(1) + 'px');          // the star's radius on screen: the condense panel sits just under it
+    $('stage').classList.toggle('ready', !maxed && prog >= 1);
+    const cb = $('cbtn');
     cb.hidden = maxed;
-    if (!maxed) { cb.disabled = s.count < cost || FE.collapsing; text('btn-condense', s.tier === 0 ? 'condense a star' : `condense: tier ${s.tier + 1}`); }
-    const col = $('btn-collapse'), dust = FE.dustPreview(), armed = FE.collapseArmed && Date.now() < FE.collapseArmed;
-    col.hidden = s.tier < FE.COLLAPSE_TIER;
+    if (!maxed) { cb.disabled = e.count < cost || FE.collapsing || FE.condensing; cb.setAttribute('aria-label', e.count < cost ? `the condense circle is filling: ${Math.floor(prog * 100)}%` : `condense a tier ${e.tier + 1} star`); }
+    const col = $('btn-collapse'), armed = FE.collapseArmed && Date.now() < FE.collapseArmed;
+    col.hidden = e.tier < FE.COLLAPSE_TIER || !!e.strange;
     if (!col.hidden) {
-      col.disabled = dust < 1 || FE.collapsing;
+      col.disabled = FE.collapsing;
       col.classList.toggle('armed', !!armed);
-      const t = dust < 1 ? 'collapse: hold more first' : armed ? 'click again: the star and all progress are lost' : `collapse the star: +${dust} stardust`;
-      text('btn-collapse', t);
+      const yc = FE.crystalYield(e.tier);
+      text('btn-collapse', armed ? 'click again: the star and all progress are lost' : `collapse the star: +${yc} ${el} crystal${yc === 1 ? '' : 's'}`);
     }
+    put($('exo-btns'), exoButtons(s, e, el));
 
     // builds (right)
     Object.keys(FE.UPS).forEach(k => {
       const card = $('up-' + k), u = FE.UPS[k], c = FE.upCost(k);
-      if (k === 'excl' ? s.mg.plays > 0 : (s.count >= u.show || s.seen[k])) s.seen[k] = true;
-      const show = !!s.seen[k];
+      if ((e.count >= u.show && (!u.needAM || s.antimatter > 0)) || e.seen[k]) e.seen[k] = true;
+      const show = !!e.seen[k];
       card.hidden = !show;
       if (!show) return;
-      const [title, price, note] = card.children, n = s.up[k];
+      const [title, price, note] = card.children, n = e.up[k];
       let t, d;
-      if (k === 'res') { t = `${el} resonance`; d = `click power ${FE.fmt(FE.clickPower())} → ${FE.fmt(FE.clickPower() * 2)}`; }
-      else if (k === 'gath') { t = names.gath; d = `+${FE.GATHER_RATE * (FE.has('autonomy') ? 2 : 1)}/s each`; }
-      else if (k === 'eng') { t = names.eng; d = `+${FE.ENGINE_RATE * (FE.has('gravity') ? 2 : 1)}/s each`; }
-      else if (k === 'harm') { t = 'harmony'; d = 'all production ×1.5'; }
-      else { t = names.excl; d = names.exclNote; }
+      if (k === 'res') { t = `${el} resonance`; d = `click power ${FE.fmt(FE.clickPower())} → ${FE.fmt(FE.clickPower() * FE.CLICK_GROWTH)}`; }
+      else if (k === 'gath') { t = names.gath; d = `+${FE.GATHER_RATE}/s each`; }
+      else if (k === 'eng') { t = names.eng; d = `+${FE.ENGINE_RATE}/s each`; }
+      else if (k === 'conduit') { t = 'conduit'; d = `each click also adds ${Math.round(FE.CONDUIT_PCT * 100)}% of your production per second`; }
+      else if (k === 'siphon') { t = 'antimatter siphon'; d = `+${FE.SIPHON_RATE} antimatter per second each, with or without a neutron star`; }
+      else { t = 'harmony'; d = 'all production ×1.5'; }
       put(title, t + (n ? ` ×${n}` : ''));
-      put(price, `<span class="${s.count >= c ? 'have' : ''}">${FE.fmt(s.count)} / ${FE.fmt(c)}</span> ${el}`);
+      put(price, `<span class="${e.count >= c ? 'have' : ''}">${FE.fmt(e.count)} / ${FE.fmt(c)}</span> ${el}`);
       put(note, d);
-      card.disabled = s.count < c;
-      card.classList.toggle('excl', k === 'excl');
+      card.disabled = e.count < c;
     });
 
-    // the auxiliary element and the fused resource
-    const aux = s.aux, spirits = s.auxUp.gath;
-    $('s-aux').hidden = $('sa-line').hidden = !aux;
-    if (aux) {
-      put($('sa-ico'), svg(FE.ICONS[aux])); $('sa-ico').style.color = `var(--${aux}-ink)`;
-      $('sa-name').className = 's-name ink-' + aux;
-      text('sa-name', aux); text('sa-n', FE.fmt(s.auxCount));
-      text('sa-line', `${spirits} spirit${spirits === 1 ? '' : 's'} \u00b7 +${FE.fmt(FE.auxRate())}/s \u00b7 only from its mini-game`);
+    // elemental affinity: once per element, and for good
+    const af = $('up-aff'), A = FE.AFFINITY, owned = !!s.affinity[el];
+    if (e.count >= A.show || owned) e.seen.aff = true;
+    af.hidden = !e.seen.aff;
+    if (e.seen.aff) {
+      const [at, ap, an] = af.children;
+      put(at, owned ? 'elemental affinity &#10003;' : 'elemental affinity');
+      put(ap, owned ? '<span class="have">unlocked for good</span>' : `<span class="${e.count >= A.cost ? 'have' : ''}">${FE.fmt(e.count)} / ${FE.fmt(A.cost)}</span> ${el}`);
+      put(an, owned ? `all production of all elements ×${A.mult} &middot; permanent, it never resets, not even when a star collapses`
+                    : `all production of all elements ×${A.mult} &middot; one per element, kept for good (never resets)`);
+      af.disabled = owned || e.count < A.cost;
+      af.classList.toggle('owned', owned);
     }
-    const crucible = s.fz.crucible, fused = !!aux && (crucible > 0 || s.fusion > 0);
-    $('s-fus').hidden = $('sf-line').hidden = !fused;
-    $('fz-run').hidden = !(aux && crucible > 0);
-    if (fused) {
-      text('sf-name', FE.fusionName()); text('sf-n', FE.fmt(s.fusion));
-      text('sf-line', (crucible ? `+${FE.fmt(FE.fusionRate())}/s${s.fzOn ? '' : ' (paused)'} \u00b7 ` : '') + 'its use is not decided yet');
-      text('fz-run', s.fzOn ? 'pause the crucible.' : 'run the crucible.');
-    }
-    $('sec-fz').hidden = !aux;
-    Object.keys(FE.FZ).forEach(k => {
-      const card = $('fz-' + k), show = !!aux && (k === 'crucible' || crucible > 0);
-      card.hidden = !show;
-      if (!show) return;
-      const c = FE.fzCost(k), n = s.fz[k], f = FE.fusionName(), [title, price, note] = card.children;
-      put(title, (k === 'crucible' ? `${f} crucible` : 'catalyst') + (n ? ` \u00d7${n}` : ''));
-      put(price, `<span class="${s.count >= c.main ? 'have' : ''}">${FE.fmt(s.count)} / ${FE.fmt(c.main)}</span> ${el} &middot; <span class="${s.auxCount >= c.aux ? 'have' : ''}">${FE.fmt(s.auxCount)} / ${FE.fmt(c.aux)}</span> ${aux}`);
-      put(note, k === 'crucible' ? `burns ${FE.FZ.crucible.use[0]} ${el} + ${FE.FZ.crucible.use[1]} ${aux} a second each, makes ${f}` : `${f} output \u00d71.5 each`);
-      card.disabled = s.count < c.main || s.auxCount < c.aux;
-    });
 
-    // layer 2
-    if ($('page2')) $('nav-up').hidden = !s.layer2 || FE.view !== 1;
-    else $('dust').hidden = !s.collapses;            // until layer 2 has its own page, the stardust sits on layer 1
-    text('dust-n', FE.fmt(s.stardust));
-    text('dust-sub', s.collapses ? `${s.collapses} collapse${s.collapses === 1 ? '' : 's'} · ${FE.fmt(s.totalDust)} received in all` : '');
-    if ($('skill')) { FE.renderSkills(); FE.renderMini(); }
+    // layer 2: the link is grey until the first crystal, then white; and the crystal counts
+    const up = $('nav-up');
+    up.hidden = FE.view !== 1;
+    up.classList.toggle('unlocked', s.layer2);
+    up.setAttribute('aria-disabled', String(!s.layer2));
+    FE.ELEMENTS.forEach(({ id }) => text('cr-' + id, `${id} crystals: ${FE.fmt(s.crystals[id])}`));
+    FE.renderHud();
+    FE.renderPanel();
+    FE.renderArmy();
+    FE.renderTree();
   };
 });

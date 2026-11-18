@@ -67,7 +67,7 @@
 
   /* dialog bubble, centred in the hole */
   .dialog { position: fixed; inset: 0; z-index: 7; display: grid; place-items: center; pointer-events: none; }
-  .bubble { --c: var(--fg); font: inherit; font-size: clamp(1.05rem, 2.6vw, 1.9rem); color: var(--fg); background: var(--bg); border: 1px solid var(--c); border-radius: 999px; padding: .65em 1.4em; max-width: min(86vw, 22em); cursor: pointer; opacity: 0; pointer-events: none; box-shadow: 0 0 24px -6px var(--c); position: relative; will-change: transform, opacity; -webkit-tap-highlight-color: transparent; }
+  .bubble { --c: var(--fg); font: inherit; font-size: clamp(.95rem, 2.2vw, 1.6rem); color: var(--fg); background: var(--bg); border: 1px solid var(--c); border-radius: 1.4em; padding: .6em 1.3em; width: max-content; max-width: min(84vw, 20em); line-height: 1.3; text-align: center; cursor: pointer; opacity: 0; pointer-events: none; box-shadow: 0 0 24px -6px var(--c); position: relative; will-change: transform, opacity; -webkit-tap-highlight-color: transparent; }
   .bubble::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; box-shadow: 0 0 44px 4px var(--c); opacity: 0; pointer-events: none; }
   .bubble:hover { background: color-mix(in srgb, var(--c) 14%, var(--bg)); }
   .bubble:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
@@ -121,7 +121,7 @@
       <a class="play" id="play" href="game.html" aria-label="play">play.</a>
       <p class="saved" id="saved" hidden></p>
     </div>
-    <p class="hint">Gather the elements, keep them in balance, and fend off the vagrants. Click an element to gather it, or press a, w, e or f. Progress saves as you play.</p>
+    <p class="hint">Gather the elements and condense them into stars. Click an element to gather it (hold to keep going), or press a, w, e or f. Progress saves as you play.</p>
   </main>
   <p class="credits">INF 151 · Group 34 · Henry Bao, Jaden Nguyen, Quan Nguyen and Jerry Chen<br>music: “Cathedral in the forest” by congusbongus · sounds by Kenney (both CC0)</p>
 
@@ -157,7 +157,7 @@
     if (q.has('el') || q.has('reset')) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
     try {
       const sv = JSON.parse(localStorage.getItem(FE.SAVE_KEY));
-      if (sv && sv.owned && ids.includes(sv.owned[0])) { el = sv.owned[0]; played = Math.floor(sv.played || 0); localStorage.setItem(HOME_KEY, el); }
+      if (sv && ids.includes(sv.cur)) { el = sv.cur; played = Math.floor(sv.played || 0); localStorage.setItem(HOME_KEY, el); }
     } catch (e) {}
     if (!el) { try { const h = localStorage.getItem(HOME_KEY); if (ids.includes(h)) el = h; } catch (e) {} }
     window.FEHome = { key: HOME_KEY, el };
@@ -187,7 +187,7 @@ const $ = id => document.getElementById(id);
 const TAU = Math.PI * 2;
 const ids = ['air', 'water', 'earth', 'fire'];            // hole order, clockwise from north
 const OUT = 96, HOLE_R = 47, HOLE_RAD = 15;                // circle units: outer radius, hole orbit radius, hole radius
-const LINES = ['...Huh?', 'What... happened...?', 'Where am I?', 'What... is this...?'];
+const LINES = ['The world has been destroyed', 'Gather the elements', 'Find your lost power', 'Rebuild the world'];
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);

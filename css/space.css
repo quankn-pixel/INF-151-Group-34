@@ -1,0 +1,74 @@
+/* space.css - layer 1 as space (loaded after style.css, so it wins): a dark sky behind everything, glass panels for the stores,
+   builds and tabs, the HUD strip, the quest / mini-game panel, and the look of a neutron star, black hole and strange star. */
+:root, :root[data-theme] { color-scheme: dark; }
+#page1 { background: #03040b; color: #e9eefc; --fg: #e9eefc; --muted: #8d98bf; --dim: #aab4d8; --line: rgba(170, 190, 255, .5); --hover: rgba(190, 205, 255, .12); --bg: #070a18;
+  --air-ink: var(--air); --water-ink: var(--water); --earth-ink: var(--earth); --fire-ink: var(--fire); }
+#space { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+#fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#core { transition: opacity .8s ease; }
+body[data-exo]:not([data-exo=""]) #core { opacity: 0; }
+.game-title { letter-spacing: .12em; text-shadow: 0 0 20px rgba(160, 185, 255, .45); }
+.goal { color: #aab4d8; }
+.cond-bar { display: none; }                      /* the ring around the star (space.js) is the meter now */
+@keyframes readyglow { 0%, 100% { box-shadow: 0 0 6px -2px var(--c); } 50% { box-shadow: 0 0 22px 2px var(--c); } }
+
+/* glass panels */
+#page1 .box { background: linear-gradient(160deg, rgba(14, 20, 48, .62), rgba(5, 8, 22, .62)); border: 1px solid rgba(160, 185, 255, .34); border-radius: 10px;
+  box-shadow: 0 0 26px -10px rgba(120, 150, 255, .7), inset 0 0 30px -18px rgba(150, 175, 255, .8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+#page1 .box .label { background: transparent; color: #cdd7f5; letter-spacing: .12em; text-transform: uppercase; font-size: .78em; text-shadow: 0 0 10px rgba(150, 175, 255, .8); }
+#page1 .upgrades, #page1 .store { background: linear-gradient(160deg, rgba(14, 20, 48, .62), rgba(5, 8, 22, .62)); }
+#page1 .card { background: rgba(8, 12, 30, .55); border-radius: 8px; border-color: color-mix(in srgb, var(--c, #aebcff) 38%, transparent); }
+#page1 .card:not(:disabled) { box-shadow: inset 0 0 0 1px var(--c, #aebcff), 0 0 16px -6px var(--c, #aebcff); }
+#page1 .card:hover:not(:disabled) { background: color-mix(in srgb, var(--c, #aebcff) 16%, rgba(8, 12, 30, .7)); }
+#page1 .tab { background: rgba(8, 12, 30, .55); border-radius: 8px; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+#page1 .tab.active { background: color-mix(in srgb, var(--tc) 18%, rgba(4, 6, 16, .8)); box-shadow: inset 4px 0 0 var(--tc), 0 0 18px -6px var(--tc); }
+.tab.exo { border-color: #ffb15a; } .tab.exo .t-mark { opacity: 1; color: #ffb15a; }
+.tab.strange { border-color: #d28bff; } .tab.strange .t-mark { opacity: 1; color: #d28bff; }
+#page1 button.el { background: rgba(8, 12, 30, .6); border-radius: 6px; }
+#page1 button.el:hover:not(:disabled) { background: rgba(190, 205, 255, .16); }
+#page1 .s-row { border-radius: 6px; }
+#page1 .s-row.cur { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 16%, transparent), transparent); box-shadow: inset 3px 0 0 var(--c); padding-left: 8px; }
+.nav.down { color: #8d9bc4; }
+
+/* the strip under the goal line */
+.hud { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 10px; margin-top: 8px; min-height: 1.9em; }
+.hud-btn { width: auto !important; padding: 3px 14px !important; font-size: .9em; border-color: rgba(190, 205, 255, .55) !important; }
+.hud-btn.ping { animation: readyglow 1.6s ease-in-out infinite; --c: #aebcff; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.chip { font-size: .8em; padding: 2px 10px; border: 1px solid rgba(190, 205, 255, .35); border-radius: 999px; background: rgba(8, 12, 30, .6); color: #cdd7f5; font-variant-numeric: tabular-nums; }
+.chip.good { border-color: #6fe3a3; color: #b5f5d2; } .chip.bad { border-color: #ff7a6a; color: #ffb4aa; }
+.chip.quest { border-color: #ffd36b; color: #ffe6a8; } .chip.am { border-color: #7fd6ff; color: #bfeaff; } .chip.sm { border-color: #d28bff; color: #ecc8ff; } .chip.dim { color: #8d98bf; }
+.exo-btns { margin-top: 8px; }
+#page1 button.exo { border-color: #ffb15a; color: #ffd9a8; box-shadow: 0 0 16px -6px #ffb15a; }
+#page1 button.sm { font-size: .85em; padding: 3px 12px; }
+
+/* the quest / mini-game panel */
+.modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(2, 3, 10, .72); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.panel { width: min(36em, 92vw); max-height: 90vh; overflow-y: auto; padding: 22px 26px; text-align: center; line-height: 1.45; color: #e9eefc; border: 1px solid rgba(190, 205, 255, .5); border-radius: 12px; background: #05081a; box-shadow: 0 0 44px -10px rgba(150, 175, 255, .75); animation: panelin2 .35s ease; }
+@keyframes panelin2 { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.panel h3 { margin: 0 0 6px; font-weight: normal; font-size: 1.9em; letter-spacing: .06em; }
+.panel p { margin: 6px 0; } .panel .dim { color: #8d9bc4; font-size: .95em; }
+.panel .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.panel button.el { width: auto; padding: 6px 18px; color: #e9eefc; background: rgba(255, 255, 255, .05); border-color: rgba(190, 205, 255, .55); }
+.panel button.el:hover:not(:disabled) { background: rgba(190, 205, 255, .16); text-decoration: none; box-shadow: 0 0 14px -3px #aebcff; }
+.panel button.el:disabled { color: #6c7799; border-color: rgba(190, 205, 255, .2); }
+.panel button.danger { border-color: #ff7a6a; color: #ffb4aa; }
+.qcard { margin: 12px 0; padding: 12px 14px; border: 1px solid rgba(190, 205, 255, .3); border-radius: 8px; background: rgba(255, 255, 255, .03); display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.qcard.act { border-color: #ffd36b; box-shadow: 0 0 18px -8px #ffd36b; }
+.q-task { font-size: 1.15em; } .q-line { font-size: .92em; color: #aab4d8; } .q-line.good { color: #9fe8c0; } .q-line.bad { color: #ff9f94; }
+.qcard button { margin-top: 6px; }
+.mg-cv { width: 100%; max-width: 480px; aspect-ratio: 480 / 320; margin: 10px auto 0; display: block; border: 1px solid rgba(190, 205, 255, .4); border-radius: 8px; background: #04060f; cursor: crosshair; touch-action: none; }
+
+@media (prefers-reduced-motion: reduce) { .hud-btn.ping { animation: none; } }
+
+/* the condense circle: only a hit area, space.js draws it (and the hands) on #fx */
+.altar { position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); width: clamp(92px, 14vh, 140px); aspect-ratio: 1; z-index: 3; }
+#cbtn { display: block; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: default; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#cbtn:not(:disabled) { cursor: pointer; }
+#cbtn:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+/* the subtitle once the star can be condensed */
+.goal.ready { font-style: italic; font-size: 1.18em; letter-spacing: .05em; color: color-mix(in srgb, var(--c, #aebcff) 45%, #fff); text-shadow: 0 0 6px var(--c, #aebcff), 0 0 18px var(--c, #aebcff), 0 0 34px var(--c, #aebcff); animation: subglow 2.6s ease-in-out infinite; }
+@keyframes subglow { 0%, 100% { text-shadow: 0 0 5px var(--c, #aebcff), 0 0 14px var(--c, #aebcff); } 50% { text-shadow: 0 0 9px var(--c, #aebcff), 0 0 26px var(--c, #aebcff), 0 0 46px var(--c, #aebcff); } }
+@media (prefers-reduced-motion: reduce) { .goal.ready { animation: none; } }
+
+.cond { top: calc(50% + var(--sr, 110px) * 1.3 + 52px); }          /* clear of the runes that ring a ready star */
