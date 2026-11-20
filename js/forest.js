@@ -22,8 +22,9 @@ FE.module(function (FE) {
   const IDS = FE.ELEMENTS.map(e => e.id);
 
   // ---------------------------------------------------------------- state
-  const blankEl = () => ({ count: 0, tier: 0, up: { res: 0, gath: 0, harm: 0, eng: 0 } });
-  const blank = () => ({ cur: null, seen: {}, els: Object.fromEntries(IDS.map(k => [k, blankEl()])), l3: false, l3seen: false, ext: 0 });
+  // up[build] = how many you own of each fusion level: [base, fused, fused twice, fused three times]. fu[build] = fusions made so far.
+  const blankEl = () => ({ count: 0, tier: 0, up: { res: [0, 0, 0, 0], gath: [0, 0, 0, 0], harm: [0, 0, 0, 0], eng: [0, 0, 0, 0] }, fu: { res: 0, gath: 0, harm: 0, eng: 0 } });
+  const blank = () => ({ cur: null, seen: {}, els: Object.fromEntries(IDS.map(k => [k, blankEl()])), l3: false, l3seen: false, ext: 0, buys: 0 });
   const oldFresh = FE.freshState;
   FE.freshState = () => Object.assign(oldFresh(), { forest: blank() });
   if (!FE.state.forest) FE.state.forest = blank();
@@ -33,15 +34,34 @@ FE.module(function (FE) {
   const TIER_COST = [1500, 60000, 2500000], MAX_T = 3, EXT_MIN = 2;           // what a vessel costs to grow; the lowest tier that can be extinguished
   const tierCost = t => t >= MAX_T ? null : TIER_COST[t];
   const yieldOf = t => (t >= 3 ? 3 : 1) * (FE.has('dbl') ? 2 : 1);              // crystals an extinguished vessel gives
-  const mult = k => Math.pow(FE.STAR_MULT, fe(k).tier) * Math.pow(1.5, fe(k).up.harm) * (FE.has('prod') ? 2 : 1);
-  const rate = k => (fe(k).up.gath * FE.GATHER_RATE + fe(k).up.eng * FE.ENGINE_RATE) * mult(k);
-  const clickGain = () => Math.pow(FE.CLICK_GROWTH, fe().up.res) * mult(F().cur);
-  const upCost = b => Math.ceil(FE.UPS[b].base * Math.pow(FE.UPS[b].grow, fe().up[b]));
   const BUILDS = ['res', 'gath', 'harm', 'eng'];
+
+  // ---- fusing builds ----
+  // Buy a build FUSE_N times and those purchases fuse into one enhanced variant worth FUSE_V base units (FUSE_N alone would be 8: the
+  // extra is the reward for fusing). FUSE_N enhanced variants fuse again, up to LV_MAX. Fusing sets the base count back to zero, so the
+  // base build is cheap to buy again: its price rises with the count in the current batch, and by CSTEP for every fusion made so far.
+  // That way a build you neglect is always the cheapest way to grow, and no build ever stops mattering.
+  const FUSE_N = 8, FUSE_V = 12, CSTEP = 2, LV_MAX = 3, RES_STEP = .25, HARM_STEP = .5;
+  const MODS = { prod: () => 1, click: () => 1, onClick() {}, onGain() {}, onBuy() {}, onFuse() {}, onGrow() {} };       // forestplay.js hooks in here
+  const lvE = (b, k) => { const n = fe(k).up[b]; return n[0] + n[1] * FUSE_V + n[2] * FUSE_V * FUSE_V + n[3] * FUSE_V * FUSE_V * FUSE_V; };   // the build as a number of base units
+  const mult = k => Math.pow(FE.STAR_MULT, fe(k).tier) * (1 + HARM_STEP * lvE('harm', k)) * (FE.has('prod') ? 2 : 1) * MODS.prod(k);
+  const rate = k => (lvE('gath', k) * FE.GATHER_RATE + lvE('eng', k) * FE.ENGINE_RATE) * mult(k);
+  const clickGain = () => (1 + RES_STEP * lvE('res')) * mult(F().cur) * MODS.click();
+  const upCost = b => Math.ceil(FE.UPS[b].base * Math.pow(FE.UPS[b].grow, fe().up[b][0]) * Math.pow(CSTEP, fe().fu[b]));
+  const FNAMES = { gath: { air: ['draft', 'breeze', 'gust', 'gale'], water: ['trickle', 'brook', 'stream', 'river'], earth: ['digger', 'dig crew', 'burrow', 'deep warren'], fire: ['ember', 'ember bed', 'hearth', 'forge heart'] },
+                   eng: { air: ['chimney', 'flue', 'wind tunnel', 'cyclone'], water: ['spring', 'waterwheel', 'millrace', 'reservoir'], earth: ['quarry', 'open pit', 'deep shaft', 'great mine'], fire: ['bellows', 'forge', 'furnace', 'blast furnace'] },
+                   res: ['tending', 'practiced hand', 'steady craft', 'mastery'], harm: ['harmony', 'accord', 'communion', 'unity'] };
+  const nm = (b, el, t) => b === 'res' || b === 'harm' ? FNAMES[b][t] : FNAMES[b][el][t];
+  // add n base units of a build, fusing whatever is full; returns the level of the highest fusion made (0 = none)
+  function addUnits(b, n) {
+    const e = fe(), u = e.up[b]; let hi = 0;
+    u[0] += n;
+    for (let t = 0; t < LV_MAX; t++) while (u[t] >= FUSE_N) { u[t] -= FUSE_N; u[t + 1]++; e.fu[b]++; hi = Math.max(hi, t + 1); MODS.onFuse(b, t + 1); }
+    return hi;
+  }
   const VNAME = { fire: ['small fire', 'campfire', 'bonfire', 'roaring pyre'], water: ['puddle', 'pool', 'pond', 'spring'],
                   air: ['steam vent', 'hot vent', 'geyser', 'great geyser'], earth: ['dirt patch', 'mound', 'cairn', 'stone heap'] };
   const VERB = { fire: 'Feed the fire', water: 'Deepen the pool', air: 'Widen the vent', earth: 'Heap the cairn' };
-  const NAMES = { air: { gath: 'draft', eng: 'chimney' }, water: { gath: 'trickle', eng: 'spring' }, earth: { gath: 'digger', eng: 'quarry' }, fire: { gath: 'ember', eng: 'bellows' } };
   const INTRO = { fire: 'The forest is dark and cold. Rake the embers.', water: 'The forest is dark. Rainwater has pooled in a hollow.',
                   air: 'The forest is dark. Steam seeps from a crack in the cold ground.', earth: 'The forest is dark. Loose dirt and stones are creeping toward one spot.' };
   const l3Open = () => !!((FE.state.cleared && FE.state.cleared.breach) || F().l3);       // the old star layer (layer 3) opens with the first cleared map
@@ -390,7 +410,7 @@ FE.module(function (FE) {
   function gather(x, y) {
     if (FE.view !== 0 || busy() || ex || !F().cur) return;
     const g = clickGain(), el = F().cur;
-    fe().count += g; kick = 1;
+    fe().count += g; kick = 1; MODS.onClick(); MODS.onGain(g);
     if (x == null) { x = VX; y = VY - 30 * S0; }
     floats.push({ x: x + rand(-10, 10), y: y - 10, t: 0, text: FE.fmt(g) });
     const col = FE.PAL[el].glow, up = el === 'fire' || el === 'air';
@@ -400,21 +420,27 @@ FE.module(function (FE) {
   function grow() {
     const e = fe(), cost = tierCost(e.tier);
     if (busy() || ex || cost == null || e.count < cost) return;
-    e.count -= cost; e.tier++; flash = 1; kick = 1;
+    e.count -= cost; e.tier++; flash = 1; kick = 1; MODS.onGrow();
     FE.save(); renderForest();
   }
   function buy(b) {
-    const e = fe(), c = upCost(b);
+    const e = fe(), c = upCost(b), el = F().cur;
     if (busy() || ex || e.count < c) return;
-    e.count -= c; e.up[b]++;
+    e.count -= c; F().buys++;
+    const hi = addUnits(b, 1);
+    MODS.onBuy(b);
+    if (hi) { flash = Math.max(flash, .7); FE.toast(`Fused! ${FUSE_N} ${nm(b, el, hi - 1)} became one ${nm(b, el, hi)}, worth ${FUSE_V}× as much.`, 4200); }
     FE.save(); renderForest();
   }
+  // a gift: n free base units of a build on the current element (used by rewards); returns the fusion level reached
+  function gift(b, n) { const hi = addUnits(b, n); FE.save(); renderForest(); return hi; }
   function switchEl(id) {
     if (busy() || ex || id === F().cur || !IDS.includes(id)) return;
     F().cur = id; extArmed = 0; vt = fe().tier; floats.length = 0; P.length = 0;
     FE.save(); renderForest();
   }
-  FE.forest = { state: F, gather, grow, buy, switchEl, extinguish, rate, clickGain };
+  FE.forest = { state: F, gather, grow, buy, switchEl, extinguish, rate, clickGain, mods: MODS, gift, nm, lvE, tierCost, render: () => renderForest(), FUSE_N, FUSE_V, BUILDS,
+                busy: () => busy() || !!ex, burst: (el, n) => { for (let i = 0; i < n && P.length < 300; i++) P.push({ type: 'spark', col: FE.PAL[el].glow, x: VX + rand(-60, 60) * S0, y: VY + 10 * S0, vx: rand(-90, 90), vy: -rand(80, 220), g: 200, t: 0, life: rand(.6, 1.2), r: rand(1.5, 3.5) }); } };
 
   // the round disc over the vessel: a click gathers; holding the mouse clicks ten times a second
   let hold = null, hx = 0, hy = 0;
@@ -437,7 +463,7 @@ FE.module(function (FE) {
   function goalText() {
     const el = F().cur, e = fe(), cost = tierCost(e.tier), noun = VNAME[el][e.tier];
     if (cost != null && e.count >= cost) return `Lo! The ${el} gathers. ${VERB[el]}, noble one, and the ${noun} will grow.`;
-    if (!e.tier && e.count < 25 && !e.up.gath && !e.up.res) return INTRO[el];
+    if (!e.tier && e.count < 25 && !lvE('gath') && !lvE('res')) return INTRO[el];
     if (cost == null) return `the ${noun} burns as large as it can. extinguish it to take its crystals.`;
     return `gather ${FE.fmt(cost)} ${el} to ${VERB[el].toLowerCase()}: ${FE.fmt(e.count)} / ${FE.fmt(cost)}.${e.tier >= EXT_MIN ? ' or extinguish it for crystals.' : ''}`;
   }
@@ -464,13 +490,16 @@ FE.module(function (FE) {
       const card = $('fz-up-' + b), u = FE.UPS[b], c = upCost(b), key = el + '.' + b;
       if (e.count >= u.show || f.seen[key]) f.seen[key] = true;
       card.hidden = !f.seen[key]; if (card.hidden) return;
-      const [title, price, note] = card.children, n = e.up[b];
-      let t, d;
-      if (b === 'res') { t = 'tending'; d = `click power ${FE.fmt(Math.pow(FE.CLICK_GROWTH, n))} → ${FE.fmt(Math.pow(FE.CLICK_GROWTH, n + 1))}`; }
-      else if (b === 'gath') { t = NAMES[el].gath; d = `+${FE.GATHER_RATE}/s each`; }
-      else if (b === 'eng') { t = NAMES[el].eng; d = `+${FE.ENGINE_RATE}/s each`; }
-      else { t = 'harmony'; d = 'all production ×1.5'; }
-      put(title, t + (n ? ` ×${n}` : '')); put(price, `<span class="${e.count >= c ? 'have' : ''}">${FE.fmt(e.count)} / ${FE.fmt(c)}</span> ${el}`); put(note, d);
+      const [title, price, note] = card.children, n = e.up[b], E = lvE(b, el);
+      let d;
+      if (b === 'res') d = `+${RES_STEP} click power each (now ×${FE.fmt(1 + RES_STEP * E)})`;
+      else if (b === 'gath') d = `+${FE.GATHER_RATE}/s each (now +${FE.fmt(E * FE.GATHER_RATE * mult(el))}/s)`;
+      else if (b === 'eng') d = `+${FE.ENGINE_RATE}/s each (now +${FE.fmt(E * FE.ENGINE_RATE * mult(el))}/s)`;
+      else d = `+${HARM_STEP * 100}% of all production each (now ×${FE.fmt(1 + HARM_STEP * E)})`;
+      const owned = [3, 2, 1].filter(t => n[t]).map(t => `${n[t]}× ${nm(b, el, t)}`).join(', ');
+      put(title, nm(b, el, 0) + (n[0] ? ` ×${n[0]}` : ''));
+      put(price, `<span class="${e.count >= c ? 'have' : ''}">${FE.fmt(e.count)} / ${FE.fmt(c)}</span> ${el}`);
+      put(note, `${d}<br>${'●'.repeat(n[0])}${'○'.repeat(FUSE_N - n[0])} fuses at ${FUSE_N}${owned ? `<br>${owned}` : ''}`);
       card.disabled = e.count < c || busy() || !!ex;
     });
     const up = $('fz-up'); up.hidden = FE.view !== 0; up.classList.toggle('unlocked', s.layer2); up.setAttribute('aria-disabled', String(!s.layer2));
@@ -579,7 +608,9 @@ FE.module(function (FE) {
   setInterval(() => {
     const t = performance.now(), dt = Math.min((t - lastT) / 1000, 3600); lastT = t;
     const f = F(); if (!f.cur) return;
-    IDS.forEach(k => { f.els[k].count += rate(k) * dt; });
+    let made = 0;
+    IDS.forEach(k => { const r = rate(k) * dt; f.els[k].count += r; made += r; });
+    MODS.onGain(made);
     if (l3Open() && !f.l3seen && !FE.modalOpen && !(FE.combat && FE.combat.active)) {
       f.l3seen = true; FE.save();
       FE.toast('Above the army, the sky has opened: layer 3. The old stars are waiting.', 6400);
