@@ -1,82 +1,109 @@
-/* state.js - the game state, saving, and values derived from it. Always read FE.state at call time (it is replaced on restart/load). */
+/* state.js - the game state, saving, and values derived from it. Always read FE.state at call time (it is replaced on load).
+ *
+ * Every element has its own progress (state.els[id]): what it holds, its star, its builds. state.cur is the tab you are on.
+ * Crystals are shared across elements only as a list of counts (state.crystals[id]). */
 FE.module(function (FE) {
-  const perElement = make => Object.fromEntries(FE.ELEMENTS.map(({ id }) => [id, make()]));
-
+  const ids = FE.ELEMENTS.map(e => e.id);
+  const BUILDS = ['res', 'gath', 'harm', 'eng'];
+  // exo: null, or {kind, end, boost} while the star is a neutron star / black hole. strange: null, or {end} for a strange star.
+  FE.blankEl = () => ({ count: 0, tier: 0, up: { res: 0, gath: 0, harm: 0, eng: 0, conduit: 0, siphon: 0 }, seen: {}, exo: null, strange: null });
   FE.freshState = function () {
     return {
-      counts: perElement(() => 0),
-      owned: [],            // elements found so far, in the order they were picked
-      picking: true,        // the investigate options show: at the start, after the first planet, after the leader falls
-      balanceShown: false,  // the balance box appears once BALANCE_AT elements exist
-      full: false,          // storage has been filled
-      up: perElement(() => ({ res: 0, struct: 0 })),   // per element: resonance level, structures owned (reset by condensing)
-      tips: {},             // tutorial tips already seen: 'gather', 'mult', ... -> true (see tips.js)
-      seen: {},             // 'res-air', 'struct-air', 'cond' -> true once that build has faded in (kept when condensing)
-      crystals: 0,          // tier 1 crystals; each raises the max multiplier
-      surge: { wait: FE.SURGE.first, buffLeft: 0, buffMult: 1 },   // seconds to the next surge; the boost it left (see surge.js)
-      growth: 0,            // star growth: crystals feed it, and it passes STAR_TIERS (see star.js); kept when condensing
-      planets: 0,           // the first crystal also forms a planet, which opens the 2nd element
-      spells: [],           // { el, power }, oldest first
-      enemy: null,          // the vagrant here now: { el, hp, max, left, time (seconds), leader }
-      threat: 0,            // 0-100; a vagrant arrives when it fills
-      threatOn: false,      // the meter runs once the first vagrant has arrived
-      leaderIn: null,       // seconds until the scripted leader arrives, while it is on its way
-      leaderBeaten: false,  // beating the leader opens the 3rd element
-      kills: 0,
-      raids: 0,
-      conjured: 0,
-      mats: Object.fromEntries(FE.MATERIALS.map(m => [m, 0])),          // materials: outside storage and the balance bar
-      conv: Object.fromEntries(FE.CONVERTERS.map(c => [c.id, 0])),      // converters owned
-      off: {},              // works switched off in the works box: 'struct-air', 'hearth', ... -> true
-      fit: {},              // element -> true once its structures have fittings
-      lenses: false,
-      gilding: false,
-      flask: false,         // the Brewing Flask is built
-      ended: false,         // the end message has been shown
+      cur: null,            // the element tab you are on (set when the game starts)
+      els: Object.fromEntries(ids.map(k => [k, FE.blankEl()])),
+      crystals: Object.fromEntries(ids.map(k => [k, 0])),
+      layer2: false,        // the first crystal opens layer 2
+      units: Object.fromEntries(ids.map(k => [k, 0])),   // layer 2: how many of each tier 1 unit you have
+      stardust: 0,          // spent on the skill tree; units grant it when they die in combat (and orbiting bodies, see below)
+      affinity: Object.fromEntries(ids.map(k => [k, false])),   // Elemental Affinity, per element: permanent, never reset
+      stabilizer: false,    // Star Stabilizer (reward for Breach the Surface): stars may reach tier 4
+      cleared: {},          // maps beaten
+      mapProg: {},          // what you have already destroyed on a map you have not cleared yet (see combat.js)
+      target: null,         // the map Venture Forth sends you to. null = the first map not cleared yet (the arrows under Venture Forth set it: testing only)
+      expedition: null,     // units currently out in combat ({air: n, ...}); a reload while this is set counts as a retreat
+      expStarted: false,    // false while the battle is waiting for a click: closing the page then hands the units back instead
+      skills: {},           // skill tree nodes bought (permanent)
+      // ---- layer 1 extras ----
+      buys: 0,              // upgrades bought, ever (quests and mini-games open after a few)
+      antimatter: 0,        // from neutron stars and black holes; buys a head start (FE.reignite)
+      strangeMatter: 0,     // being drained out of every element while a strange star lasts
+      strangeCrystals: 0,   // what strange matter turns into; lengthens or strengthens a black hole
+      collapseLog: [],      // when stars collapsed lately (ms), for the strange star
+      quests: { done: 0, failed: 0, offers: [], active: null, readyAt: 0 },
+      buff: null,           // a quest reward: {mult, end (ms)}
+      curse: null,          // a quest punishment: {kind: 'scramble' | 'shuffle', end (ms), map}
+      mgBoost: 0,           // permanent production bonus from the meteor game (0.1 = +10%)
+      rogueLuck: 0,         // from the signal game: a bigger chance of a rogue star
+      orbit: [],            // bodies in orbit: {kind, el, end (ms), seed}
+      mgReady: {},          // game id -> when it can be played again (ms)
       played: 0,            // seconds played with the tab visible
-      log: [{ h: 'The dark space stirs with <b>Four Elements</b>', c: 'title' }],   // newest first
       savedAt: 0
     };
   };
   FE.state = FE.freshState();
 
-  FE.totalCount = () => FE.round1(FE.ELEMENTS.reduce((t, { id }) => t + Math.max(0, FE.state.counts[id]), 0));
+  const S = () => FE.state;
+  FE.el = () => S().cur;
+  FE.E = k => S().els[k || S().cur];                 // one element's progress (the current one by default)
+  FE.has = id => !!S().skills[id];
+  FE.crystalYield = tier => (tier >= FE.STABILIZED_TIER ? FE.TIER4_CRYSTALS : 1) * (FE.has('dbl') ? 2 : 1);   // crystals a collapsing star drops
+  FE.maxTier = () => S().stabilizer ? FE.STABILIZED_TIER : FE.MAX_TIER;
+  FE.affinityCount = () => ids.filter(k => S().affinity[k]).length;
 
-  // derived values (k is an element id)
-  FE.locked = () => FE.totalCount() >= FE.CAP;                 // storage full: no gathering
-  // Before the first planet a full storage also blocks buying, so condensing is the only way on. After it, spending
-  // is how you make room, so buying stays open.
-  FE.buyBlocked = () => FE.locked() && !FE.state.planets;
-  FE.maxMultiplier = () => FE.BASE_MAX_MULT + FE.CRYSTAL_MAX_MULT * FE.state.crystals;
-  FE.clickPower = k => Math.pow(2, FE.state.up[k].res);
-  FE.resCost = k => FE.RES_BASE_COST * Math.pow(FE.RES_COST_GROWTH, FE.state.up[k].res);
-  FE.resMaxed = k => FE.resCost(k) >= FE.CAP;                  // the next level would cost all of storage: this is the top
-  FE.structCost = k => FE.STRUCT_BASE_COST + FE.STRUCT_COST_STEP * FE.state.up[k].struct;
-  // what an element's structures make per second right now (nothing while switched off in works)
-  FE.rate = function (k) {
-    const s = FE.state;
-    if (s.off['struct-' + k]) return 0;
-    return s.up[k].struct * FE.STRUCT_RATE * FE.multiplier() * (s.fit[k] ? FE.FITTINGS_BOOST : 1);
+  // things that happen on layer 1 that quests keep count of (quests.js fills these in)
+  FE.ev = { click() {}, buy() {}, collapse() {}, gain() {}, star() {} };
+
+  // ---- layer 2 ----
+  // a unit's health and damage, with the Powerful Units skill applied
+  FE.unitStats = id => {
+    const u = FE.UNITS.find(x => x.id === id), m = FE.has('power') ? FE.POWER_MULT : 1;
+    return { hp: u.hp * m, atk: u.atk * m };
   };
-  FE.structures = () => FE.state.owned.reduce((t, k) => t + FE.state.up[k].struct, 0);
-  // elements in play: the ones you found, then any other you hold (a converter can make the sealed 4th)
-  FE.present = function () {
-    const s = FE.state;
-    return s.owned.concat(FE.ELEMENTS.map(e => e.id).filter(k => !s.owned.includes(k) && s.counts[k] > 0));
+  // the map Venture Forth sends you to: the one the testing arrows picked, otherwise the first map not cleared (or the last, once all are)
+  FE.firstOpenMap = () => { const i = FE.MAPS.findIndex(m => !S().cleared[m.id]); return i < 0 ? FE.MAPS.length - 1 : i; };
+  FE.targetIdx = () => { const t = S().target; return Number.isInteger(t) && t >= 0 && t < FE.MAPS.length ? t : FE.firstOpenMap(); };
+
+  // ---- quest punishments and rewards that change the numbers ----
+  FE.cursed = kind => { const c = S().curse; return !!c && c.kind === kind && Date.now() < c.end; };
+  FE.buffOn = () => { const b = S().buff; return !!b && Date.now() < b.end; };
+  // While builds are shuffled, an element's build levels are swapped around: what counts is the level of a different build.
+  FE.lv = (k, b) => { const e = FE.E(k); return FE.cursed('shuffle') && S().curse.map[k || S().cur] ? e.up[S().curse.map[k || S().cur][b]] : e.up[b]; };
+  FE.shuffleMap = () => Object.fromEntries(ids.map(k => {
+    const a = BUILDS.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return [k, Object.fromEntries(BUILDS.map((b, i) => [b, a[i]]))];
+  }));
+  // Everything an element makes goes through here. While production is scrambled, each lot lands in a random element instead.
+  FE.credit = function (k, amount) {
+    if (!(amount > 0)) return;
+    const t = FE.cursed('scramble') ? ids[Math.floor(Math.random() * ids.length)] : k;
+    S().els[t].count += amount;
+    FE.ev.gain(amount);
   };
-  FE.share = k => { const total = FE.totalCount(); return total > 0 ? Math.max(0, FE.state.counts[k]) / total : 0; };
-  // the element you hold most of decides the next spell (ties go to the one found first)
-  FE.majority = function () {
-    const s = FE.state, ks = FE.present();
-    return ks.reduce((a, b) => s.counts[b] > s.counts[a] ? b : a, ks[0]);
+  // multipliers that come from outside the element: bodies in orbit, the meteor game's perk, a quest reward
+  FE.orbitMult = () => S().orbit.reduce((m, o) => Date.now() < o.end ? m * FE.ORBITERS[o.kind].mult : m, 1);
+  FE.extraMult = () => FE.orbitMult() * (1 + S().mgBoost) * (FE.buffOn() ? S().buff.mult : 1);
+
+  // ---- production (each takes an element, the current one by default) ----
+  FE.starMult = k => { const t = FE.E(k).tier; return t ? Math.pow(FE.STAR_MULT, t) : 1; };
+  FE.multiplier = function (k) {
+    k = k || S().cur;
+    return FE.starMult(k) * Math.pow(1.5, FE.lv(k, 'harm')) * Math.pow(FE.AFFINITY.mult, FE.affinityCount()) * (FE.has('prod') ? 2 : 1) * FE.extraMult();
   };
-  // 0 when your elements are even, 1 when everything you hold is one element. Ramps in over the first BALANCE_AT held.
-  FE.imbalance = function () {
-    const s = FE.state, ks = FE.present(), n = ks.length, total = FE.totalCount();
-    if (n < 2 || total <= 0) return 0;
-    const top = Math.max(...ks.map(k => Math.max(0, s.counts[k]))) / total;
-    return Math.min(1, total / FE.BALANCE_AT) * (top - 1 / n) / (1 - 1 / n);
+  // per second, before the multiplier
+  FE.baseRate = function (k) {
+    k = k || S().cur;
+    return FE.lv(k, 'gath') * FE.GATHER_RATE + FE.lv(k, 'eng') * FE.ENGINE_RATE;
   };
+  // a neutron star or black hole makes no element at all (it makes antimatter: exotic.js)
+  FE.rate = k => FE.E(k).exo ? 0 : FE.baseRate(k) * FE.multiplier(k);
+  FE.clickPower = () => Math.pow(FE.CLICK_GROWTH, FE.lv(S().cur, 'res'));
+  // a click is its power times the multiplier, plus a share of one second of production for each conduit
+  FE.clickGain = () => FE.clickPower() * FE.multiplier() + FE.rate() * FE.CONDUIT_PCT * FE.E().up.conduit;
+
+  // ---- costs ----
+  FE.upCost = k => Math.ceil(FE.UPS[k].base * Math.pow(FE.UPS[k].grow, FE.E().up[k]));
+  FE.nextStarCost = () => FE.E().tier >= FE.maxTier() ? null : FE.starCost(FE.E().tier);
 
   // ---- build id: a hash of every file's source (see config.js), so a save only loads into the build that wrote it ----
   function hash(text) {   // FNV-1a, 32-bit, as base36
@@ -111,13 +138,14 @@ FE.module(function (FE) {
       return null;
     } catch (e) { return null; }
   };
+  const merge = (d, v) => {
+    if (!(d && typeof d === 'object' && !Array.isArray(d) && v && typeof v === 'object')) return v;
+    for (const k in v) d[k] = merge(d[k], v[k]);
+    return d;
+  };
   FE.adopt = function (saved) {
     const s = FE.freshState();
-    for (const k of Object.keys(s)) {
-      if (saved[k] == null) continue;
-      const d = s[k];   // null defaults (enemy, leaderIn) are plain values: typeof null is 'object', but it can't be merged into
-      s[k] = (d && typeof d === 'object' && !Array.isArray(d)) ? Object.assign(d, saved[k]) : saved[k];
-    }
+    for (const k of Object.keys(s)) if (saved[k] != null) s[k] = merge(s[k], saved[k]);
     FE.state = s;
   };
 });

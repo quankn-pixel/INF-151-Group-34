@@ -5,189 +5,148 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Four Elements</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/space.css">
 </head>
 <body>
 
-<div class="drops" id="drops" aria-hidden="true"></div>
+<div id="pages">
 
-<div class="wrap">
-  <div class="left">
-    <div class="log" id="log" aria-live="polite"></div>
-
-    <div class="box encounter" id="enc-box" hidden>
-      <span class="label">vagrant</span>
-      <div class="foe" id="foe-name"></div>
-      <div class="meter" aria-hidden="true"><i id="foe-hp-fill"></i></div>
-      <div class="meter-note"><span id="foe-hp"></span><span>health</span></div>
-      <div class="meter time" aria-hidden="true"><i id="foe-time-fill"></i></div>
-      <div class="meter-note"><span id="foe-time"></span><span>until it raids</span></div>
-      <div class="foe-hint" id="foe-hint"></div>
-    </div>
-  </div>
-
-  <div class="center">
-    <h1 class="game-title">Four Elements</h1>
-    <p class="game-sub">the elements stir.</p>
-    <p class="goal" id="goal" aria-live="polite" hidden></p>
-    <div class="mult" id="mult" hidden>×1.0</div>
-    <div class="stack" id="gather"></div>
-    <button class="el pick solo surge-btn" id="surge-btn" type="button" hidden></button>
-    <div class="surge-buff" id="surge-buff" hidden></div>
-
-    <div class="box builds" id="builds-box" hidden>
-      <span class="label">builds</span>
-      <div class="cards" id="builds"></div>
-      <div class="pager" id="pager" hidden>
-        <button class="link" id="pg-prev" type="button" aria-label="Previous page of builds">&#9664;</button>
-        <span class="dots" id="pg-dots"></span>
-        <span class="pg-name" id="pg-name"></span>
-        <button class="link" id="pg-next" type="button" aria-label="Next page of builds">&#9654;</button>
+  <!-- ===== layer 2: above layer 1. Left: army / stardust tabs. Right: units. ===== -->
+  <section class="page" id="page2" aria-label="layer 2" aria-hidden="true">
+    <div class="l2-left">
+      <div class="l2-tabs" role="tablist">
+        <button class="l2-tab active" id="l2t-army" type="button" role="tab" aria-selected="true">Army</button>
+        <button class="l2-tab" id="l2t-stardust" type="button" role="tab" aria-selected="false">Stardust</button>
+      </div>
+      <div class="l2-pane" id="pane-army">
+        <canvas id="army-cv" aria-hidden="true"></canvas>
+        <div class="crystals" id="crystals"></div>
+      </div>
+      <div class="l2-pane" id="pane-dust" hidden>
+        <div class="dust-n" id="dust-n"></div>
+        <div class="tree" id="tree"></div>
       </div>
     </div>
-  </div>
+    <div class="l2-right">
+      <h2 class="tier-label">Tier 1 Units <span>(1 stardust on death)</span></h2>
+      <div class="units" id="units"></div>
+      <div class="venture">
+        <button class="el wide" id="btn-venture" type="button" aria-describedby="venture-tip">Venture Forth</button>
+        <span class="tip" id="venture-tip" role="tooltip">All units are sent into combat. <b>Units killed in combat are lost for good</b>, but grant stardust when they die.</span>
+        <!-- TESTING ONLY: the arrows pick which map Venture Forth goes to (see FE.cycleTarget in army.js). Shown once the first map is beaten. -->
+        <div class="target" id="tgt" hidden>
+          <button class="arrow" id="tgt-prev" type="button" aria-label="Previous map">&#9664;&#xFE0E;</button>
+          <span class="t-name" id="tgt-name"></span>
+          <button class="arrow" id="tgt-next" type="button" aria-label="Next map">&#9654;&#xFE0E;</button>
+        </div>
+      </div>
+    </div>
+    <button class="nav down" id="nav-down" type="button">&#9660; layer 1</button>
+  </section>
 
-  <div class="side">
-    <div class="box">
+  <!-- ===== layer 3: the battlefield, to the right of layer 2 ===== -->
+  <section class="page" id="page3" aria-label="combat" aria-hidden="true">
+    <header class="c-top">
+      <div class="c-side"><button class="el" id="c-retreat" type="button">Retreat</button></div>
+      <h2 class="c-title" id="c-title"></h2>
+      <div class="c-side right"><button class="el" id="c-pause" type="button">Pause</button><button class="el" id="c-speed" type="button">1&times;</button></div>
+    </header>
+    <div class="c-field" id="c-field">
+      <canvas id="c-cv"></canvas>
+      <div class="c-paused" id="c-paused" hidden>paused</div>
+      <button class="c-start" id="c-start" type="button" hidden><b>Click anywhere to start the battle</b><span>your units spawn and attack automatically</span></button>
+    </div>
+    <div class="c-tags" id="c-tags"></div>
+    <div class="c-modal" id="c-modal" hidden><div class="c-panel" id="c-panel"></div></div>
+  </section>
+
+  <!-- ===== layer 1: space. #space (behind) and #fx (in front of the star) are drawn by space.js ===== -->
+  <section class="page" id="page1" aria-label="layer 1">
+    <canvas id="space" aria-hidden="true"></canvas>
+    <header class="l1-top">
+      <h1 class="game-title">Four Elements</h1>
+      <p class="goal" id="goal" aria-live="polite"></p>
+      <div class="hud" id="hud">
+        <button class="el hud-btn" id="hud-quests" type="button" hidden>Quests</button>
+        <button class="el hud-btn" id="hud-games" type="button" hidden>Mini-games</button>
+        <div class="chips" id="chips"></div>
+      </div>
+    </header>
+
+    <div class="l1-main">
+      <nav class="tabs" id="tabs" role="tablist" aria-label="elements"></nav>
+
+      <div class="stage" id="stage">
+        <div class="core-wrap">
+          <canvas id="core" aria-hidden="true"></canvas>
+          <canvas id="fx" aria-hidden="true"></canvas>
+          <button id="core-btn" type="button" aria-label="gather"></button>
+        </div>
+        <div class="cond" id="cond">
+          <div class="cond-info" id="cond-info"></div>
+          <div class="cond-bar" aria-hidden="true"><i id="cond-fill"></i></div>
+          <div class="cond-btns">
+            <button class="el wide collapse" id="btn-collapse" type="button" hidden></button>
+          </div>
+          <div class="cond-btns exo-btns" id="exo-btns"></div>
+        </div>
+        <!-- the condense circle (drawn by space.js, which also draws the hands): blank, fills with energy, then says "Condense" -->
+        <div class="altar" id="altar"><button id="cbtn" type="button" aria-label="condense" disabled></button></div>
+      </div>
+
+      <aside class="box upgrades" id="upgrades">
+        <span class="label">builds</span>
+        <div class="cards scroll" id="cards"></div>
+      </aside>
+    </div>
+
+    <aside class="box store" id="store">
       <span class="label">stores</span>
-      <div class="empty" id="empty">nothing yet.</div>
       <div id="store-rows"></div>
-    </div>
+    </aside>
 
-    <div class="box star" id="star-box" hidden>
-      <span class="label">star</span>
-      <canvas id="star-cv" aria-label="Your star, grown by your crystals"></canvas>
-      <div class="star-line"><span id="star-tier"></span><span id="star-rate"></span></div>
-      <div class="meter" aria-hidden="true"><i id="star-fill"></i></div>
-      <div class="meter-note"><span id="star-eta"></span></div>
-    </div>
-
-    <div class="box" id="works-box" hidden>
-      <span class="label">works</span>
-      <div id="works"></div>
-    </div>
-
-    <div class="box spells" id="spells-box" hidden>
-      <span class="label">spells</span>
-      <button class="el upbtn" id="btn-conjure" type="button"></button>
-      <div class="up-sub" id="conjure-note"></div>
-      <div class="spell-list" id="spell-list"></div>
-      <div class="empty" id="spells-empty">none yet.</div>
-    </div>
-  </div>
+    <button class="nav up" id="nav-up" type="button" aria-disabled="true">&#9650; layer 2</button>
+  </section>
 </div>
 
-<div class="tray box" id="balance-box" hidden>
-  <span class="label">balance</span>
-  <div class="total">total stored <span id="total">0</span><span class="cap" id="cap"></span></div>
-  <div class="bar" id="bar" role="img" aria-label="Share of each element"></div>
-  <div class="legend" id="legend"></div>
-  <div class="status" id="status"></div>
-  <div class="threat" id="threat-row" hidden>
-    <span>threat</span>
-    <div class="meter" aria-hidden="true"><i id="threat-fill"></i></div>
-    <span class="n" id="threat-pct">0%</span>
-  </div>
-  <div class="threat-note" id="threat-note" hidden></div>
-</div>
-
-<div class="footer">
+<div class="footer" id="footer">
   <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
+  <span class="size">text size
+    <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
+    <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
+  </span>
   <span id="save-status">not saved yet.</span>
-  <span><button class="link" id="guide-btn" type="button" aria-haspopup="dialog">how to play.</button></span>
-  <span><button class="link" id="settings-btn" type="button" aria-haspopup="dialog">settings.</button></span>
+  <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
+  <span class="confirm" id="restart-confirm" hidden>
+    <span>lose everything?</span>
+    <button class="link" id="restart-yes" type="button">yes.</button>
+    <button class="link" id="restart-no" type="button">no.</button>
+  </span>
+  <!-- TESTING ONLY: opens layer 2 with no animation and gives 100 of every crystal each press (FE.testingUnlock in game.js) -->
+  <button class="link testing" id="testing-btn" type="button">TESTING ONLY</button>
 </div>
 
-<div class="box tip" id="tip" role="status" aria-live="polite" hidden>
-  <span class="label">tip</span>
-  <b class="tip-title" id="tip-title"></b>
-  <p id="tip-text"></p>
-  <button class="link" id="tip-ok" type="button">got it.</button>
-</div>
-
-<div class="overlay" id="guide-overlay" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
-  <div class="box end-box guide-box">
-    <span class="label" id="guide-title">how to play</span>
-    <div class="guide-tip"><b>the basics</b>
-      <p>Click an element, or press its key (a, w, e or f), to gather it. Spend what you gather on builds in the middle. The italic line under the title always says what to do next. The game saves by itself.</p>
-    </div>
-    <div id="guide-tips"></div>
-    <div class="end-btns">
-      <button class="el" id="guide-close" type="button">close.</button>
-      <button class="link" id="tips-btn" type="button" aria-pressed="true">tips on.</button>
-      <button class="link" id="tips-replay" type="button">show every tip again.</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="surge-overlay" role="dialog" aria-modal="true" aria-labelledby="surge-title" hidden>
-  <div class="box end-box surge-box">
-    <span class="label" id="surge-title">surge</span>
-    <canvas id="surge-cv" aria-label="The surge mini-game"></canvas>
-    <p class="stats" id="surge-blurb"></p>
-    <p class="surge-result" id="surge-result" aria-live="polite"></p>
-    <div class="end-btns"><button class="link" id="surge-skip" type="button">skip.</button></div>
-  </div>
-</div>
-
-<div class="overlay" id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
-  <div class="box end-box settings-box">
-    <span class="label" id="settings-title">settings</span>
-    <div class="set-row">
-      <button class="link" id="music-btn" type="button" aria-pressed="true">music on.</button>
-      <input type="range" id="music-vol" min="0" max="100" step="5" value="100" aria-label="Music volume">
-      <span class="set-val" id="music-val">100%</span>
-    </div>
-    <div class="set-row">
-      <button class="link" id="sound-btn" type="button" aria-pressed="true">sound on.</button>
-      <input type="range" id="sound-vol" min="0" max="100" step="5" value="100" aria-label="Sound effects volume">
-      <span class="set-val" id="sound-val">100%</span>
-    </div>
-    <div class="set-row size">
-      <span>text size</span>
-      <span class="size-btns">
-        <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
-        <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
-      </span>
-    </div>
-    <div class="set-row">
-      <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
-      <span class="confirm" id="restart-confirm" hidden>
-        <span>lose everything?</span>
-        <button class="link" id="restart-yes" type="button">yes.</button>
-        <button class="link" id="restart-no" type="button">no.</button>
-      </span>
-    </div>
-    <div class="end-btns"><button class="el" id="settings-close" type="button">close.</button></div>
-  </div>
-</div>
-
-<div class="overlay" id="end-overlay" role="dialog" aria-modal="true" aria-labelledby="end-title" hidden>
-  <div class="box end-box">
-    <span class="label" id="end-title">the end, for now</span>
-    <p>The Brewing Flask hums with three elements. Past it, the fourth world, Assiah, is still sealed.</p>
-    <p class="stats" id="end-stats"></p>
-    <p>Thanks for playing Four Elements. Everything keeps running if you want to stay.</p>
-    <div class="end-btns">
-      <button class="el" id="end-close" type="button">keep playing.</button>
-      <button class="el" id="end-home" type="button">return to title.</button>
-    </div>
-    <p class="credits">made by Henry Bao, Jaden Nguyen, Quan Nguyen and Jerry Chen · music by congusbongus, sounds by Kenney (both CC0)</p>
-  </div>
-</div>
+<canvas id="nova" aria-hidden="true"></canvas>
+<!-- the quest and mini-game panel (quests.js) -->
+<div class="modal" id="modal" hidden><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- Plain scripts (no modules) so the game opens straight from the file system. Order matters. -->
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
-<script src="js/log.js"></script>
-<script src="js/audio.js"></script>
 <script src="js/effects.js"></script>
-<script src="js/star.js"></script>
-<script src="js/minigames.js"></script>
-<script src="js/surge.js"></script>
-<script src="js/ui.js"></script>
+<script src="js/army.js"></script>
+<script src="js/tree.js"></script>
 <script src="js/combat.js"></script>
-<script src="js/crafting.js"></script>
-<script src="js/tips.js"></script>
+<script src="js/space.js"></script>
+<script src="js/exotic.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/minigames.js"></script>
+<script src="js/mgupgrades.js"></script>   <!-- ADD: after minigames.js -->
+<script src="js/endgame.js"></script>      <!-- ADD: after mgupgrades.js, before ui.js -->
+<script src="js/ui.js"></script>
+<script src="js/forest.js"></script>       <!-- ADD: after ui.js, before controls.js -->
+<script src="js/forestplay.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/game.js"></script>
 </body>

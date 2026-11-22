@@ -1,16 +1,13 @@
-/* controls.js - footer controls (back, text size, restart), the end message's return to title, and the keyboard. */
+/* controls.js - footer controls (back, text size, restart), moving between the layers, and the keyboard. */
 FE.module(function (FE) {
   const $ = FE.$;
 
-  // ---- back, and return to title on the end message: save, then go to the home page. The element goes in the address
-  // (?el=air) so the home page can show it even when the browser keeps the two files' storage apart. ----
-  const toTitle = () => {
+  // ---- back: save, then return to the home page. The element goes in the address (?el=air) so the home page can show
+  // it even when the browser keeps the two files' storage apart. ----
+  $('back-btn').addEventListener('click', () => {
     FE.save();
-    const first = FE.state.owned[0];
-    window.location.href = 'index.html' + (first ? '?el=' + first : '');
-  };
-  $('back-btn').addEventListener('click', toTitle);
-  $('end-home').addEventListener('click', toTitle);
+    window.location.href = 'index.html' + (FE.el() ? '?el=' + FE.el() : '');
+  });
 
   // ---- text size ----
   const SIZES = [12, 14, 16, 18, 20, 24, 28];
@@ -29,19 +26,11 @@ FE.module(function (FE) {
   $('size-up').addEventListener('click', () => { if (sizeIdx < SIZES.length - 1) { sizeIdx++; applySize(); } });
   applySize();
 
-  // ---- settings: a dialog holding sound, music, text size and restart ----
-  const settings = $('settings-overlay');
-  const openSettings = () => { showConfirm(false, true); settings.hidden = false; $('settings-close').focus(); };
-  const closeSettings = () => { settings.hidden = true; showConfirm(false, true); $('settings-btn').focus(); };
-  $('settings-btn').addEventListener('click', openSettings);
-  $('settings-close').addEventListener('click', closeSettings);
-  settings.addEventListener('click', e => { if (e.target === settings) closeSettings(); });
-
   // ---- restart: erase the save and go back to the home page, which starts over with its opening sequence ----
-  function showConfirm(on, quiet) {
+  function showConfirm(on) {
     $('restart-wrap').hidden = on;
     $('restart-confirm').hidden = !on;
-    if (!quiet) (on ? $('restart-no') : $('restart-btn')).focus();
+    (on ? $('restart-no') : $('restart-btn')).focus();
   }
   $('restart-btn').addEventListener('click', () => showConfirm(true));
   $('restart-no').addEventListener('click', () => showConfirm(false));
@@ -51,21 +40,52 @@ FE.module(function (FE) {
     window.location.href = 'index.html?reset=1';
   });
 
-  // ---- keyboard: a / w / e / f investigate or gather that element. Escape closes the end message or the restart question. ----
+  // ---- layers: wheel, arrow keys, swipe. Layer 2 sits above layer 1 and opens with the first crystal. ----
+  let lastNav = 0;
+  function nav(dir) {                                    // -1 = up, 1 = down
+    if (FE.collapsing || FE.view === 3 || performance.now() - lastNav < 900) return;
+    if (dir < 0 && FE.view === 1 && FE.state.layer2) { lastNav = performance.now(); FE.goto(2); }
+    else if (dir > 0 && FE.view === 2) { lastNav = performance.now(); FE.goto(1); }
+  }
+  addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) < 12 || e.target.closest('.scroll')) return;
+    nav(e.deltaY < 0 ? -1 : 1);
+  }, { passive: true });
+  let ty = null;
+  addEventListener('touchstart', e => { ty = e.target.closest('.scroll') ? null : e.touches[0].clientY; }, { passive: true });
+  addEventListener('touchend', e => { if (ty == null) return; const d = e.changedTouches[0].clientY - ty; ty = null; if (Math.abs(d) > 70) nav(d > 0 ? -1 : 1); }, { passive: true });
+
+  // ---- holding the space bar gathers, like holding the mouse on the star: once now, then every FE.HOLD_MS ----
+  // Space is claimed on layer 1 whatever has focus (Enter still presses a focused button), so a button left focused after a
+  // click cannot be pressed by accident when you meant to gather.
+  let spaceHold = null;
+  const stopSpace = () => { clearInterval(spaceHold); spaceHold = null; };
+  addEventListener('blur', stopSpace);
+  document.addEventListener('visibilitychange', stopSpace);
+  document.addEventListener('keyup', e => {
+    if (e.key !== ' ') return;
+    if (spaceHold) e.preventDefault();                   // otherwise the browser would also "click" a focused button on key up
+    stopSpace();
+  });
+
   document.addEventListener('keydown', e => {
-    // a held Enter re-clicks the focused element button on every repeat; like the letter keys, one press is one gather
-    if (e.repeat && e.key === 'Enter' && e.target.closest && e.target.closest('button.pick')) { e.preventDefault(); return; }
-    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
-    if (e.key !== 'Escape' && e.target.closest && e.target.closest('input, textarea')) return;
-    if (e.key === 'Escape') {
-      if (!$('end-overlay').hidden) FE.hideEnd();
-      else if (!$('guide-overlay').hidden) FE.closeGuide();
-      else if (!$('restart-confirm').hidden) showConfirm(false);
-      else if (!settings.hidden) closeSettings();
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest && e.target.closest('input, textarea')) return;
+    if (e.key === ' ' && FE.view === 1) {
+      e.preventDefault();
+      if (e.repeat || spaceHold) return;
+      FE.gather();
+      spaceHold = setInterval(() => { if (FE.view !== 1) stopSpace(); else FE.gather(); }, FE.HOLD_MS);
       return;
     }
-    if (!$('end-overlay').hidden || !settings.hidden || !$('guide-overlay').hidden || FE.surgeOpen) return;   // while a dialog is up, keys only close it
-    const el = FE.ELEMENTS.find(x => x.key === e.key.toLowerCase());
-    if (el && (FE.state.owned.includes(el.id) || FE.state.picking)) { e.preventDefault(); FE.act(el.id); }
+    if (e.key === 'Escape') { if (!$('restart-confirm').hidden) showConfirm(false); return; }
+    if (e.key === 'ArrowUp' || e.key === 'PageUp') { nav(-1); return; }
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') { nav(1); return; }
+    if (e.repeat || FE.view !== 1) return;
+    const k = e.key.toLowerCase(), el = FE.ELEMENTS.find(x => x.key === k);
+    if (!el) return;
+    e.preventDefault();
+    if (el.id === FE.el()) FE.gather();                  // the element's own letter gathers
+    else FE.switchTo(el.id);                             // any other element's letter switches to its tab
   });
 });
