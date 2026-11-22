@@ -115,7 +115,7 @@ FE.module(function (FE) {
   css.textContent = `#eg{position:fixed;inset:0;z-index:70;background:#02030a;color:#e9eefc;display:flex;flex-direction:column;font-family:"Times New Roman",Times,serif}
 #eg[hidden]{display:none}.eg-top{display:flex;align-items:center;gap:18px;padding:12px 20px;border-bottom:1px solid rgba(170,190,255,.2)}
 .eg-top b{font-size:1.5em;font-weight:normal;letter-spacing:.08em}.eg-top span{margin-left:auto;color:#aab4d8;font-variant-numeric:tabular-nums}
-.eg-main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 320px}#eg-cv{width:100%;height:100%;display:block;cursor:pointer}
+.eg-main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 320px;grid-template-rows:minmax(0,1fr)}#eg-cv{width:100%;height:100%;min-width:0;min-height:0;display:block;cursor:pointer}
 #eg-side{padding:16px 18px;border-left:1px solid rgba(170,190,255,.2);overflow:auto;line-height:1.45;font-size:.95em}#eg-side h4{margin:0 0 6px;font-weight:normal;font-size:1.3em}
 #eg-side .dim{color:#8d9bc4}#eg-side p{margin:6px 0}#eg-side hr{border:0;border-top:1px solid rgba(170,190,255,.2);margin:12px 0}
 #eg-side .pl{padding:8px 0;border-top:1px solid rgba(170,190,255,.14)}#eg-side .pl b{font-weight:normal;font-size:1.05em}#eg-side .pl small{display:block;color:#a9b5da}

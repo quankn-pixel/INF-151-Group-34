@@ -237,11 +237,14 @@ FE.module(function (FE) {
       const mid = sr.left + sr.width / 2, half = Math.max(60, Math.min(mid - tr.right, ur.left - mid));
       free = half * 2;
       size = Math.min(BOX, h * .6, free * 1.29);                                                      // the tallest star with its flames reaches about 0.39 of the box from its middle, so the box may be 1.29 x the free width
+      // the condense panel under the star is as low as the stores (bottom left), so it must also stay clear of them
+      const so = $('store').getBoundingClientRect();
+      if (so.width) free = Math.min(free, 2 * (mid - so.right) - 24);
     }
     core.s = Math.max(120, size) / BOX;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     core.k = core.s * dpr; core.W = w / core.s; core.H = h / core.s;
-    st.style.setProperty('--free', Math.max(240, Math.min(440, free - 8)) + 'px');                   // how wide the condense panel may be
+    st.style.setProperty('--free', Math.max(200, Math.min(520, free - 8)) + 'px');                   // how wide the condense panel may be (520: the collapse and compress buttons fit on one row)
   }
   core.resize = resize;
 

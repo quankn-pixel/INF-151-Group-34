@@ -1,6 +1,6 @@
 # Four Elements
 
-A dark, text-based incremental game for the browser (INF 151, Group 34).
+A dark incremental game for the browser (INF 151, Group 34). Beta build.
 
 **Play:** https://spectacular-faloodeh-e7aa54.netlify.app
 
@@ -8,19 +8,34 @@ Or open `index.html` in a browser. No build step and no server needed.
 
 ## How to play
 
-Investigate an element, then click it (or press `a`, `w`, `e` or `f`) to gather it. Fill your stores, build
-structures to automate, and condense into a crystal to find a second element. With two elements you can conjure
-spells and fight the vagrants who come when your elements fall out of balance. Beat their leader for a third
-element, craft materials, and build the Brewing Flask to finish the slice.
+1. **Layer 1, the forest.** Click the fire, pool, vent or stones to gather your element (hold the mouse or the space bar
+   to keep going). Buy builds; eight of one build fuse into a stronger one. Grow the vessel, then extinguish it for
+   crystals. Quests and mini-games open after a few builds.
+2. **Layer 2, the army.** Crystals become units. Press Venture Forth to send them into battle.
+3. **Combat.** Units fight on their own. Units that die are lost, but they leave stardust for the skill tree.
+4. **The star core.** Clear all four maps and choose: invade the galaxy, or light your own star and defend it.
 
-Progress saves to the browser automatically. The footer has music and sound on/off, text size, and restart.
+Keys: `a`, `w`, `e`, `f` gather the element you are on or switch to another one. Arrow keys, the mouse wheel or the
+links at the top and bottom of the screen move between layers. Progress saves to the browser automatically.
+
+The footer has **settings.**: music and sound on/off with volume sliders, text size, and restart.
+
+## For the team: developer mode
+
+Open `game.html?dev` to show the TESTING ONLY button (opens layer 2 and gives 100 of every crystal) and the map arrows
+under Venture Forth. It stays on until the tab is closed. Players never see these.
+
+A save only loads into the exact build that wrote it (see `FE.BUILD` in `js/state.js`), so every code change clears
+old saves.
 
 ## Files
 
-- `index.html`: launch screen
+- `index.html`: title screen and opening sequence
 - `game.html`: the game
-- `js/`: game code (`config.js` holds every tuning number, text, and the sound list)
-- `css/style.css`: styles, with light and dark mode
+- `js/`: game code. `config.js` holds most tuning numbers and text. `forest.js` is layer 1, `army.js` and `tree.js`
+  are layer 2, `combat.js` is the battlefield, `endgame.js` is the star core and both endings, `audio.js` is sound,
+  music and the settings dialog.
+- `css/style.css`, `css/space.css`: styles
 - `audio/`: music and sound effects
 
 ## Credits

@@ -1,6 +1,9 @@
 /* space.css - layer 1 as space (loaded after style.css, so it wins): a dark sky behind everything, glass panels for the stores,
    builds and tabs, the HUD strip, the quest / mini-game panel, and the look of a neutron star, black hole and strange star. */
-:root, :root[data-theme] { color-scheme: dark; }
+/* every layer of the game is dark, so the game page always uses the dark colours, whatever the system's light or dark mode.
+   (In light mode the footer links were near black on the night sky, and the panel labels sat on white patches.) */
+:root, :root[data-theme] { color-scheme: dark; --bg: #111111; --fg: #eeeeee; --muted: #6f6f6f; --line: #eeeeee; --hover: #222222; --dim: #b4b4b4; --void: #2a2a2a;
+  --air-ink: var(--air); --water-ink: var(--water); --earth-ink: var(--earth); --fire-ink: var(--fire); }
 #page1 { background: #03040b; color: #e9eefc; --fg: #e9eefc; --muted: #8d98bf; --dim: #aab4d8; --line: rgba(170, 190, 255, .5); --hover: rgba(190, 205, 255, .12); --bg: #070a18;
   --air-ink: var(--air); --water-ink: var(--water); --earth-ink: var(--earth); --fire-ink: var(--fire); }
 #space { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
@@ -72,3 +75,7 @@ body[data-exo]:not([data-exo=""]) #core { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .goal.ready { animation: none; } }
 
 .cond { top: calc(50% + var(--sr, 110px) * 1.3 + 52px); }          /* clear of the runes that ring a ready star */
+/* the collapse button and the antimatter buttons share one wrapping row, so the panel stays short above the condense circle */
+#page1 .cond { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 10px; }
+#page1 .cond-info, #page1 .cond-bar { flex-basis: 100%; }
+#page1 .cond-btns, #page1 .exo-btns { display: contents; }

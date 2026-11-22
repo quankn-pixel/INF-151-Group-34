@@ -48,11 +48,11 @@ FE.module(function (FE) {
     else if (dir > 0 && FE.view === 2) { lastNav = performance.now(); FE.goto(1); }
   }
   addEventListener('wheel', e => {
-    if (Math.abs(e.deltaY) < 12 || e.target.closest('.scroll')) return;
+    if (Math.abs(e.deltaY) < 12 || FE.inScroller(e.target)) return;
     nav(e.deltaY < 0 ? -1 : 1);
   }, { passive: true });
   let ty = null;
-  addEventListener('touchstart', e => { ty = e.target.closest('.scroll') ? null : e.touches[0].clientY; }, { passive: true });
+  addEventListener('touchstart', e => { ty = FE.inScroller(e.target) ? null : e.touches[0].clientY; }, { passive: true });
   addEventListener('touchend', e => { if (ty == null) return; const d = e.changedTouches[0].clientY - ty; ty = null; if (Math.abs(d) > 70) nav(d > 0 ? -1 : 1); }, { passive: true });
 
   // ---- holding the space bar gathers, like holding the mouse on the star: once now, then every FE.HOLD_MS ----

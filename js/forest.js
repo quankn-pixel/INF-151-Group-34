@@ -163,7 +163,13 @@ FE.module(function (FE) {
       const z = .6 + 1.3 * Math.pow(hs(i, 4), 3);
       c.fillStyle = `rgba(255,255,255,${.25 + .6 * hs(i, 3)})`; c.fillRect(hs(i, 1) * PW, Math.pow(hs(i, 2), 1.4) * hz * .92, z, z);
     }
-    const mx = PW * .8, my = PH * .15, mr = Math.max(14, Math.min(PW, PH) * .04);        // a moon
+    // a moon: over the middle of the builds panel and above it, so it is never behind the panel or under the goal line
+    let mx = PW * .8, my = PH * .15, mr = Math.max(14, Math.min(PW, PH) * .04);
+    const ub = $('fz-ups').getBoundingClientRect(), pb = page.getBoundingClientRect();
+    if (ub.width && !matchMedia('(max-width: 860px)').matches) {
+      const room = ub.top - pb.top;
+      mx = (ub.left + ub.right) / 2 - pb.left; my = room * .5; mr = Math.max(10, Math.min(mr, room * .5 - 14));
+    }
     glow(c, mx, my, mr * 6, '#bcd2ff', .22);
     c.fillStyle = '#e9efff'; c.beginPath(); c.arc(mx, my, mr, 0, TAU); c.fill();
     c.fillStyle = 'rgba(120,140,190,.35)';
@@ -282,15 +288,20 @@ FE.module(function (FE) {
   function layout() {
     const narrow = matchMedia('(max-width: 860px)').matches;
     let size;
+    VX = PW / 2; VY = PH * .6;
     if (narrow) size = Math.min(440, PW * .92, PH * .5);
     else {
-      const pr = page.getBoundingClientRect(), tr = $('fz-tabs').getBoundingClientRect(), ur = $('fz-ups').getBoundingClientRect();
-      const half = Math.max(60, Math.min(PW / 2 - (tr.right - pr.left), (ur.left - pr.left) - PW / 2));
+      // the vessel and its panel sit in the middle of the free space between the panels: from the right edge of the tabs (or
+      // of the stores, which reach further in) to the left edge of the builds. The panels are not the same width, so the
+      // middle of the page would put the progress bar under the builds.
+      const pr = page.getBoundingClientRect(), tr = $('fz-tabs').getBoundingClientRect(), ur = $('fz-ups').getBoundingClientRect(), sr = $('fz-store').getBoundingClientRect();
+      const left = Math.max(tr.right, sr.right) - pr.left + 12, right = ur.left - pr.left - 12;
+      VX = (left + right) / 2;
+      const half = Math.max(60, (right - left) / 2);
       size = Math.min(560, PH * .56, half * 2 * 1.2);
-      page.style.setProperty('--free', Math.max(240, Math.min(440, half * 2 - 8)) + 'px');
+      page.style.setProperty('--free', Math.max(160, Math.min(440, half * 2)) + 'px');
     }
     S0 = Math.max(.42, size / 560) * 1.1;
-    VX = PW / 2; VY = PH * .6;
   }
   function size() {
     const w = page.clientWidth, h = page.clientHeight;
@@ -405,6 +416,7 @@ FE.module(function (FE) {
     if (btn.style.top !== Tp) btn.style.top = Tp;
     const cd = $('fz-cond'), ct = (VY + 78 * sz + 6) + 'px';
     if (cd.style.top !== ct) cd.style.top = ct;
+    if (cd.style.left !== L) cd.style.left = L;
   }
 
   // ---------------------------------------------------------------- what the player does
@@ -503,7 +515,7 @@ FE.module(function (FE) {
       put(note, `${d}<br>${'●'.repeat(n[0])}${'○'.repeat(FUSE_N - n[0])} fuses at ${FUSE_N}${owned ? `<br>${owned}` : ''}`);
       card.disabled = e.count < c || busy() || !!ex;
     });
-    const up = $('fz-up'); up.hidden = FE.view !== 0; up.classList.toggle('unlocked', s.layer2); up.setAttribute('aria-disabled', String(!s.layer2));
+    const up = $('fz-up'); up.hidden = FE.view !== 0 || !s.layer2; up.classList.toggle('unlocked', s.layer2); up.setAttribute('aria-disabled', String(!s.layer2));   // shown once layer 2 is open
   }
 
   // the old star layer, now layer 3: its goal line used to say "Layer 2: Raise an Army" whenever layer 2 was open, which would
@@ -574,11 +586,11 @@ FE.module(function (FE) {
     else if (v === 1) { lastNav = now; FE.goto(2); } else if (v === 2) { lastNav = now; FE.goto(0); }
   }
   addEventListener('wheel', e => {
-    if (gone() || FE.modalOpen || Math.abs(e.deltaY) < 12 || e.target.closest('.scroll')) return;
+    if (gone() || FE.modalOpen || Math.abs(e.deltaY) < 12 || FE.inScroller(e.target)) return;
     e.stopPropagation(); nav(e.deltaY < 0 ? -1 : 1);
   }, { capture: true, passive: true });
   let ty = null;
-  addEventListener('touchstart', e => { if (gone() || FE.modalOpen) return; e.stopPropagation(); ty = e.target.closest('.scroll') ? null : e.touches[0].clientY; }, { capture: true, passive: true });
+  addEventListener('touchstart', e => { if (gone() || FE.modalOpen) return; e.stopPropagation(); ty = FE.inScroller(e.target) ? null : e.touches[0].clientY; }, { capture: true, passive: true });
   addEventListener('touchend', e => {
     if (gone() || FE.modalOpen) return; e.stopPropagation();
     if (ty == null) return; const d = e.changedTouches[0].clientY - ty; ty = null; if (Math.abs(d) > 70) nav(d > 0 ? -1 : 1);

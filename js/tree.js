@@ -4,7 +4,7 @@ FE.module(function (FE) {
   const $ = FE.$, NS = 'http://www.w3.org/2000/svg';
   const by = id => FE.SKILLS.find(s => s.id === id);
   const text = (el, t) => { if (el.textContent !== t) el.textContent = t; };
-  FE.skillAvail = s => !FE.has(s.id) && (!s.req || FE.has(s.req));
+  FE.skillAvail = s => !s.soon && !FE.has(s.id) && (!s.req || FE.has(s.req));
 
   FE.buySkill = function (id) {
     const s = by(id), st = FE.state;
@@ -41,7 +41,7 @@ FE.module(function (FE) {
       const b = $('node-' + s.id), owned = FE.has(s.id), avail = FE.skillAvail(s), can = avail && st.stardust >= s.cost;
       b.classList.toggle('owned', owned); b.classList.toggle('avail', avail); b.classList.toggle('can', can);
       b.disabled = !can;
-      text(b.querySelector('.n-cost'), owned ? 'condensed' : `${s.cost} stardust`);
+      text(b.querySelector('.n-cost'), owned ? 'condensed' : s.soon ? 'coming soon' : `${s.cost} stardust`);
       if (s.req) $('tl-' + s.id).setAttribute('class', owned ? 'on' : FE.has(s.req) ? 'next' : '');
     });
   };

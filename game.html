@@ -111,19 +111,44 @@
 
 <div class="footer" id="footer">
   <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
-  <span class="size">text size
-    <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
-    <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
-  </span>
   <span id="save-status">not saved yet.</span>
-  <span id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
-  <span class="confirm" id="restart-confirm" hidden>
-    <span>lose everything?</span>
-    <button class="link" id="restart-yes" type="button">yes.</button>
-    <button class="link" id="restart-no" type="button">no.</button>
-  </span>
-  <!-- TESTING ONLY: opens layer 2 with no animation and gives 100 of every crystal each press (FE.testingUnlock in game.js) -->
-  <button class="link testing" id="testing-btn" type="button">TESTING ONLY</button>
+  <button class="link" id="settings-btn" type="button" aria-haspopup="dialog">settings.</button>
+  <!-- TESTING ONLY: opens layer 2 with no animation and gives 100 of every crystal each press (FE.testingUnlock in game.js).
+       Shown only in developer mode: open game.html?dev (see FE.DEV in config.js). -->
+  <button class="link testing" id="testing-btn" type="button" hidden>TESTING ONLY</button>
+</div>
+
+<!-- settings: music and sound (audio.js), text size and restart (controls.js) -->
+<div class="modal" id="settings" hidden>
+  <div class="panel set-box" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <h3 id="settings-title">Settings</h3>
+    <div class="set-row">
+      <button class="link" id="music-btn" type="button" aria-pressed="true">music on.</button>
+      <input type="range" id="music-vol" min="0" max="100" step="5" value="100" aria-label="Music volume">
+      <span class="set-val" id="music-val">100%</span>
+    </div>
+    <div class="set-row">
+      <button class="link" id="sound-btn" type="button" aria-pressed="true">sound on.</button>
+      <input type="range" id="sound-vol" min="0" max="100" step="5" value="100" aria-label="Sound effects volume">
+      <span class="set-val" id="sound-val">100%</span>
+    </div>
+    <div class="set-row">
+      <span>text size</span>
+      <span class="size-btns">
+        <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
+        <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
+      </span>
+    </div>
+    <div class="set-row">
+      <span class="wide" id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>
+      <span class="confirm wide" id="restart-confirm" hidden>
+        <span>lose everything?</span>
+        <button class="link" id="restart-yes" type="button">yes.</button>
+        <button class="link" id="restart-no" type="button">no.</button>
+      </span>
+    </div>
+    <div class="btns"><button class="el" id="settings-close" type="button">Close</button></div>
+  </div>
 </div>
 
 <canvas id="nova" aria-hidden="true"></canvas>
@@ -147,6 +172,7 @@
 <script src="js/ui.js"></script>
 <script src="js/forest.js"></script>       <!-- ADD: after ui.js, before controls.js -->
 <script src="js/forestplay.js"></script>
+<script src="js/audio.js"></script>         <!-- after forestplay.js: it listens to the other files -->
 <script src="js/controls.js"></script>
 <script src="js/game.js"></script>
 </body>

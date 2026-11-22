@@ -194,12 +194,12 @@ FE.module(function (FE) {
       FE.save(); FE.render();
       const rewardHtml = reward ? `<div class="reward"><b>${reward.name}</b>${reward.desc}</div>`
         : map.reward ? `<p class="dim">${FE.REWARDS[map.reward].name} (already claimed)</p>`
-        : map.placeholder ? '<div class="reward"><b>&lt;Unlocked: Not Implemented Yet&gt;</b></div>' : '';
+        : '';                                                                    // (maps marked placeholder have no reward yet: nothing is shown)
       panel(`<h3>${map.title}</h3>
         <p>stardust gained: <span class="dust">${FE.fmt(dustGained)}</span></p>
         ${roster.length ? `<p class="dim">${dustGained === 0 ? 'every unit survived.' : `${roster.length} unit${roster.length === 1 ? '' : 's'} survived.`}</p>` : '<p class="dim">no one survived.</p>'}
         ${rewardHtml}
-        <div class="btns"><button class="el" id="p-back" type="button">Back</button>${roster.length ? `<button class="el" id="p-next" type="button">Proceed &mdash; ${next ? next.name : '???'}</button>` : ''}</div>
+        <div class="btns"><button class="el" id="p-back" type="button">Back</button>${roster.length && next ? `<button class="el" id="p-next" type="button">Proceed &mdash; ${next.name}</button>` : ''}</div>
         <p class="dim">Back keeps your surviving units.</p>`);
       $('p-back').onclick = leave;
       if ($('p-next')) $('p-next').onclick = () => {

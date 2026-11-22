@@ -78,6 +78,7 @@ FE.module(function (FE) {
       if (a === 'exo') FE.goExotic(); else if (a === 'extend') FE.extendHole(); else if (a === 'amplify') FE.amplifyHole(); else if (a === 'ignite') FE.reignite(+b.dataset.tier);
     });
     $('testing-btn').addEventListener('click', () => FE.testingUnlock());          // TESTING ONLY
+    $('testing-btn').hidden = !FE.DEV;                                              // only with game.html?dev (see config.js)
     $('nav-up').addEventListener('click', () => FE.goto(2));
     $('nav-down').addEventListener('click', () => FE.goto(1));
 
@@ -159,6 +160,17 @@ FE.module(function (FE) {
     return b.join('');
   }
 
+  // The condense panel sits under the star (space.css), but it must never run into the condense circle at the bottom of the
+  // page: on a short screen, or with a row of antimatter buttons, it moves up over the star's glow instead.
+  function fitCond() {
+    const cd = $('cond');
+    if (FE.view !== 1 || $('cbtn').hidden || matchMedia('(max-width: 860px)').matches) { if (cd.style.top) cd.style.top = ''; return; }
+    const sh = $('stage').clientHeight, sr = FE.core.radius() * FE.core.s;
+    const natural = sh / 2 + sr * 1.3 + 52, limit = $('altar').offsetTop - 10 - cd.offsetHeight;
+    const t = Math.round(Math.max(sh / 2 + sr * 1.05, Math.min(natural, limit))) + 'px';
+    if (cd.style.top !== t) cd.style.top = t;
+  }
+
   FE.render = function () {
     const s = FE.state, el = FE.el();
     if (!el) return;
@@ -211,6 +223,7 @@ FE.module(function (FE) {
       text('btn-collapse', armed ? 'click again: the star and all progress are lost' : `collapse the star: +${yc} ${el} crystal${yc === 1 ? '' : 's'}`);
     }
     put($('exo-btns'), exoButtons(s, e, el));
+    fitCond();
 
     // builds (right)
     Object.keys(FE.UPS).forEach(k => {
@@ -249,7 +262,7 @@ FE.module(function (FE) {
 
     // layer 2: the link is grey until the first crystal, then white; and the crystal counts
     const up = $('nav-up');
-    up.hidden = FE.view !== 1;
+    up.hidden = FE.view !== 1 || !s.layer2;                       // no link to a layer that is not open yet
     up.classList.toggle('unlocked', s.layer2);
     up.setAttribute('aria-disabled', String(!s.layer2));
     FE.ELEMENTS.forEach(({ id }) => text('cr-' + id, `${id} crystals: ${FE.fmt(s.crystals[id])}`));

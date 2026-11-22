@@ -20,6 +20,14 @@ FE.module(function (FE) {
   FE.SAVE_KEY = 'four-elements-save-v1';
   FE.SIZE_KEY = 'four-elements-size-v1';
 
+  // Developer mode: open game.html?dev to show the TESTING ONLY button and the map arrows under Venture Forth. Players never
+  // see them. It lasts until the tab is closed, so a reload or the title page does not switch it off.
+  FE.DEV = false;
+  try {
+    if (/[?&]dev\b/.test(location.search)) sessionStorage.setItem('fe-dev', '1');
+    FE.DEV = sessionStorage.getItem('fe-dev') === '1';
+  } catch (e) {}
+
   // ---- stars ----
   // Each element has its own star. Going from tier t to t+1 costs 100^t x 10,000 of that element (so the first star costs
   // 10,000, the second 1 million, the third 100 million). Tier 3 is the last: there is nothing to condense after it.
@@ -178,7 +186,7 @@ FE.module(function (FE) {
     { id: 'prod', name: '2x All Production',         cost: 1,  req: null,    x: 50, y: 86, desc: 'all production x2' },
     { id: 'dbl',  name: 'Double Crystal Generation', cost: 3,  req: 'prod',  x: 26, y: 50, desc: 'every star drops double crystals' },
     { id: 'power', name: 'Powerful Units',          cost: 5,  req: 'prod',  x: 74, y: 50, desc: 'doubles unit health and damage' },
-    { id: 'asc',  name: 'Unit Ascension',            cost: 10, req: 'power', x: 74, y: 14, desc: 'does nothing yet' }
+    { id: 'asc',  name: 'Unit Ascension',            cost: 10, req: 'power', x: 74, y: 14, desc: 'not in the beta yet', soon: true }   // soon: shown, but it cannot be bought
   ];
 
   FE.ICONS = {
@@ -198,6 +206,14 @@ FE.module(function (FE) {
     let i = 0; n /= 1e6;
     while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
     return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + u[i];
+  };
+  // true when the wheel or a swipe at this element should scroll a list (one that really overflows) and not change layers
+  FE.inScroller = t => {
+    for (let n = t; n && n.nodeType === 1 && n !== document.body; n = n.parentElement) {
+      const o = getComputedStyle(n).overflowY;
+      if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight + 1) return true;
+    }
+    return false;
   };
   FE.minutes = sec => sec >= 90 ? `${Math.round(sec / 60)} min` : `${Math.round(sec)} s`;
   FE.clock = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
