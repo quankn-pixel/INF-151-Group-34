@@ -1,5 +1,5 @@
 /* mgupgrades.js - mini-game progress that carries over between sessions. Every game now pays out shards, which are kept in
- * state.mgMeta and spent in a Workshop at the bottom of the mini-game panel on upgrades that change how the games play.
+ * state.mgMeta and spent in a Workshop drawer at the side of the screen (opened with the mini-game panel) on upgrades that change how the games play.
  * Load after minigames.js. */
 FE.module(function (FE) {
   const oldFresh = FE.freshState;
@@ -47,26 +47,45 @@ FE.module(function (FE) {
     g.click = function (st, x, y) { oc.call(g, st, x, y); if (st.bad && st.lives > 0 && st.phase === 'done') { st.lives--; st.bad = false; st.phase = 'show'; st.t = 0; st.lit = null; } };
     g.finish = function (st) { return of.call(g, st) + award(st.round * 2); }; }
 
-  // the Workshop, added to the menu of the mini-game panel
+  // ---- a drawer at the side of the screen, used by the Workshop (here and in the forest) so upgrades never mix with the game list ----
+  const dcss = document.createElement('style');
+  dcss.textContent = `#fe-drawer{position:fixed;top:0;right:0;bottom:0;width:min(350px,92vw);z-index:80;box-sizing:border-box;padding:20px 18px;overflow:auto;background:rgba(5,8,22,.97);color:#e9eefc;
+  border-left:1px solid rgba(190,205,255,.4);box-shadow:-14px 0 40px -18px rgba(150,175,255,.6);line-height:1.45}
+#fe-drawer[hidden]{display:none}#fe-drawer h3{margin:0 0 4px;font-weight:normal;font-size:1.6em;letter-spacing:.06em}#fe-drawer .dim{color:#8d9bc4;margin:0 0 12px}
+#fe-drawer .u{padding:10px 0;border-top:1px solid rgba(190,205,255,.16)}#fe-drawer .u b{font-weight:normal;font-size:1.08em}#fe-drawer .u small{display:block;color:#a9b5da;margin:2px 0 6px}
+#fe-drawer .u button{font:inherit;color:#e9eefc;background:rgba(255,255,255,.05);border:1px solid rgba(190,205,255,.55);border-radius:6px;padding:3px 12px;cursor:pointer}
+#fe-drawer .u button:disabled{color:#6c7799;border-color:rgba(190,205,255,.2);cursor:default}`;
+  document.head.appendChild(dcss);
+  const dr = document.createElement('div'); dr.id = 'fe-drawer'; dr.hidden = true; document.body.appendChild(dr);
+  // list = [{name, lvl, max, game, desc, cost, buy()}]. Draws the whole drawer again; call it whenever shards change.
+  FE.drawer = {
+    show(title, shards, list, note) {
+      dr.hidden = false; dr.innerHTML = `<h3>${title}</h3><p class="dim">${note || ''} You have <b>${FE.fmt(shards)}</b> shards.</p>`;
+      list.forEach(u => {
+        const row = document.createElement('div'); row.className = 'u';
+        row.innerHTML = `<b>${u.name}</b> ${u.lvl}/${u.max}${u.game ? ` · ${u.game}` : ''}<small>${u.desc}</small>`;
+        const b = document.createElement('button'); b.type = 'button'; const maxed = u.lvl >= u.max;
+        b.textContent = maxed ? 'Maxed' : `${u.cost} shards`; b.disabled = maxed || shards < u.cost; b.addEventListener('click', u.buy);
+        row.appendChild(b); dr.appendChild(row);
+      });
+    },
+    hide() { dr.hidden = true; }
+  };
+
+  // the Workshop opens at the side of the screen when the mini-game panel does
   const osg = FE.showGames;
   FE.showGames = function () {
     osg();
     const p = FE.panel; if (!p || p.kind !== 'games') return;
-    const sig = p.sig, bld = p.build;
+    const sig = p.sig, bld = p.build, cl = p.close;
     p.sig = () => sig() + '|' + JSON.stringify(M());
+    p.close = function () { FE.drawer.hide(); if (cl) cl.call(p); };
     p.build = function (box) {
       bld.call(p, box);
-      if (!box.querySelector('#mg-meteor')) return;
-      const shop = FE.h('div', 'qcard');
-      shop.appendChild(FE.h('div', 'q-task', 'Workshop'));
-      shop.appendChild(FE.h('div', 'q-line', `Shards earned in any mini-game are kept for good. You have <b>${FE.fmt(M().shards)}</b>.`));
-      UPG.forEach(u => {
-        const n = lv(u.id), maxed = n >= u.max, c = cost(u);
-        const row = FE.h('div', 'q-line', `<b>${u.name}</b> ${n}/${u.max} (${G[u.game].title}): ${u.desc}`);
-        const b = FE.panelButton(maxed ? 'Maxed' : `${c} shards`, () => { if (M().shards < c || lv(u.id) >= u.max) return; M().shards -= c; M().up[u.id] = lv(u.id) + 1; FE.save(); FE.renderPanel(); });
-        b.disabled = maxed || M().shards < c; row.appendChild(document.createTextNode(' ')); row.appendChild(b); shop.appendChild(row);
-      });
-      box.insertBefore(shop, box.lastElementChild);
+      FE.drawer.show('Workshop', M().shards, UPG.map(u => ({
+        name: u.name, lvl: lv(u.id), max: u.max, game: G[u.game].title, desc: u.desc, cost: cost(u),
+        buy() { if (M().shards < cost(u) || lv(u.id) >= u.max) return; M().shards -= cost(u); M().up[u.id] = lv(u.id) + 1; FE.save(); FE.renderPanel(); }
+      })), 'Shards from any mini-game are kept for good.');
     };
     p.last = null; FE.renderPanel();
   };

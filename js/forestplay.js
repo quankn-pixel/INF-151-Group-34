@@ -90,7 +90,9 @@ FE.module(function (FE) {
     const e = F().els[w.el], cost = FOR.tierCost(e.tier) || 1500, gain = Math.max(40 * FOR.rate(w.el), .05 * cost);
     e.count += gain; pop(w.x, w.y - 20, `+${FE.fmt(gain)} ${w.el}`); dropWisp(w); FOR.burst(w.el, 10); FOR.render(); FE.save();
   }
+  const gone = () => !!(FE.state.core && FE.state.core.path === 'forge');
   setInterval(() => {                                                                        // wisps drift, wander and fade
+    if (gone()) { wisps.slice().forEach(dropWisp); return; }
     if (!wisps.length) return;
     const dt = .05, W = pageF.clientWidth, H = pageF.clientHeight, now = performance.now() / 1000;
     for (const w of wisps.slice()) {
@@ -203,6 +205,7 @@ FE.module(function (FE) {
     });
   }
   setInterval(() => {                                                                        // quest timers, buffs, new offers
+    if (gone()) return;
     const p = P(), q = Q(), now = Date.now(), a = q.active;
     if (p.buff && now >= p.buff.end) p.buff = null;
     if (p.curse && now >= p.curse.end) p.curse = null;
@@ -223,7 +226,7 @@ FE.module(function (FE) {
     { id: 'rod', game: 'dowse', name: 'Extra probe', max: 4, cost: 5, desc: '+1 probe' },
     { id: 'sense', game: 'dowse', name: 'Sensitive rod', max: 5, cost: 4, desc: 'springs are found from 8 px farther' },
     { id: 'flat', game: 'cairn', name: 'Flat stones', max: 5, cost: 3, desc: 'the base stone is 16 px wider' },
-    { id: 'steady', game: 'cairn', name: 'Steady hands', max: 5, cost: 4, desc: 'the stone swings 7% slower' },
+    { id: 'steady', game: 'cairn', name: 'Steady hands', max: 5, cost: 4, desc: 'the stone takes 7% longer to cross' },
     { id: 'omen', game: '', name: 'Forest omen', max: 3, cost: 8, desc: 'every game has a 12% better chance of a stronger reward' }
   ];
   const lv = id => P().up[id] || 0, ucost = u => Math.round(u.cost * Math.pow(1.7, lv(u.id)));
@@ -353,12 +356,13 @@ FE.module(function (FE) {
       title: 'Cairn', th: [4, 8, 12], el: 'earth',
       blurb: 'A stone swings above your cairn. Click to drop it: only the part that lands on the stone below stays, so the stack narrows. A perfect drop keeps the full width. Stack fourteen.',
       start() {
-        const bw = 190 + 16 * lv('flat');
-        return { t: 0, blocks: [{ x: W / 2, w: bw }], cur: { x: rand(bw, W - bw), w: bw, dir: 1 }, speed: 190 * Math.pow(.93, lv('steady')), n: 0, perfect: 0, chips: [], end: 0, over: false };
+        const bw = clamp(W * .16, 190, 300) + 16 * lv('flat');
+        return { t: 0, blocks: [{ x: W / 2, w: bw }], cur: { x: rand(bw, W - bw), w: bw, dir: 1 }, period: 1.8 * Math.pow(1.07, lv('steady')), n: 0, perfect: 0, chips: [], end: 0, over: false };
       },
       step(s, dt) {
         s.t += dt;
-        if (!s.end) { const c = s.cur; c.x += c.dir * s.speed * dt; if (c.x < c.w / 2 + 20) { c.x = c.w / 2 + 20; c.dir = 1; } if (c.x > W - c.w / 2 - 20) { c.x = W - c.w / 2 - 20; c.dir = -1; } }
+        if (!s.end) { const c = s.cur; c.x += c.dir * Math.max(120, W - 40 - c.w) / s.period * dt;   // a crossing always takes `period` seconds, however wide the screen is
+          if (c.x < c.w / 2 + 20) { c.x = c.w / 2 + 20; c.dir = 1; } if (c.x > W - c.w / 2 - 20) { c.x = W - c.w / 2 - 20; c.dir = -1; } }
         for (const q of s.chips) { q.vy += 900 * dt; q.y += q.vy * dt; } s.chips = s.chips.filter(q => q.y < H + 60);
         if (s.end) { s.end += dt; if (s.end > 1.4) s.over = true; }
       },
@@ -369,7 +373,7 @@ FE.module(function (FE) {
         if (r - l < 6) { s.chips.push({ x: c.x, w: c.w, y: ty, vy: 0 }); s.end = .001; return; }
         let nb;
         if (Math.abs(c.x - top.x) < 7) { nb = { x: top.x, w: top.w }; s.perfect++; } else { nb = { x: (l + r) / 2, w: r - l }; s.chips.push({ x: c.x < top.x ? l - (c.w - (r - l)) / 2 : r + (c.w - (r - l)) / 2, w: c.w - (r - l), y: ty, vy: 0 }); }
-        s.blocks.push(nb); s.n++; s.speed *= 1.06; s.cur = { x: c.x, w: nb.w, dir: c.dir };
+        s.blocks.push(nb); s.n++; s.period = Math.max(.7, s.period * .95); s.cur = { x: c.x, w: nb.w, dir: c.dir };
         if (s.n >= 14) s.end = .001;
       },
       draw(s, c) {
@@ -426,24 +430,19 @@ FE.module(function (FE) {
   // ---------------------------------------------------------------- the menu and the workshop
   function showGames() {
     FE.openPanel({
-      kind: 'fgames',
+      kind: 'fgames', close() { FE.drawer.hide(); },
       sig: () => JSON.stringify([P().shards, P().up, P().best]),
       build(box) {
         box.appendChild(FE.h('h3', '', 'Mini-games'));
-        box.appendChild(FE.h('p', 'dim', 'Played full screen. Every game pays shards, kept for good, and a reward that gets stronger with your score.'));
+        box.appendChild(FE.h('p', 'dim', 'Played full screen. Every game pays shards, kept for good, and a reward that gets stronger with your score. Spend shards in the Workshop at the side.'));
         for (const id of Object.keys(GAMES)) {
           const d = GAMES[id], c = FE.h('div', 'qcard', `<div class="q-task">${d.title}</div><div class="q-line">${d.blurb}</div><div class="q-line good">Best: ${P().best[id] || 0} · reward tiers at ${d.th.join(', ')}</div>`);
           const b = FE.panelButton('Play', () => play(id)); b.id = 'fg-' + id; c.appendChild(b); box.appendChild(c);
         }
-        const shop = FE.h('div', 'qcard'); shop.appendChild(FE.h('div', 'q-task', 'Workshop'));
-        shop.appendChild(FE.h('div', 'q-line', `Shards are kept for good. You have <b>${FE.fmt(P().shards)}</b>.`));
-        UPG.forEach(u => {
-          const n = lv(u.id), maxed = n >= u.max, cst = ucost(u);
-          const row = FE.h('div', 'q-line', `<b>${u.name}</b> ${n}/${u.max}${u.game ? ` (${GAMES[u.game].title})` : ''}: ${u.desc}`);
-          const b = FE.panelButton(maxed ? 'Maxed' : `${cst} shards`, () => { if (P().shards < cst || lv(u.id) >= u.max) return; P().shards -= cst; P().up[u.id] = lv(u.id) + 1; FE.save(); FE.renderPanel(); });
-          b.disabled = maxed || P().shards < cst; row.appendChild(document.createTextNode(' ')); row.appendChild(b); shop.appendChild(row);
-        });
-        box.appendChild(shop);
+        FE.drawer.show('Workshop', P().shards, UPG.map(u => ({
+          name: u.name, lvl: lv(u.id), max: u.max, game: u.game ? GAMES[u.game].title : 'every game', desc: u.desc, cost: ucost(u),
+          buy() { if (P().shards < ucost(u) || lv(u.id) >= u.max) return; P().shards -= ucost(u); P().up[u.id] = lv(u.id) + 1; FE.save(); FE.renderPanel(); }
+        })), 'Shards from every game are kept for good.');
         box.appendChild(FE.h('div', 'btns')).appendChild(FE.panelButton('Close', FE.closePanel));
       },
       update() {

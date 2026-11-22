@@ -64,8 +64,9 @@ FE.module(function (FE) {
   const VERB = { fire: 'Feed the fire', water: 'Deepen the pool', air: 'Widen the vent', earth: 'Heap the cairn' };
   const INTRO = { fire: 'The forest is dark and cold. Rake the embers.', water: 'The forest is dark. Rainwater has pooled in a hollow.',
                   air: 'The forest is dark. Steam seeps from a crack in the cold ground.', earth: 'The forest is dark. Loose dirt and stones are creeping toward one spot.' };
-  const l3Open = () => !!((FE.state.cleared && FE.state.cleared.breach) || F().l3);       // the old star layer (layer 3) opens with the first cleared map
-  FE.forestLayer3Open = l3Open;
+  const gone = () => !!(FE.state.core && FE.state.core.path === 'forge');                  // the new-star ending: the forest is gone, outer space is layer 1
+  const l3Open = () => gone() || !!F().l3;                                                  // the old star layer opens only when the star core is planted (F().l3 is for testing)
+  FE.forestLayer3Open = l3Open; FE.forestGone = gone;
   const busy = () => FE.collapsing || FE.modalOpen;
 
   // ---------------------------------------------------------------- page and styles
@@ -81,11 +82,11 @@ FE.module(function (FE) {
 #fz-info{font-size:.875em;color:#aab4d8;font-variant-numeric:tabular-nums}
 #pageF .game-title{text-shadow:0 0 18px rgba(0,0,0,.8)}#pageF .goal{color:#b8c2e2;text-shadow:0 0 10px rgba(0,0,0,.9)}#pageF .goal.ready{color:#fff}
 #pageF .tab,#pageF .box,#pageF .upgrades,#pageF .store{background:rgba(8,11,20,.88)}#pageF .card{background:rgba(8,11,20,.9)}
-#nav-up{display:none!important}
-#pages[data-view="0"] #page2{transform:translateY(-100%)}#pages[data-view="0"] #page1{transform:translateY(-200%)}
-#pages[data-view="2"] #pageF{transform:translateY(100%)}#pages[data-view="2"] #page1{transform:translateY(-100%)}
-#pages[data-view="1"] #pageF{transform:translateY(200%)}#pages[data-view="1"] #page2{transform:translateY(100%)}#pages[data-view="1"] #page1{transform:none}
-#pages[data-view="3"] #pageF{transform:translateY(100%)}#pages[data-view="3"] #page1{transform:translateY(-100%)}
+#pages:not(.nf) #nav-up{display:none!important}#pages.nf #pageF{display:none}
+#pages:not(.nf)[data-view="0"] #page2{transform:translateY(-100%)}#pages:not(.nf)[data-view="0"] #page1{transform:translateY(-200%)}
+#pages:not(.nf)[data-view="2"] #pageF{transform:translateY(100%)}#pages:not(.nf)[data-view="2"] #page1{transform:translateY(-100%)}
+#pages:not(.nf)[data-view="1"] #pageF{transform:translateY(200%)}#pages:not(.nf)[data-view="1"] #page2{transform:translateY(100%)}#pages:not(.nf)[data-view="1"] #page1{transform:none}
+#pages:not(.nf)[data-view="3"] #pageF{transform:translateY(100%)}#pages:not(.nf)[data-view="3"] #page1{transform:translateY(-100%)}
 @media (max-width:860px){#pageF{overflow-y:auto;grid-template-rows:auto auto auto}}`;
   document.head.appendChild(css);
 
@@ -520,8 +521,8 @@ FE.module(function (FE) {
   FE.render = function () {
     oldRender();
     renderForest();
-    navL3.hidden = FE.view !== 2 || !l3Open();
-    navL2.hidden = FE.view !== 1;
+    navL3.hidden = gone() || FE.view !== 2 || !l3Open();
+    navL2.hidden = gone() || FE.view !== 1;
     if (FE.view === 1) fixStarGoal();
   };
 
@@ -530,6 +531,11 @@ FE.module(function (FE) {
   let booted = false, lastNav = 0;
   const oldGoto = FE.goto;
   FE.goto = function (v, instant) {
+    if (gone()) {                                                                    // the forest is gone: the old layers are back in their own places
+      $('pages').classList.add('nf'); document.body.classList.add('nf');
+      if (!booted) { booted = true; lateInit(); }
+      return oldGoto.call(this, v === 0 ? 1 : v, instant);
+    }
     if (!booted) { booted = true; v = 0; instant = true; lateInit(); }             // ui.js opens "layer 1" at the start: that is the forest now
     const s = FE.state;
     if (v === 1 && !l3Open()) return;
@@ -554,12 +560,13 @@ FE.module(function (FE) {
     if (tu) FE.testingUnlock = function () { F().l3 = true; return tu.apply(this, arguments); };
   }
   // the links
-  $('nav-down').addEventListener('click', e => { e.stopImmediatePropagation(); FE.goto(0); }, true);   // the army's "layer 1" is the forest now
+  $('nav-down').addEventListener('click', e => { if (gone()) return; e.stopImmediatePropagation(); FE.goto(0); }, true);   // the army's "layer 1" is the forest now
   navL3.addEventListener('click', () => FE.goto(1));
   navL2.addEventListener('click', () => FE.goto(2));
 
   // wheel, swipe and the arrow keys (controls.js would send them to the old numbering, so they are claimed here first)
   function nav(dir) {                                                              // -1 = up, 1 = down
+    if (gone()) return;
     const now = performance.now();
     if (FE.collapsing || FE.condensing || FE.view === 3 || FE.modalOpen || now - lastNav < 900) return;
     const v = FE.view;
@@ -567,13 +574,13 @@ FE.module(function (FE) {
     else if (v === 1) { lastNav = now; FE.goto(2); } else if (v === 2) { lastNav = now; FE.goto(0); }
   }
   addEventListener('wheel', e => {
-    if (FE.modalOpen || Math.abs(e.deltaY) < 12 || e.target.closest('.scroll')) return;
+    if (gone() || FE.modalOpen || Math.abs(e.deltaY) < 12 || e.target.closest('.scroll')) return;
     e.stopPropagation(); nav(e.deltaY < 0 ? -1 : 1);
   }, { capture: true, passive: true });
   let ty = null;
-  addEventListener('touchstart', e => { if (FE.modalOpen) return; e.stopPropagation(); ty = e.target.closest('.scroll') ? null : e.touches[0].clientY; }, { capture: true, passive: true });
+  addEventListener('touchstart', e => { if (gone() || FE.modalOpen) return; e.stopPropagation(); ty = e.target.closest('.scroll') ? null : e.touches[0].clientY; }, { capture: true, passive: true });
   addEventListener('touchend', e => {
-    if (FE.modalOpen) return; e.stopPropagation();
+    if (gone() || FE.modalOpen) return; e.stopPropagation();
     if (ty == null) return; const d = e.changedTouches[0].clientY - ty; ty = null; if (Math.abs(d) > 70) nav(d > 0 ? -1 : 1);
   }, { capture: true, passive: true });
 
@@ -583,7 +590,7 @@ FE.module(function (FE) {
   addEventListener('blur', stopSpace); document.addEventListener('visibilitychange', stopSpace);
   addEventListener('keyup', e => { if (e.key !== ' ' || FE.view !== 0) return; if (sh) { e.preventDefault(); e.stopPropagation(); } stopSpace(); }, true);
   addEventListener('keydown', e => {
-    if (e.ctrlKey || e.metaKey || e.altKey || FE.modalOpen) return;
+    if (gone() || e.ctrlKey || e.metaKey || e.altKey || FE.modalOpen) return;
     if (e.target.closest && e.target.closest('input, textarea')) return;
     if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.stopPropagation(); nav(-1); return; }
     if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.stopPropagation(); nav(1); return; }
@@ -607,6 +614,7 @@ FE.module(function (FE) {
   let lastT = performance.now();
   setInterval(() => {
     const t = performance.now(), dt = Math.min((t - lastT) / 1000, 3600); lastT = t;
+    if (gone()) return;
     const f = F(); if (!f.cur) return;
     let made = 0;
     IDS.forEach(k => { const r = rate(k) * dt; f.els[k].count += r; made += r; });
