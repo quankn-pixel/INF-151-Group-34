@@ -23,6 +23,7 @@ FE.module(function (FE) {
       expedition: null,     // units currently out in combat ({air: n, ...}); a reload while this is set counts as a retreat
       expStarted: false,    // false while the battle is waiting for a click: closing the page then hands the units back instead
       skills: {},           // skill tree nodes bought (permanent)
+      testing: false,       // the TESTING ONLY button in the settings menu was pressed: the map arrows under Venture Forth are shown
       // ---- layer 1 extras ----
       buys: 0,              // upgrades bought, ever (quests and mini-games open after a few)
       antimatter: 0,        // from neutron stars and black holes; buys a head start (FE.reignite)
@@ -61,6 +62,8 @@ FE.module(function (FE) {
   };
   // the map Venture Forth sends you to: the one the testing arrows picked, otherwise the first map not cleared (or the last, once all are)
   FE.firstOpenMap = () => { const i = FE.MAPS.findIndex(m => !S().cleared[m.id]); return i < 0 ? FE.MAPS.length - 1 : i; };
+  // testing tools (the map arrows under Venture Forth) are on after TESTING ONLY is pressed, or with game.html?dev
+  FE.testingOn = () => FE.DEV || !!S().testing;
   FE.targetIdx = () => { const t = S().target; return Number.isInteger(t) && t >= 0 && t < FE.MAPS.length ? t : FE.firstOpenMap(); };
 
   // ---- quest punishments and rewards that change the numbers ----

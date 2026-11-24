@@ -77,8 +77,10 @@ FE.module(function (FE) {
       const a = b.dataset.act;
       if (a === 'exo') FE.goExotic(); else if (a === 'extend') FE.extendHole(); else if (a === 'amplify') FE.amplifyHole(); else if (a === 'ignite') FE.reignite(+b.dataset.tier);
     });
-    $('testing-btn').addEventListener('click', () => FE.testingUnlock());          // TESTING ONLY
-    $('testing-btn').hidden = !FE.DEV;                                              // only with game.html?dev (see config.js)
+    $('testing-btn').addEventListener('click', () => {                              // TESTING ONLY (it sits in the settings menu)
+      $('settings-close').click();                                                  // close the menu first, so the toast and layer 2 are seen
+      FE.testingUnlock();
+    });
     $('nav-up').addEventListener('click', () => FE.goto(2));
     $('nav-down').addEventListener('click', () => FE.goto(1));
 

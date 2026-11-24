@@ -33,7 +33,7 @@
       <div class="venture">
         <button class="el wide" id="btn-venture" type="button" aria-describedby="venture-tip">Venture Forth</button>
         <span class="tip" id="venture-tip" role="tooltip">All units are sent into combat. <b>Units killed in combat are lost for good</b>, but grant stardust when they die.</span>
-        <!-- TESTING ONLY: the arrows pick which map Venture Forth goes to (see FE.cycleTarget in army.js). Shown once the first map is beaten. -->
+        <!-- TESTING ONLY: the arrows pick which map Venture Forth goes to (see FE.cycleTarget in army.js). Shown once TESTING ONLY is pressed in settings. -->
         <div class="target" id="tgt" hidden>
           <button class="arrow" id="tgt-prev" type="button" aria-label="Previous map">&#9664;&#xFE0E;</button>
           <span class="t-name" id="tgt-name"></span>
@@ -113,9 +113,6 @@
   <span style="margin-right:auto"><button class="link" id="back-btn" type="button">&larr; back.</button></span>
   <span id="save-status">not saved yet.</span>
   <button class="link" id="settings-btn" type="button" aria-haspopup="dialog">settings.</button>
-  <!-- TESTING ONLY: opens layer 2 with no animation and gives 100 of every crystal each press (FE.testingUnlock in game.js).
-       Shown only in developer mode: open game.html?dev (see FE.DEV in config.js). -->
-  <button class="link testing" id="testing-btn" type="button" hidden>TESTING ONLY</button>
 </div>
 
 <!-- settings: music and sound (audio.js), text size and restart (controls.js) -->
@@ -138,6 +135,12 @@
         <button class="link" id="size-down" type="button" aria-label="Smaller text">&minus;</button>
         <button class="link" id="size-up" type="button" aria-label="Larger text">+</button>
       </span>
+    </div>
+    <!-- TESTING ONLY: opens layer 2 with no animation, gives 100 of every crystal each press and turns on the map arrows under
+         Venture Forth (FE.testingUnlock in game.js). Delete this row before release. -->
+    <div class="set-row">
+      <span class="wide"><button class="link testing" id="testing-btn" type="button">TESTING ONLY</button>
+        <span class="set-note">opens layer 2, gives 100 of every crystal, and lets you pick maps with the arrows under Venture Forth.</span></span>
     </div>
     <div class="set-row">
       <span class="wide" id="restart-wrap"><button class="link" id="restart-btn" type="button">restart.</button></span>

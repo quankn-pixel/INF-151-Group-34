@@ -687,7 +687,105 @@ const FLOOD = {
     }
   }
 };
+// earth: jagged mountains heave up out of the ground one after another, each bigger than the last, until they cover the screen.
+// Effects: cracks open in the ground first, the screen shakes while one rises, dust billows and rocks tumble off the slopes,
+// and every mountain has a lit face, a shaded face, a lighter peak and cracks in the rock.
+function floodEarth() {
+  const ms = 3400, fade = 2900, BASE = H + 90, N = 6;
+  // peaks are [x in widths, y in heights]; the last two ranges have their peaks above the screen, so together they cover everything
+  const defs = [
+    { start: 0,    dur: 800,  x0: -.12, x1: .48,  peaks: [[.16, .52]], valley: .2 },    // a corner at the bottom left
+    { start: 480,  dur: 900,  x0: .30,  x1: 1.12, peaks: [[.78, .30]], valley: .2 },    // a bigger one on the other side
+    { start: 1000, dur: 900,  x0: -.2,  x1: .58,  peaks: [[.1, .06]], valley: .2 },     // bigger, up the left
+    { start: 1450, dur: 900,  x0: .42,  x1: 1.25, peaks: [[.9, -.02]], valley: .2 },    // bigger, up the right
+    { start: 1900, dur: 1000, x0: -.2,  x1: 1.2,  peaks: [[.05, -.1], [.3, -.26], [.55, -.14], [.78, -.3], [1, -.12]], valley: .07 }
+  ];
+  const jag = (a, b, i, amp) => {                       // a jagged line from point a to point b (zig-zag sub-points)
+    const n = 7, out = [a];
+    for (let k = 1; k < n; k++) { const t = k / n, o = (k % 2 ? 1 : -1) * amp * (.4 + hs(i * 17 + k, 3)); out.push([lerp(a[0], b[0], t) + o * .8, lerp(a[1], b[1], t) + o * .45 * (hs(i + k, 5) - .3)]); }
+    out.push(b); return out;
+  };
+  const mts = defs.map((d, i) => {
+    const pk = d.peaks.map(([a, b]) => [a * W, b * H]), amp = Math.min(W, H) * .022;
+    const ctl = [[d.x0 * W, H * 1.02]];
+    pk.forEach((p, k) => { ctl.push(p); if (k < pk.length - 1) ctl.push([(p[0] + pk[k + 1][0]) / 2, Math.max(p[1], pk[k + 1][1]) + d.valley * H]); });
+    ctl.push([d.x1 * W, H * 1.02]);
+    const sky = [], right = [];                           // the skyline, and for each peak the points of its right slope
+    for (let k = 0; k < ctl.length - 1; k++) {
+      const seg = jag(ctl[k], ctl[k + 1], i * 9 + k, amp);
+      sky.push(...(k ? seg.slice(1) : seg));
+      if (pk.some(p => p === ctl[k])) right.push({ peak: ctl[k], pts: seg, idx: k });
+    }
+    const col = mix(PAL.earth, -.3 + .3 * i / (defs.length - 1));
+    return { d, pk, sky, right, lit: col, shade: mix(col, -.3), cap: mix(col, .28), reach: H * 1.5 + 140, bound: [d.x0 * W, d.x1 * W] };
+  });
+  const parts = []; let last = 0;
+  const shakeOf = t => mts.reduce((m, o) => { const p = (t - o.d.start) / o.d.dur; return p > 0 && p < 1.15 ? Math.max(m, Math.sin(Math.min(1, p) * Math.PI) * (.4 + .6 * (1 - p))) : m; }, 0);
+  const rise = bez(.12, .8, .3, 1);
+  const spawn = (o, off, dt) => {                         // dust and rocks come off the rising slopes
+    const n = Math.round(dt * 70 + Math.random());
+    for (let j = 0; j < n; j++) {
+      const q = o.sky[Math.floor(Math.random() * o.sky.length)], x = q[0], y = q[1] + off;
+      if (y > H + 10 || y < -40 || x < -20 || x > W + 20) continue;
+      parts.push({ k: 0, x, y, vx: rand(-30, 30), vy: rand(-70, -10), s: rand(10, 24), g: rand(26, 50), life: rand(.8, 1.5), age: 0 });
+      if (Math.random() < .5) parts.push({ k: 1, x, y, vx: rand(-260, 260), vy: -rand(120, 420), s: rand(3, 9), life: rand(1, 1.6), age: 0, a: rand(TAU), va: rand(-8, 8) });
+    }
+  };
+  const draw = t => {
+    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    fl.setTransform(1, 0, 0, 1, 0, 0); fl.clearRect(0, 0, W, H);
+    const sh = shakeOf(t) * 9;
+    fl.save(); fl.translate((Math.random() - .5) * 2 * sh, (Math.random() - .5) * 2 * sh);
+    // cracks open in the ground just before a mountain comes up
+    mts.forEach((o, i) => {
+      const u = (t - (o.d.start - 350)) / 750;
+      if (u <= 0 || u >= 1) return;
+      fl.strokeStyle = `rgba(30,18,8,${Math.sin(Math.PI * u) * .9})`; fl.lineWidth = 3; fl.lineJoin = 'round';
+      for (let j = 0; j < 5; j++) {
+        let x = lerp(o.bound[0], o.bound[1], (j + .5) / 5) + (hs(i + j, 20) - .5) * W * .05, y = H + 4; fl.beginPath(); fl.moveTo(x, y);
+        const steps = Math.floor(2 + 5 * Math.min(1, u * 2));
+        for (let k = 0; k < steps; k++) { x += (hs(i * 5 + j + k, 21) - .5) * 34; y -= 12 + 20 * hs(j + k, 22); fl.lineTo(x, y); }
+        fl.stroke();
+      }
+    });
+    mts.forEach((o, i) => {
+      const p = clamp((t - o.d.start) / o.d.dur, 0, 1);
+      if (p <= 0) return;
+      const off = (1 - rise(p)) * o.reach;
+      if (p < 1) spawn(o, off, dt);
+      fl.save(); fl.translate(0, off);
+      fl.beginPath(); o.sky.forEach(([x, y], k) => k ? fl.lineTo(x, y) : fl.moveTo(x, y)); fl.lineTo(o.sky[o.sky.length - 1][0], BASE); fl.lineTo(o.sky[0][0], BASE); fl.closePath();
+      fl.fillStyle = o.lit; fl.fill();
+      o.right.forEach(r => {                              // the shaded side of each peak, a lighter tip, and cracks in the rock
+        const [px, py] = r.peak, bx = px + W * .03;
+        fl.beginPath(); fl.moveTo(px, py); r.pts.slice(1).forEach(([x, y]) => fl.lineTo(x, y)); fl.lineTo(r.pts[r.pts.length - 1][0], BASE); fl.lineTo(bx, BASE); fl.closePath();
+        fl.fillStyle = o.shade; fl.fill();
+        fl.beginPath(); fl.moveTo(px, py); fl.lineTo(r.pts[2][0], r.pts[2][1]); fl.lineTo(px - (r.pts[2][0] - px) * .9, r.pts[2][1] + 6); fl.closePath();
+        fl.fillStyle = o.cap; fl.fill();
+        fl.strokeStyle = 'rgba(40,26,14,.4)'; fl.lineWidth = 2; fl.lineJoin = 'round';
+        for (let j = 0; j < 3; j++) {
+          let x = px + (j - 1) * W * .02, y = py + 14; fl.beginPath(); fl.moveTo(x, y);
+          for (let k = 0; k < 7; k++) { x += (hs(i * 7 + j + k, 30) - .45) * 30; y += 20 + 34 * hs(j + k, 31); fl.lineTo(x, y); }
+          fl.stroke();
+        }
+      });
+      fl.restore();
+    });
+    for (let i = parts.length - 1; i >= 0; i--) {         // dust and rocks, in front of the mountains
+      const q = parts[i]; q.age += dt;
+      if (q.age >= q.life) { parts.splice(i, 1); continue; }
+      const u = q.age / q.life;
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      if (q.k) { q.vy += 900 * dt; q.a += q.va * dt; fl.fillStyle = mix(PAL.earth, -.45); fl.beginPath(); for (let v = 0; v < 4; v++) { const aa = q.a + v / 4 * TAU, rr = q.s * (.6 + .5 * hs(i + v, 40)); v ? fl.lineTo(q.x + Math.cos(aa) * rr, q.y + Math.sin(aa) * rr) : fl.moveTo(q.x + Math.cos(aa) * rr, q.y + Math.sin(aa) * rr); } fl.fill(); }
+      else { q.vy -= q.g * dt * .3; fl.globalAlpha = .5 * (1 - u); fl.fillStyle = '#b79a78'; fl.beginPath(); fl.arc(q.x, q.y, q.s * (1 + 2.2 * u), 0, TAU); fl.fill(); fl.globalAlpha = 1; }
+    }
+    fl.restore();
+    if (t > fade) { fl.fillStyle = rgba(PAL.earth, clamp((t - fade) / (ms - fade), 0, 1)); fl.fillRect(0, 0, W, H); }   // settles to the plain earth colour
+  };
+  return tween(ms, p => draw(p * ms)).then(() => { fl.setTransform(1, 0, 0, 1, 0, 0); fl.fillStyle = PAL.earth; fl.fillRect(0, 0, W, H); });
+}
 function flood(id, x, y) {
+  if (id === 'earth') return floodEarth();
   const maxR = Math.hypot(Math.max(x, W - x), Math.max(y, H - y)) * 1.15, ms = 2600;
   return tween(ms, p => { const e = easeIO(p); fl.clearRect(0, 0, W, H); FLOOD[id](x, y, maxR * e, e, p * ms / 1000); }).then(() => { fl.fillStyle = PAL[id]; fl.fillRect(0, 0, W, H); });
 }

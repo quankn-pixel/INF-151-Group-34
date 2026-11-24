@@ -140,10 +140,10 @@ body.v3 .footer { display: none; }
 .set-row .size-btns button { font-size: 1.15em; min-width: 1.2em; }
 .set-row .wide { grid-column: 1 / 4; }
 .set-row .confirm { color: #e9eefc; display: flex; gap: 12px; }
-/* TESTING ONLY button, bottom right */
-.footer button.testing { color: #c4271f; text-decoration: none; border: 1px dashed currentColor; padding: 1px 9px; letter-spacing: .06em; font-size: .95em; }
-.footer button.testing:hover { background: color-mix(in srgb, #c4271f 12%, transparent); }
-body.v2 .footer button.testing { color: #ff8a7a; }
+/* TESTING ONLY button, in the settings menu */
+.set-row button.testing { color: #ff8a7a; text-decoration: none; border: 1px dashed currentColor; padding: 1px 9px; letter-spacing: .06em; font-size: .95em; }
+.set-row button.testing:hover { background: color-mix(in srgb, #ff8a7a 12%, transparent); }
+.set-row .set-note { display: block; margin-top: 8px; color: #8d9bc4; font-size: .8em; line-height: 1.4; }
 body.v2 .footer { color: #8d9bc4; } body.v2 .footer button.link { color: #cdd7f5; }
 
 #nova { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 100; display: none; }
@@ -300,6 +300,11 @@ body.v2 .footer { color: #8d9bc4; } body.v2 .footer button.link { color: #cdd7f5
 .c-panel .dust { color: #fff; text-shadow: 0 0 12px rgba(190, 205, 255, .8); }
 .c-panel .reward { margin: 16px 0 6px; padding: 10px 14px; border: 1px solid #fff; box-shadow: 0 0 18px -4px #aebcff; }
 .c-panel .reward b { display: block; font-weight: normal; font-size: 1.3em; letter-spacing: .05em; }
+.rep-table { display: grid; grid-template-columns: auto auto; gap: 0 30px; justify-content: center; text-align: left; margin: 14px 0 4px; }
+.rep-table > div + div { border-left: 1px solid rgba(190, 205, 255, .25); padding-left: 30px; }
+.rep-table b { display: block; color: #fff; margin-bottom: .4em; }
+.rep-table p.rep { margin: .25em 0; }
+.c-panel p.rep { color: #fff; margin: .35em 0; line-height: 1.45; }
 .c-panel .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
 .c-panel button.el { width: auto; padding: 8px 20px; font-size: 1.05em; }
 
