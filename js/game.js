@@ -138,17 +138,18 @@ FE.module(function (FE) {
     return true;
   };
 
-  // ---- TESTING ONLY (the button in the bottom right corner; delete this and #testing-btn before release) ----
-  // Opens layer 2 with no star and no animation, and gives 100 of every crystal. It can be pressed over and over for more.
+  // ---- TESTING ONLY (the button in the settings menu; delete this and #testing-btn before release) ----
+  // Opens layer 2 with no star and no animation, gives 100 of every crystal, and turns on the map arrows under Venture Forth
+  // (FE.cycleTarget in army.js) so any map can be picked by hand. It can be pressed over and over for more crystals.
   FE.testingUnlock = function () {
     const s = FE.state;
     if (!s.cur || FE.collapsing || FE.combat.active) return;
     const first = !s.layer2;
-    s.layer2 = true;
+    s.layer2 = true; s.testing = true;
     FE.ELEMENTS.forEach(({ id }) => { s.crystals[id] += 100; });
     if (first) FE.goto(2, true);                      // like the real unlock, the first time only
     FE.save(); FE.render();
-    FE.toast('TESTING ONLY: +100 of every crystal.', 2600);
+    FE.toast('TESTING ONLY: +100 of every crystal. Map arrows are on.', 2600);
   };
 
   // ---- every 100ms: what is built makes its element, on every tab, not only the one you are looking at ----

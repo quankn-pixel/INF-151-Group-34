@@ -20,8 +20,9 @@ FE.module(function (FE) {
   FE.SAVE_KEY = 'four-elements-save-v1';
   FE.SIZE_KEY = 'four-elements-size-v1';
 
-  // Developer mode: open game.html?dev to show the TESTING ONLY button and the map arrows under Venture Forth. Players never
-  // see them. It lasts until the tab is closed, so a reload or the title page does not switch it off.
+  // Developer mode: open game.html?dev to show the map arrows under Venture Forth from the start. The TESTING ONLY button in
+  // the settings menu does the same (and more: see FE.testingUnlock in game.js). It lasts until the tab is closed, so a reload
+  // or the title page does not switch it off.
   FE.DEV = false;
   try {
     if (/[?&]dev\b/.test(location.search)) sessionStorage.setItem('fe-dev', '1');
@@ -148,26 +149,34 @@ FE.module(function (FE) {
     brute:   { r: 2.3, hp: 10, atk: 1, every: 1, reach: 1.2, aggro: 9,  speed: 5, weapon: 'club' },
     stick:   { r: 1.4, hp: 4,  atk: 1, every: 1, reach: .9,  aggro: 9,  speed: 7, weapon: 'stick' },
     mage:    { r: 1.5, hp: 4,  atk: 2, every: 3, range: 20,  aggro: 20, speed: 0, ranged: true },
-    giant:   { r: 4.4, hp: 100, atk: 4, every: 2, reach: 2,  aggro: 12, speed: 3, weapon: 'club' }
+    giant:   { r: 4.4, hp: 100, atk: 4, every: 2, reach: 2,  aggro: 12, speed: 3, weapon: 'club' },
+    // The cannon never moves. It only charges while it has a target (the unit with the most health that is in range, like every
+    // other enemy): its mouth glows brighter for `every` seconds, then a laser hits that unit for `atk`. The mouth then dims
+    // before it charges again.
+    // The archer never moves. Every `every` seconds it looses an arrow (a small white line) at the unit it has picked (most health
+    // first), aimed at where that unit is right then, with a little spread. The arrow flies dead straight at arrowSpeed, over
+    // walls, and hits the first unit it touches, so it can miss (or hit someone else).
+    archer:  { r: 1.2, hp: 1, atk: 1, every: 2, range: 30, aggro: 30, speed: 0, ranged: true, archer: true, arrowSpeed: 30, spread: .05 },
+    cannon:  { r: 2.2, hp: 10, atk: 10, every: 5, range: 34, aggro: 34, speed: 0, ranged: true, cannon: true, turn: 2.2 }   // turn: radians per second it can swing round to a new target
   };
 
   // A map is a list of enemies. Everything is placed from the middle of the map's height. For walls, at = where the wall stands
   // as a fraction of the map width (the wall is a thin curve that bends back toward your units by bow map units at its ends).
   // Everything else: x = a fraction of the width, dx / dy = a nudge in map units (dy is measured from the middle of the height).
-  // title = the heading of the victory panel. reward = a key of FE.REWARDS; placeholder = shows <Unlocked: Not Implemented Yet>.
+  // title = the heading of the victory panel. A wall may also have: thick (how many times thicker than a normal wall it is drawn), curve: 'right' (its ends bend away from your units instead of toward them), flag (a small flag by its top end) and labelGap (map units the hit point number is moved toward your units, so a thick wall does not cover it; 0 = centred on the wall). reward = a key of FE.REWARDS; placeholder = shows <Unlocked: Not Implemented Yet>.
   // What you destroy stays destroyed until the whole map is cleared (see state.mapProg): walls keep their damage, anything
   // that died stays dead, and enemies that are still alive come back at full health.
   FE.MAPS = [
     { id: 'breach', name: 'Breach the Surface', title: 'Surface Breached', width: 50, height: 28, bow: 2.6,
       enemies: [{ type: 'wall', at: 1 / 3, hp: 5 }, { type: 'wall', at: 2 / 3, hp: 10 }],
       reward: 'stabilizer' },
-    { id: 'reclaim1', name: 'Reclaim the Surface 1/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
+    { id: 'reclaim1', name: 'The Surface 1/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
       enemies: [
         { type: 'wall', at: .2, hp: 10 },
         { type: 'sleeper', x: .42, dy: -5 }, { type: 'sleeper', x: .42, dy: 5 },      // a colon  :
         { type: 'brute', x: .7, dy: 0 }
       ], placeholder: true },
-    { id: 'reclaim2', name: 'Reclaim the Surface 2/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
+    { id: 'reclaim2', name: 'The Surface 2/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
       enemies: [
         { type: 'wall', at: .16, hp: 40 },
         { type: 'mage', x: .25, dy: 0 },
@@ -175,8 +184,24 @@ FE.module(function (FE) {
         { type: 'stick', x: .6, dx: 0, dy: 0 }, { type: 'stick', x: .6, dx: -3, dy: -2 }, { type: 'stick', x: .6, dx: -3, dy: 2 },
         { type: 'stick', x: .6, dx: 3, dy: -2 }, { type: 'stick', x: .6, dx: 3, dy: 2 }
       ], placeholder: true },
-    { id: 'reclaim3', name: 'Reclaim the Surface 3/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
-      enemies: [{ type: 'giant', x: .5, dy: 0 }], placeholder: true }
+    { id: 'reclaim3', name: 'The Surface 3/3', title: 'Ground Reclaimed', width: 60, height: 33.6, bow: 3.1,
+      enemies: [{ type: 'giant', x: .5, dy: 0 }], placeholder: true },
+    // The first three quarters are empty. There stands a wall about two and a half times as thick as the others (thick) with 250
+    // health, and behind it two cannons, one above the other.
+    { id: 'outpost', name: 'Outpost', title: 'Outpost Taken', width: 60, height: 33.6, bow: 3.1,
+      enemies: [
+        { type: 'wall', at: .75, hp: 250, thick: 2.5, curve: 'right', flag: true, labelGap: 1.4 },
+        { type: 'cannon', x: .92, dy: -7 }, { type: 'cannon', x: .92, dy: 7 }
+      ], placeholder: true },
+    // 20% bigger than the others. Same layout as Outpost, but the wall is a bit further forward, thicker again and has 1000 health.
+    // Behind it: five archers in a column and two cannons further back.
+    { id: 'settlement', name: 'Settlement', title: 'Settlement Taken', width: 72, height: 40.32, bow: 3.72,
+      enemies: [
+        { type: 'wall', at: .78, hp: 1000, thick: 3.5, curve: 'right', flag: true, labelGap: 1.9 },
+        { type: 'archer', x: .865, dy: -13 }, { type: 'archer', x: .865, dy: -6.5 }, { type: 'archer', x: .865, dy: 0 },
+        { type: 'archer', x: .865, dy: 6.5 }, { type: 'archer', x: .865, dy: 13 },
+        { type: 'cannon', x: .955, dy: -7 }, { type: 'cannon', x: .955, dy: 7 }
+      ], placeholder: true }
   ];
   FE.REWARDS = {
     stabilizer: { name: 'Star Stabilizer', desc: 'You may now condense stars to Tier 4, for 3 crystals on supernova.' }

@@ -148,8 +148,8 @@ FE.module(function (FE) {
     const v = $('btn-venture'), none = FE.UNITS.every(u => !FE.state.units[u.id]);
     if (v.disabled !== none) v.disabled = none;
 
-    // the target map, listed under Venture Forth once the first map is beaten (the arrows are TESTING ONLY, see cycleTarget)
-    const tg = $('tgt'), shown = FE.DEV && !!FE.state.cleared[FE.MAPS[0].id];
+    // the target map, listed under Venture Forth once TESTING ONLY has been pressed (the arrows are TESTING ONLY, see cycleTarget)
+    const tg = $('tgt'), shown = FE.testingOn();
     if (tg.hidden === shown) tg.hidden = !shown;
     if (shown) {
       const i = FE.targetIdx();

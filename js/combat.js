@@ -21,13 +21,13 @@ FE.module(function (FE) {
   const rgba = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
   const blend = (a, b, t) => { const A = rgb(a), B = rgb(b); return `rgb(${Math.round(lerp(A[0], B[0], t))},${Math.round(lerp(A[1], B[1], t))},${Math.round(lerp(A[2], B[2], t))})`; };
   const CFG = FE.COMBAT;
-  const HEAL = '#8fdcff', ZAP = '#ffe45c';                                   // the colour of healing, and of the mage's lightning
+  const HEAL = '#8fdcff', ZAP = '#ffe45c', LASER = '#ff5a4a';              // the colour of healing, of the mage's lightning, and of the cannon's laser
 
   const C = FE.combat = { active: false };
   let cv, ctx, dpr = 1, cw = 0, ch = 0, sc = 1, ox = 0, oy = 0;          // canvas size, map units -> pixels
-  let map, roster, units, queue, waves, wi, enemies, target, parts, rings, bolts, orbs, selected, swarm = { x: 0, y: 0 };
+  let map, roster, units, queue, waves, wi, enemies, target, parts, rings, bolts, lasers, orbs, selected, swarm = { x: 0, y: 0 };
   let T = 0, running = false, started = false, paused = false, modal = false, speedIdx = 0, spawnT = 0, over = false, endT = 0, dustGained = 0, armedAt = 0, last = performance.now();
-  let tagSig = '';
+  let arrows = [], tagSig = '', kills = {}, wallHit = {};                  // what this fight destroyed: enemies killed by kind, damage dealt to each wall
   const spr = {};
 
   const totalDust = list => list.reduce((n, u) => n + u.dust, 0);
@@ -44,16 +44,16 @@ FE.module(function (FE) {
 
   // ---------------------------------------------------------------- the map
   // a wall is a thin curve across the whole height of the map. Its ends bend back toward the left, so it cups your units.
-  const wallX = (e, y) => { const u = (y - map.height / 2) / (map.height / 2); return e.cx - map.bow * u * u; };
+  const wallX = (e, y) => { const u = (y - map.height / 2) / (map.height / 2); return e.cx + (e.sgn || -1) * map.bow * u * u; };
   function makeWall(w, i) {
-    const e = { kind: 'wall', i, hp: w.hp, max: w.hp, atk: 0, cx: map.width * w.at, pts: [], flash: 0, dead: false, deadT: 0 };
+    const e = { kind: 'wall', i, hp: w.hp, max: w.hp, atk: 0, cx: map.width * w.at, pts: [], flash: 0, dead: false, deadT: 0, thick: w.thick || 1, sgn: w.curve === 'right' ? 1 : -1, flag: !!w.flag, labelGap: w.labelGap || 0 };
     for (let k = 0; k <= 32; k++) { const y = map.height * k / 32; e.pts.push([wallX(e, y), y]); }
     return e;
   }
-  // a body: sleeper, brute, stick fighter, mage, giant (see FE.ENEMIES)
+  // a body: sleeper, brute, stick fighter, mage, giant, cannon (see FE.ENEMIES)
   function makeFoe(f, i) {
     const t = FE.ENEMIES[f.type], x = map.width * f.x + (f.dx || 0), y = map.height / 2 + (f.dy || 0);
-    return { kind: f.type, t, i, hp: t.hp, max: t.hp, r: t.r, x, y, hx: x, hy: y, cd: (t.every || 1) * .5, thinkT: 0, tgt: null, aggroed: false,
+    return { kind: f.type, t, i, hp: t.hp, max: t.hp, r: t.r, x, y, hx: x, hy: y, cd: t.cannon ? t.every : (t.every || 1) * .5, cool: 0, lastFace: Math.PI, wheel: 0, aimErr: 0, thinkT: 0, tgt: null, aggroed: false,
              flash: 0, swingP: 0, face: Math.PI, dead: false, deadT: 0 };
   }
   // the nearest point on a wall to (px, py)
@@ -105,8 +105,8 @@ FE.module(function (FE) {
 
   function begin(m) {
     map = m; C.active = true;
-    roster = []; units = []; queue = []; waves = []; wi = 0; parts = []; rings = []; bolts = []; orbs = []; selected = null; target = null;
-    dustGained = 0; over = false; endT = 0; T = 0; spawnT = 0;
+    roster = []; units = []; queue = []; waves = []; wi = 0; parts = []; rings = []; bolts = []; lasers = []; arrows = []; orbs = []; selected = null; target = null;
+    dustGained = 0; over = false; endT = 0; T = 0; spawnT = 0; kills = {}; wallHit = {};
     running = false; started = false; paused = false; modal = false; speedIdx = 0; tagSig = '';
     let id = 0;
     FE.UNITS.forEach(u => {
@@ -198,6 +198,7 @@ FE.module(function (FE) {
       panel(`<h3>${map.title}</h3>
         <p>stardust gained: <span class="dust">${FE.fmt(dustGained)}</span></p>
         ${roster.length ? `<p class="dim">${dustGained === 0 ? 'every unit survived.' : `${roster.length} unit${roster.length === 1 ? '' : 's'} survived.`}</p>` : '<p class="dim">no one survived.</p>'}
+        ${report()}
         ${rewardHtml}
         <div class="btns"><button class="el" id="p-back" type="button">Back</button>${roster.length && next ? `<button class="el" id="p-next" type="button">Proceed &mdash; ${next.name}</button>` : ''}</div>
         <p class="dim">Back keeps your surviving units.</p>`);
@@ -210,10 +211,25 @@ FE.module(function (FE) {
     } else {
       s.expedition = null; s.expStarted = false; FE.save(); FE.render();
       panel(`<h3>Your army fell</h3><p>stardust gained: <span class="dust">${FE.fmt(dustGained)}</span></p>
-        ${s.mapProg[map.id] ? '<p class="dim">what you destroyed stays destroyed.</p>' : ''}
+        ${report()}
+        ${s.mapProg[map.id] ? '<p class="rep">what you destroyed stays destroyed.</p>' : ''}
         <div class="btns"><button class="el" id="p-back" type="button">Back</button></div>`);
       $('p-back').onclick = leave;
     }
+  }
+
+  // the end-of-fight table: enemies killed on the left, damage to walls on the right. The biggest wall on the map is the main wall,
+  // the others are auxiliary walls (numbered from the left).
+  function report() {
+    const names = { sleeper: 'sleeper', brute: 'brute', stick: 'stick fighter', mage: 'mage', giant: 'giant', archer: 'archer', cannon: 'cannon' };
+    const k = Object.keys(kills).map(t => `${kills[t]} ${names[t] || t}${kills[t] === 1 ? '' : 's'}`);
+    const walls = enemies.filter(e => e.kind === 'wall'), main = walls.reduce((b, e) => !b || e.max > b.max ? e : b, null);
+    const aux = walls.filter(e => e !== main).sort((x, y) => x.cx - y.cx);
+    const w = walls.map(e => ({ e, d: wallHit[e.i] || 0, n: e === main ? 'main wall' : `auxiliary wall ${aux.indexOf(e) + 1}` })).filter(x => x.d > 0)
+      .sort((x, y) => (x.e === main ? -1 : y.e === main ? 1 : x.e.cx - y.e.cx))
+      .map(x => `${x.n}: ${FE.fmt(x.d)} damage (${x.e.dead ? 'destroyed' : `${FE.fmt(x.e.hp)} of ${FE.fmt(x.e.max)} left`})`);
+    const col = (h, l) => `<div><b>${h}</b>${l.length ? l.map(t => `<p class="rep">${t}</p>`).join('') : '<p class="rep">none</p>'}</div>`;
+    return `<div class="rep-table">${col('enemies killed', k)}${col('damage to walls', w)}</div>`;
   }
 
   // ---------------------------------------------------------------- the pop-up panel
@@ -271,10 +287,11 @@ FE.module(function (FE) {
   // a unit hits an enemy
   function strike(u, e) {
     u.flare = 1;
+    if (e.kind === 'wall') wallHit[e.i] = (wallHit[e.i] || 0) + Math.min(u.atk, e.hp);
     e.hp -= u.atk; e.flash = 1; e.aggroed = true;
     const q = surfacePoint(e, u.x, u.y);
     for (let i = 0; i < 2; i++) parts.push({ x: q.x, y: q.y, vx: rand(-6, 1), vy: rand(-4, 4), age: 0, life: rand(.15, .35), c: FE.PAL[u.el].glow, r: rand(.12, .22) });
-    if (e.hp <= 0) { e.hp = 0; e.kind === 'wall' ? breakWall(e) : breakFoe(e); }
+    if (e.hp <= 0) { e.hp = 0; e.kind === 'wall' ? breakWall(e) : (breakFoe(e), kills[e.kind] = (kills[e.kind] || 0) + 1); }
     if (e.kind === 'wall' || e.dead) remember(e);
   }
 
@@ -321,6 +338,43 @@ FE.module(function (FE) {
     bolts.push({ pts, age: 0, life: 1 });
     e.cd = e.t.every; e.flash = Math.max(e.flash, .5);
     burst(u.x, u.y, ZAP, 8, 2, 8);
+    hurt(u, e.t.atk);
+  }
+
+  // the archer: an arrow is a small white line that flies perfectly straight from where it was loosed, aimed at where the target
+  // was at that moment (plus a little spread). It hits the first unit it touches, so it can miss, or hit someone else.
+  function fireArrow(e, u) {
+    const a = Math.atan2(u.y - e.y, u.x - e.x) + rand(-e.t.spread, e.t.spread), c = Math.cos(a), s = Math.sin(a);
+    arrows.push({ x: e.x + c * (e.r + .4), y: e.y + s * (e.r + .4), vx: c * e.t.arrowSpeed, vy: s * e.t.arrowSpeed, dmg: e.t.atk, c, s });
+    e.cd = e.t.every; e.flash = Math.max(e.flash, .35);
+  }
+  function stepArrows(dt) {
+    for (let i = arrows.length - 1; i >= 0; i--) {
+      const a = arrows[i], nx = a.x + a.vx * dt, ny = a.y + a.vy * dt, dx = nx - a.x, dy = ny - a.y, L2 = dx * dx + dy * dy || 1e-6, rad = CFG.unitSize / 2 + .12;
+      let hit = null, ht = Infinity;
+      for (const u of units) {
+        const t = clamp(((u.x - a.x) * dx + (u.y - a.y) * dy) / L2, 0, 1);
+        if (Math.hypot(u.x - (a.x + dx * t), u.y - (a.y + dy * t)) < rad && t < ht) { ht = t; hit = u; }
+      }
+      if (hit) { burst(a.x + dx * ht, a.y + dy * ht, '#ffffff', 5, 1, 5); arrows.splice(i, 1); hurt(hit, a.dmg); continue; }
+      a.x = nx; a.y = ny;
+      if (nx < -4 || nx > map.width + 4 || ny < -4 || ny > map.height + 4) arrows.splice(i, 1);
+    }
+  }
+
+  // the cannon's mouth: the tip of its barrel, which points the way it faces (at its target)
+  const mouthAt = e => ({ x: e.x + Math.cos(e.face) * e.r * 1.1, y: e.y + Math.sin(e.face) * e.r * 1.1 });
+  // the cannon: a straight laser from its mouth to a unit. It appears at once, hurts at once, and fades over a second, and it
+  // ends in an explosion of sparks. The mouth then dims (e.cool counts the dimming down) and the cannon starts charging again.
+  function fireCannon(e, u) {
+    const m = mouthAt(e), hx = u.x, hy = u.y;
+    lasers.push({ x1: m.x, y1: m.y, x2: hx, y2: hy, age: 0, life: 1 });
+    e.cd = e.t.every; e.cool = 1; e.flash = Math.max(e.flash, .6);
+    burst(m.x, m.y, LASER, 8, 2, 6);                                      // a flash at the mouth
+    ring(hx, hy, '#ffffff', .22, .2, 1.7, true);                          // and the explosion where it hits
+    ring(hx, hy, LASER, .55, .4, 3.6);
+    burst(hx, hy, LASER, 26, 3, 13);
+    burst(hx, hy, '#ffffff', 8, 2, 7);
     hurt(u, e.t.atk);
   }
 
@@ -390,15 +444,20 @@ FE.module(function (FE) {
     for (const e of alive) {
       const t = e.t;
       if (e.kind === 'wall' || t.sleeps) continue;
-      e.cd = Math.max(0, e.cd - dt);
+      if (!t.cannon) e.cd = Math.max(0, e.cd - dt);                                  // (a cannon only charges while it has a target)
       e.thinkT -= dt;
       if (e.tgt && e.tgt.dead) e.tgt = null;
       if (!e.tgt && e.thinkT <= 0) { e.tgt = pickFor(e); e.thinkT = .25; }
       const u = e.tgt;
       if (!u) continue;
+      if (t.cannon) e.cd = Math.max(0, e.cd - dt);
       const dx = u.x - e.x, dy = u.y - e.y, dist = Math.hypot(dx, dy) || .001, gap = dist - e.r - half;
-      e.face = Math.atan2(dy, dx);
-      if (t.ranged) { if (gap > t.range) e.tgt = null; else if (e.cd <= 0) zap(e, u); continue; }
+      const want = Math.atan2(dy, dx);
+      if (t.turn) {                                                                    // a cannon swings round (its wheels turn): it cannot fire until it points at its target
+        const d = Math.atan2(Math.sin(want - e.face), Math.cos(want - e.face)), st = clamp(d, -t.turn * dt, t.turn * dt);
+        e.face += st; e.aimErr = Math.abs(d - st);
+      } else e.face = want;
+      if (t.ranged) { if (gap > t.range) e.tgt = null; else if (e.cd <= 0 && (!t.turn || e.aimErr < .05)) (t.cannon ? fireCannon : t.archer ? fireArrow : zap)(e, u); continue; }
       if (gap > t.reach) {                                                             // out of reach: walk up to it
         if (gap > Math.max(t.aggro * 3, 30)) { e.tgt = null; continue; }               // it got away
         const st = Math.min(t.speed * dt, gap - t.reach * .5);
@@ -429,7 +488,8 @@ FE.module(function (FE) {
     parts = parts.filter(p => p.age < p.life);
     for (const r of rings) r.age += dt; rings = rings.filter(r => r.age < r.life);
     for (const b of bolts) b.age += dt; bolts = bolts.filter(b => b.age < b.life);
-    for (const e of enemies) { e.flash = Math.max(0, e.flash - dt * 4); e.swingP = Math.max(0, e.swingP - dt * 3.5); if (e.dead) e.deadT += dt; }
+    for (const b of lasers) b.age += dt; lasers = lasers.filter(b => b.age < b.life);
+    for (const e of enemies) { e.flash = Math.max(0, e.flash - dt * 4); e.swingP = Math.max(0, e.swingP - dt * 3.5); if (e.cool) e.cool = Math.max(0, e.cool - dt); if (e.dead) e.deadT += dt; }
     for (const u of roster) { u.flare = Math.max(0, u.flare - dt * 4); u.heal = Math.max(0, u.heal - dt * 2); u.hit = Math.max(0, u.hit - dt * 5); u.age += dt; }
     stepOrbs(dt);
     if (over) return;
@@ -497,6 +557,8 @@ FE.module(function (FE) {
     }
 
     enemiesAct(dt, alive, wall);
+    stepArrows(dt);
+    for (const e of enemies) if (e.kind === 'cannon') { e.wheel += Math.atan2(Math.sin(e.face - e.lastFace), Math.cos(e.face - e.lastFace)); e.lastFace = e.face; }
 
     if (!enemies.some(e => !e.dead)) { endT += dt; if (endT > 1.3) finish(true); }
     else if (!roster.length) { endT += dt; if (endT > .9) finish(false); }
@@ -516,7 +578,7 @@ FE.module(function (FE) {
     if (e.dead) {
       const t = e.deadT, a = Math.max(0, 1 - t / 1.1);
       if (a <= 0) return;
-      ctx.strokeStyle = `rgba(255,255,255,${.85 * a})`; ctx.lineWidth = 1.6 * px; ctx.lineCap = 'round';
+      ctx.strokeStyle = `rgba(255,255,255,${.85 * a})`; ctx.lineWidth = 1.6 * px * e.thick; ctx.lineCap = 'round';
       ctx.beginPath();
       for (let i = 0; i < e.pts.length - 1; i++) {
         if (hs(i, e.i) < .3) continue;
@@ -528,10 +590,17 @@ FE.module(function (FE) {
     }
     ctx.lineCap = 'round'; ctx.beginPath();
     e.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-    ctx.strokeStyle = `rgba(190,205,255,${.1 + .25 * e.flash})`; ctx.lineWidth = 7 * px; ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,${.78 + .22 * e.flash})`; ctx.lineWidth = (1.5 + e.flash) * px; ctx.stroke();
+    ctx.strokeStyle = `rgba(190,205,255,${.1 + .25 * e.flash})`; ctx.lineWidth = 7 * px * e.thick; ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${.78 + .22 * e.flash})`; ctx.lineWidth = (1.5 + e.flash) * px * e.thick; ctx.stroke();
     ctx.fillStyle = 'rgba(233,238,252,.85)'; ctx.font = `${17 * px}px "Times New Roman", serif`; ctx.textAlign = 'center';
-    ctx.fillText(String(e.hp), e.pts[0][0], 1.7);
+    ctx.fillText(String(e.hp), e.pts[0][0] - e.labelGap, 1.7);
+    if (e.flag) {                                                  // a small flag on a pole, to the right of the wall's upper end
+      const fx = e.pts[0][0] + 1.3 + .3 * e.thick, w = Math.sin(T * 3) * .25;
+      ctx.lineCap = ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.3 * px;
+      ctx.beginPath(); ctx.moveTo(fx, .5); ctx.lineTo(fx, 4.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(fx, .5); ctx.lineTo(fx + 2.3, 1.35 + w); ctx.lineTo(fx, 2.2); ctx.closePath();
+      ctx.fillStyle = 'rgba(190,205,255,.18)'; ctx.fill(); ctx.stroke();
+    }
   }
 
   // an enemy's health, in the same style as a wall's: the number above it, and a thin ring around it with one segment (and a
@@ -563,6 +632,60 @@ FE.module(function (FE) {
     ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = Math.max(1.8 * px, e.r * (w === 'club' ? .2 : .1)); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
     if (w === 'club') { ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.beginPath(); ctx.arc(tx, ty, e.r * .27, 0, TAU); ctx.fill(); }
   }
+  // the cannon, seen from above like a ship's cannon: the barrel is the whole enemy (a tapered tube with a rounded rear, bands and
+  // a lip), on an axle with a big wheel each side. When it swings round the wheels turn (e.wheel), in opposite directions.
+  function drawCannon(e, px) {
+    const r = e.r, H = r * 1.1, f = e.flash;
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.face);
+    ctx.lineCap = ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.3 * px;
+    ctx.beginPath(); ctx.moveTo(-.15 * r, -.95 * r); ctx.lineTo(-.15 * r, .95 * r); ctx.stroke();               // the axle
+    const wl = .9 * r, ww = .3 * r, step = wl / 4;
+    for (const sd of [-1, 1]) {
+      const cy = sd * .78 * r, x0 = -.15 * r - wl / 2;
+      ctx.beginPath(); ctx.rect(x0, cy - ww / 2, wl, ww);
+      ctx.fillStyle = 'rgba(6,9,26,.95)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5 * px; ctx.stroke();
+      ctx.lineWidth = 1.1 * px; ctx.strokeStyle = 'rgba(190,205,255,.75)';
+      const ph = ((sd * e.wheel * .8 * r) % step + step) % step;                                               // spokes roll along the wheel
+      for (let k = -1; k <= 4; k++) { const x = x0 + ph + k * step; if (x > x0 + .02 && x < x0 + wl - .02) { ctx.beginPath(); ctx.moveTo(x, cy - ww / 2); ctx.lineTo(x, cy + ww / 2); ctx.stroke(); } }
+    }
+    const body = () => {
+      ctx.beginPath(); ctx.moveTo(-H + .35 * r, -.4 * r); ctx.lineTo(H, -.3 * r); ctx.lineTo(H, .3 * r); ctx.lineTo(-H + .35 * r, .4 * r);
+      ctx.quadraticCurveTo(-H - .08 * r, 0, -H + .35 * r, -.4 * r); ctx.closePath();
+    };
+    body(); ctx.fillStyle = 'rgba(6,9,26,.95)'; ctx.fill();
+    ctx.fillStyle = `rgba(190,205,255,${.05 + .14 * f})`; ctx.fill();
+    ctx.strokeStyle = `rgba(190,205,255,${.1 + .25 * f})`; ctx.lineWidth = 7 * px; ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${.78 + .22 * f})`; ctx.lineWidth = (1.5 + f) * px; ctx.stroke();
+    ctx.lineWidth = 1.1 * px; ctx.strokeStyle = 'rgba(255,255,255,.5)';
+    for (const bx of [-.35 * r, .3 * r]) { const hw = (.35 + .05 * (bx / r + 1)) * r; ctx.beginPath(); ctx.moveTo(bx, -hw); ctx.lineTo(bx, hw); ctx.stroke(); }   // bands
+    ctx.restore();
+  }
+  // the cannon's mouth. Right after a shot it flares, then dims almost to nothing for about a second; after that it glows
+  // brighter and brighter until the next shot (e.cd counts the charge down, e.cool the dimming).
+  function drawMouth(e, px) {
+    const ch = 1 - e.cd / e.t.every, ramp = clamp((ch - .2) / .8, 0, 1), cool = e.cool || 0;
+    const b = cool > 0 ? .1 + .9 * cool : .1 + .9 * Math.pow(ramp, 1.6);        // 0.1 = dim, 1 = about to fire
+    // no visible opening: the glow sits at the very end of the barrel and only the half outside it can be seen, as if the light
+    // were inside the barrel and only what escapes shows
+    const H = e.r * 1.1, g = e.r * (.3 + 1.1 * b);
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.face);
+    ctx.beginPath(); ctx.rect(H, -e.r * 4, e.r * 4, e.r * 8); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, b * 1.1); ctx.drawImage(sprite('laser', LASER), H - g, -g, g * 2, g * 2);
+    if (b > .45) { const h = g * .45; ctx.globalAlpha = (b - .45) / .55; ctx.drawImage(sprite('laserhot', '#fff0e0'), H - h, -h, h * 2, h * 2); }
+    ctx.restore();
+  }
+  // the archer's bow: an arc on the side it faces, with a string that is drawn back (and an arrow nocked) just before it shoots
+  function drawBow(e, px) {
+    const R = e.r * 1.45, sp = .85, f = e.face, pull = clamp(1 - e.cd / .7, 0, 1);
+    const ax = e.x + Math.cos(f - sp) * R, ay = e.y + Math.sin(f - sp) * R, bx = e.x + Math.cos(f + sp) * R, by = e.y + Math.sin(f + sp) * R;
+    const mr = R * Math.cos(sp) - pull * e.r * .6, mx = e.x + Math.cos(f) * mr, my = e.y + Math.sin(f) * mr;
+    ctx.lineCap = ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 1.5 * px;
+    ctx.beginPath(); ctx.arc(e.x, e.y, R, f - sp, f + sp); ctx.stroke();
+    ctx.lineWidth = 1 * px; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mx, my); ctx.lineTo(bx, by); ctx.stroke();
+    if (pull > 0) { ctx.strokeStyle = `rgba(255,255,255,${.4 + .5 * pull})`; ctx.lineWidth = 1.2 * px; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(f) * (R + .5), e.y + Math.sin(f) * (R + .5)); ctx.stroke(); }
+  }
   function drawHat(e, px) {
     const r = e.r, by = e.y - r * .7, tip = by - r * 1.5, charge = e.cd < .8 ? 1 - e.cd / .8 : 0;
     ctx.lineCap = ctx.lineJoin = 'round';
@@ -592,6 +715,7 @@ FE.module(function (FE) {
       }
       return;
     }
+    if (e.kind === 'cannon') { drawCannon(e, px); drawMouth(e, px); drawHealth(e, px); return; }
     const f = e.flash;
     drawWeapon(e, px);
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, TAU);
@@ -601,6 +725,7 @@ FE.module(function (FE) {
     ctx.strokeStyle = `rgba(255,255,255,${.78 + .22 * f})`; ctx.lineWidth = (1.5 + f) * px; ctx.stroke();
     if (e.kind === 'giant') { ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = px; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * .8, 0, TAU); ctx.stroke(); }
     if (e.kind === 'mage') drawHat(e, px);
+    if (e.kind === 'archer') drawBow(e, px);
     if (e.t.sleeps) drawZzz(e, px);
     drawHealth(e, px);
   }
@@ -641,6 +766,17 @@ FE.module(function (FE) {
       b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
       ctx.strokeStyle = rgba(ZAP, .4 * a); ctx.lineWidth = 6 * px; ctx.stroke();
       ctx.strokeStyle = `rgba(255,252,225,${.95 * a})`; ctx.lineWidth = 1.7 * px; ctx.stroke();
+    }
+    for (const b of lasers) {                                             // lasers: there at once, then they thin out and fade
+      const a = Math.pow(1 - b.age / b.life, 1.4);
+      ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2);
+      ctx.strokeStyle = rgba(LASER, .35 * a); ctx.lineWidth = (3 + 9 * a) * px; ctx.stroke();
+      ctx.strokeStyle = `rgba(255,238,225,${.95 * a})`; ctx.lineWidth = (.6 + 2.2 * a) * px; ctx.stroke();
+    }
+    ctx.lineCap = 'round';
+    for (const a of arrows) {                                             // arrows: small white lines
+      ctx.strokeStyle = 'rgba(190,205,255,.3)'; ctx.lineWidth = 4 * px; ctx.beginPath(); ctx.moveTo(a.x - a.c * 1.5, a.y - a.s * 1.5); ctx.lineTo(a.x, a.y); ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5 * px; ctx.stroke();
     }
     for (const o of orbs) {                                               // the tiny water orbs
       const g = 1.1; ctx.globalAlpha = .9; ctx.drawImage(sprite('heal', HEAL), o.x - g, o.y - g, g * 2, g * 2);
