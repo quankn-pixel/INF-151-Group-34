@@ -113,7 +113,7 @@ FE.module(function (FE) {
       const st = FE.unitStats(u.id);
       for (let i = 0; i < FE.state.expedition[u.id]; i++) {
         const r = Math.random();
-        roster.push({ id: ++id, el: u.id, name: u.name, hp: st.hp, max: st.hp, atk: st.atk, dust: u.dust, spawned: false, dead: false,
+        roster.push({ id: ++id, el: u.id, name: u.name, size: CFG.unitSize * (u.size || 1), hp: st.hp, max: st.hp, atk: st.atk, dust: u.dust, spawned: false, dead: false,
                       x: 0, y: 0, vx: 0, vy: 0, cd: 0, age: 0, flare: 0, heal: 0, hit: 0, pend: 0,
                       slot: rand(-Math.PI, Math.PI), lay: r < .55 ? 0 : r < .87 ? 1 : 2 });   // slot / lay: where around an enemy this unit likes to stand
       }
@@ -350,11 +350,11 @@ FE.module(function (FE) {
   }
   function stepArrows(dt) {
     for (let i = arrows.length - 1; i >= 0; i--) {
-      const a = arrows[i], nx = a.x + a.vx * dt, ny = a.y + a.vy * dt, dx = nx - a.x, dy = ny - a.y, L2 = dx * dx + dy * dy || 1e-6, rad = CFG.unitSize / 2 + .12;
+      const a = arrows[i], nx = a.x + a.vx * dt, ny = a.y + a.vy * dt, dx = nx - a.x, dy = ny - a.y, L2 = dx * dx + dy * dy || 1e-6;
       let hit = null, ht = Infinity;
       for (const u of units) {
         const t = clamp(((u.x - a.x) * dx + (u.y - a.y) * dy) / L2, 0, 1);
-        if (Math.hypot(u.x - (a.x + dx * t), u.y - (a.y + dy * t)) < rad && t < ht) { ht = t; hit = u; }
+        if (Math.hypot(u.x - (a.x + dx * t), u.y - (a.y + dy * t)) < u.size / 2 + .12 && t < ht) { ht = t; hit = u; }
       }
       if (hit) { burst(a.x + dx * ht, a.y + dy * ht, '#ffffff', 5, 1, 5); arrows.splice(i, 1); hurt(hit, a.dmg); continue; }
       a.x = nx; a.y = ny;
@@ -415,7 +415,7 @@ FE.module(function (FE) {
     if (L2 < .01) return [gx, gy];
     const t = ((e.x - u.x) * vx + (e.y - u.y) * vy) / L2;
     if (t <= 0 || t >= 1) return [gx, gy];
-    const px = u.x + vx * t, py = u.y + vy * t, Ra = e.r + CFG.unitSize * .5 + .5;
+    const px = u.x + vx * t, py = u.y + vy * t, Ra = e.r + u.size * .5 + .5;
     if (Math.hypot(px - e.x, py - e.y) >= Ra) return [gx, gy];
     const L = Math.sqrt(L2), nx = -vy / L, ny = vx / L, side = vx * (e.y - u.y) - vy * (e.x - u.x) > 0 ? -1 : 1;
     return [e.x + nx * Ra * 1.2 * side, e.y + ny * Ra * 1.2 * side];
@@ -432,7 +432,7 @@ FE.module(function (FE) {
     const t = e.t, seeR = t.ranged ? t.range : e.aggroed ? Math.max(t.aggro * 3, 30) : t.aggro;
     let best = null, bm = -1, bd = Infinity;
     for (const u of units) {
-      const d = Math.hypot(u.x - e.x, u.y - e.y) - e.r - CFG.unitSize / 2;
+      const d = Math.hypot(u.x - e.x, u.y - e.y) - e.r - u.size / 2;
       if (d > seeR) continue;
       if (u.max > bm || (u.max === bm && d < bd)) { best = u; bm = u.max; bd = d; }
     }
@@ -440,7 +440,6 @@ FE.module(function (FE) {
   }
 
   function enemiesAct(dt, alive, wall) {
-    const half = CFG.unitSize / 2;
     for (const e of alive) {
       const t = e.t;
       if (e.kind === 'wall' || t.sleeps) continue;
@@ -451,7 +450,7 @@ FE.module(function (FE) {
       const u = e.tgt;
       if (!u) continue;
       if (t.cannon) e.cd = Math.max(0, e.cd - dt);
-      const dx = u.x - e.x, dy = u.y - e.y, dist = Math.hypot(dx, dy) || .001, gap = dist - e.r - half;
+      const dx = u.x - e.x, dy = u.y - e.y, dist = Math.hypot(dx, dy) || .001, gap = dist - e.r - u.size / 2;
       const want = Math.atan2(dy, dx);
       if (t.turn) {                                                                    // a cannon swings round (its wheels turn): it cannot fire until it points at its target
         const d = Math.atan2(Math.sin(want - e.face), Math.cos(want - e.face)), st = clamp(d, -t.turn * dt, t.turn * dt);
@@ -498,10 +497,10 @@ FE.module(function (FE) {
     const alive = enemies.filter(e => !e.dead);
     const wall = alive.reduce((b, e) => e.kind === 'wall' && (!b || e.cx < b.cx) ? e : b, null);   // the first wall still standing stops everyone
     chooseTarget(alive, wall, dt);
-    const solid = alive.filter(e => e.kind !== 'wall'), half = CFG.unitSize / 2;
+    const solid = alive.filter(e => e.kind !== 'wall');
 
     // separation grid
-    const grid = new Map(), G = CFG.sepDist;
+    const grid = new Map(), G = CFG.sepDist * 1.2;                    // (the grid cell is as wide as the biggest unit needs)
     for (const u of units) { const k = Math.floor(u.x / G) * 4096 + Math.floor(u.y / G); (grid.get(k) || grid.set(k, []).get(k)).push(u); }
 
     for (const u of units) {
@@ -543,13 +542,14 @@ FE.module(function (FE) {
         for (const o of cell) {
           if (o === u) continue;
           let dx = u.x - o.x, dy = u.y - o.y, d = Math.hypot(dx, dy);
-          if (d >= G) continue;
+          const mind = CFG.sepDist * (u.size + o.size) / (2 * CFG.unitSize);       // bigger units keep more room
+          if (d >= mind) continue;
           if (d < .001) { dx = rand(-1, 1); dy = rand(-1, 1); d = Math.hypot(dx, dy) || 1; }
-          const push = (G - d) * .5; u.x += dx / d * push; u.y += dy / d * push;
+          const push = (mind - d) * .5; u.x += dx / d * push; u.y += dy / d * push;
         }
       }
       for (const e of solid) {                                   // heavy: the unit gives way, the enemy does not
-        const dx = u.x - e.x, dy = u.y - e.y, d = Math.hypot(dx, dy) || .001, min = e.r + half + .05;
+        const dx = u.x - e.x, dy = u.y - e.y, d = Math.hypot(dx, dy) || .001, min = e.r + u.size / 2 + .05;
         if (d < min) { u.x = e.x + dx / d * min; u.y = e.y + dy / d * min; const vn = (u.vx * dx + u.vy * dy) / d; if (vn < 0) { u.vx -= vn * dx / d; u.vy -= vn * dy / d; } }
       }
       if (wall) { const lim = wallX(wall, u.y) - .5; if (u.x > lim) { u.x = lim; if (u.vx > 0) u.vx = 0; } }
@@ -740,17 +740,16 @@ FE.module(function (FE) {
 
     // units: a small square with a soft glow of its element. The glow is quiet while it waits and flares to full strength
     // when the unit hits something (or heals someone), so you can see who is doing damage.
-    const s = CFG.unitSize, glFull = Math.max(s * 2.6, 24 * px);
     ctx.globalCompositeOperation = 'lighter';
     for (const u of units) {
-      const f = u.flare, gl = glFull * (.78 + .22 * f), born = Math.min(1, u.age / .25);
+      const glFull = Math.max(u.size * 2.6, 24 * px), f = u.flare, gl = glFull * (.78 + .22 * f), born = Math.min(1, u.age / .25);
       ctx.globalAlpha = (.2 + .55 * f) * born;
       ctx.drawImage(sprite(u.el), u.x - gl, u.y - gl, gl * 2, gl * 2);
       if (u.heal > 0) { const hg = glFull * (.9 + .3 * u.heal); ctx.globalAlpha = .75 * u.heal; ctx.drawImage(sprite('heal', HEAL), u.x - hg, u.y - hg, hg * 2, hg * 2); }
     }
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     for (const u of units) {
-      const p = FE.PAL[u.el], k = Math.min(1, u.age / .2), q = s * k;
+      const s = u.size, p = FE.PAL[u.el], k = Math.min(1, u.age / .2), q = s * k;
       ctx.fillStyle = p.glow; ctx.fillRect(u.x - q / 2, u.y - q / 2, q, q);
       const h = u.heal, cs = q / 2 * (1 + .45 * h);                       // a healed unit's core flashes light blue (and swells a little)
       ctx.fillStyle = h > .02 ? blend(p.core, HEAL, Math.min(1, h * 1.5)) : p.core; ctx.fillRect(u.x - cs / 2, u.y - cs / 2, cs, cs);

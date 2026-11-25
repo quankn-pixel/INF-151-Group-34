@@ -110,10 +110,11 @@ FE.module(function (FE) {
   // Water does not attack while an ally nearby is hurt: it heals that ally instead (see FE.COMBAT.heal*).
   FE.UNIT_APS = 1;
   FE.UNITS = [
+    // size: how big the unit is compared to the normal size (COMBAT.unitSize), both in combat and for its dots on the army tab (1 if left out)
     // blurb: *words between stars* are the keywords that shimmer on the unit page
-    { id: 'air',   name: 'Speck of Air',   per: 3, hp: 1, atk: 1, dust: 1, blurb: 'Swarm your enemies.' },
+    { id: 'air',   name: 'Speck of Air',   size: .8, per: 3, hp: 1, atk: 1, dust: 1, blurb: 'Swarm your enemies.' },
     { id: 'water', name: 'Speck of Water', per: 1, hp: 3, atk: 2, dust: 1, blurb: 'A well-rounded unit. Can *heal* allies by throwing water at them.' },
-    { id: 'earth', name: 'Speck of Earth', per: 1, hp: 5, atk: 1, dust: 1, blurb: '*Tanky* and reliable. Enemies target them first, since they\u2019re the biggest.' },
+    { id: 'earth', name: 'Speck of Earth', size: 1.2, per: 1, hp: 5, atk: 1, dust: 1, blurb: '*Tanky* and reliable. Enemies target them first, since they\u2019re the biggest.' },
     { id: 'fire',  name: 'Speck of Fire',  per: 1, hp: 1, atk: 5, dust: 1, blurb: '*Powerful* but fragile, and works best behind other units.' }
   ];
   FE.POWER_MULT = 2;                  // the Powerful Units skill multiplies every unit's health and damage by this

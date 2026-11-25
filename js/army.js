@@ -10,6 +10,8 @@ FE.module(function (FE) {
   const rgba = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
   const text = (el, t) => { if (el.textContent !== t) el.textContent = t; };
 
+  // dot sizes follow the combat sizes (UNITS size), measured from the smallest kind, which keeps the size every dot used to have
+  const SZ = {}; { const min = Math.min(...FE.UNITS.map(u => u.size || 1)); FE.UNITS.forEach(u => { SZ[u.id] = (u.size || 1) / min; }); }
   const dots = [], spr = {};
   let cv, ctx, W = 0, H = 0, T = 0, prev = performance.now(), scatter = false;
 
@@ -88,14 +90,16 @@ FE.module(function (FE) {
     ctx.clearRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'lighter';
     for (const d of dots) {
-      const k = clamp(d.age / .9, 0, 1), e = easeOut(k), pulse = .75 + .25 * Math.sin(T * 1.6 + d.p), c = FE.PAL[d.el].glow, sp = sprite(d.el);
-      const gr = 15 * (1 + (1 - e) * 1.8);                                              // the glow starts wide and settles
+      const k = clamp(d.age / .9, 0, 1), e = easeOut(k), pulse = .75 + .25 * Math.sin(T * 1.6 + d.p), c = FE.PAL[d.el].glow, sp = sprite(d.el), m = SZ[d.el];
+      const gr = 15 * m * (1 + (1 - e) * 1.8);                                          // the glow starts wide and settles
       ctx.globalAlpha = clamp(.3 * pulse * (.3 + .7 * e) + (1 - e) * .55, 0, 1);
       ctx.drawImage(sp, d.x - gr, d.y - gr, gr * 2, gr * 2);
-      ctx.globalAlpha = .55 + .3 * pulse;
-      const cr = 5 * e + .5; ctx.drawImage(sp, d.x - cr, d.y - cr, cr * 2, cr * 2);
-      ctx.globalAlpha = clamp(.55 + .35 * e, 0, 1); ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(d.x, d.y, 1.7 * e, 0, TAU); ctx.fill();
+      ctx.globalAlpha = .45 + .25 * pulse;
+      const cr = (5 * e + .5) * m; ctx.drawImage(sp, d.x - cr, d.y - cr, cr * 2, cr * 2);
+      ctx.globalCompositeOperation = 'source-over';                                     // the dot itself is the element's colour, not white
+      ctx.globalAlpha = clamp(.7 + .3 * e, 0, 1); ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(d.x, d.y, 1.7 * m * e, 0, TAU); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
       if (k < 1) {                                                                       // the ring that closes in
         ctx.globalAlpha = 1; ctx.strokeStyle = rgba(c, .8 * Math.sin(k * Math.PI)); ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.arc(d.x, d.y, 4 + 38 * (1 - e), 0, TAU); ctx.stroke();
