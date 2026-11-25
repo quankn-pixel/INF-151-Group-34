@@ -111,17 +111,51 @@ FE.module(function (FE) {
     T += dt; sync(); if (scatter) doScatter(); update(dt); draw();
   }
 
+  // ---- the unit page: stat lines with shimmering keywords, in the look of the Unit Keyword Shimmer mock-up ----
+  // *words between stars* become keywords: the unit's colour at rest, with a soft light band that sweeps across when you hover the
+  // unit and every few seconds on its own. Water's also glows while the band passes. (--a rest colour, --h2 the light of the band.)
+  const KW = {
+    air:   { a: '#aee0f7', h2: '#f4fbff', g: '#8fd3f5' },
+    water: { a: '#6fb3ff', h2: '#a9d2ff', g: '#3d8bf0', glow: true },
+    earth: { a: '#e2ad6e', h2: '#f8dba8', g: '#e2ad6e' },
+    fire:  { a: '#ff875a', h2: '#ffcbb0', g: '#ff5a2e' }
+  };
+  const md = s => s.replace(/\*(.+?)\*/g, '<span class="kw">$1</span>');
+  const statHtml = u => {
+    const st = FE.unitStats(u.id), kw = (id, t) => u.id === id ? `<span class="kw">${t}</span>` : t;
+    let x = '';
+    if (u.per > 1) { const w = FE.NUM_WORD(u.per); x = `<span>${md(`*${w[0].toUpperCase() + w.slice(1)}*`)} <i class="ic"></i> per ${FE.gemHtml(u.id)}</span>`; }
+    else if (u.id === 'water') x = `<span>${md(`*heal ${FE.COMBAT.healAmount}*`)}</span>`;
+    return `<span>${kw('earth', `health ${st.hp}`)} · ${kw('fire', `attack ${st.atk}`)}</span>${x ? ' · ' + x : ''}`;
+  };
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function shimmer(row, id) {
+    const k = KW[id], f0 = 'drop-shadow(0 0 0 rgba(0,0,0,0))', fb = `drop-shadow(0 0 5px ${k.g}99)`;
+    row._play = () => {
+      if (reduceMotion || FE.view !== 2) return;
+      row.querySelectorAll('.kw').forEach(w => {
+        if (w._an) w._an.cancel();
+        w._an = !k.glow ? w.animate([{ backgroundPosition: '100% 0' }, { backgroundPosition: '0% 0' }], { duration: 1300, easing: 'ease-in-out' })
+          : w.animate([{ backgroundPosition: '100% 0', filter: f0 }, { filter: fb, offset: .5 }, { backgroundPosition: '0% 0', filter: f0 }], { duration: 1300, easing: 'ease-in-out' });
+      });
+    };
+    row.addEventListener('pointerenter', row._play);
+    return row;
+  }
+
   FE.buildArmy = function () {
     cv = $('army-cv'); ctx = cv.getContext('2d');
     new ResizeObserver(size).observe(cv); size();
     FE.UNITS.forEach(u => {
       const r = document.createElement('div');
       r.className = 'unit'; r.dataset.el = u.id; r.id = 'unit-' + u.id;
-      r.innerHTML = `<span class="u-name">${u.name}</span><span class="u-stat" id="us-${u.id}"></span><span class="u-desc">${FE.unitBlurb(u)}</span>`
+      const k = KW[u.id]; r.style.setProperty('--a', k.a); r.style.setProperty('--h2', k.h2);
+      r.innerHTML = `<span class="u-name">${u.name}</span><span class="u-stat" id="us-${u.id}"></span><span class="u-desc">${md(FE.unitBlurb(u))}</span>`
         + `<span class="u-n" id="un-${u.id}">0</span><button class="el" id="ub-${u.id}" type="button">1 ${u.id} crystal</button>`;
       r.querySelector('button').addEventListener('click', () => FE.buyUnit(u.id));
-      $('units').appendChild(r);
+      $('units').appendChild(r); shimmer(r, u.id);
     });
+    FE.UNITS.forEach((u, i) => setTimeout(() => { $('unit-' + u.id)._play(); setInterval($('unit-' + u.id)._play, 4200); }, 600 + i * 350));
     $('btn-venture').addEventListener('click', () => FE.venture());
     $('tgt-prev').addEventListener('click', () => FE.cycleTarget(-1));            // TESTING ONLY
     $('tgt-next').addEventListener('click', () => FE.cycleTarget(1));
@@ -139,8 +173,7 @@ FE.module(function (FE) {
 
   FE.renderArmy = function () {
     FE.UNITS.forEach(({ id }) => {
-      const st = FE.unitStats(id);
-      text($('us-' + id), `health ${st.hp} · attack ${st.atk}`);
+      { const el = $('us-' + id), h = statHtml(FE.UNITS.find(x => x.id === id)); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
       text($('un-' + id), FE.fmt(FE.state.units[id]));
       const b = $('ub-' + id), off = FE.state.crystals[id] < 1;
       if (b.disabled !== off) b.disabled = off;

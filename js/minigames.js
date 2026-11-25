@@ -1,6 +1,6 @@
 /* minigames.js - three small games in the panel, each with a lasting perk (the numbers are in config.js):
  *   meteor shower  -> a permanent production bonus
- *   orbit lock     -> planets, moons and comets caught in orbit around your star (a limited-time multiplier, and stardust)
+ *   orbit lock     -> planets, moons and comets caught in orbit around your star (a limited-time multiplier, and echoes)
  *   rogue signal   -> a bigger chance of a rogue star colliding with yours (a free tier)
  *   solar surge    -> a production boost for a few minutes
  *   collider       -> antimatter
@@ -47,7 +47,7 @@ FE.module(function (FE) {
     },
     orbit: {
       title: 'Orbit Lock', blurb: 'A wandering body circles your star. Click as it crosses the mark to lock it into orbit. Five passes; each lock is a new body, but it speeds up and the mark narrows.',
-      perk: () => `moons, planets and comets: a production multiplier and stardust, for a few minutes (${FE.state.orbit.filter(o => o.end > Date.now()).length} in orbit now)`,
+      perk: () => `moons, planets and comets: a production multiplier and echoes, for a few minutes (${FE.state.orbit.filter(o => o.end > Date.now()).length} in orbit now)`,
       start() { return { a: rnd(0, TAU), v: 2.2, tries: 5, hit: 0, win: .42, flash: 0, over: false, msg: '', caught: [], el: pick(ids), wait: 0 }; },
       step(g, dt) {
         g.a = (g.a + g.v * dt) % TAU; g.flash = Math.max(0, g.flash - dt * 2);

@@ -192,7 +192,7 @@ body.v2 .footer { color: #8d9bc4; } body.v2 .footer button.link { color: #cdd7f5
 .s-row:not(.cur) { opacity: .7; }
 .s-row:not(.cur) .s-n { font-size: 1.1em; }
 
-/* ---------- layer 2: army / stardust on the left, units on the right ---------- */
+/* ---------- layer 2: army / echoes on the left, units on the right ---------- */
 #page2 { background: #04060f; color: #e9eefc; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding-bottom: 40px; }   /* the bottom strip holds the footer and the layer link */
 /* the line between the halves stops short of the top and bottom, where the layer links sit on the middle of the page */
 #page2::after { content: ""; position: absolute; left: 50%; top: 40px; bottom: 44px; width: 1px; background: rgba(170, 190, 255, .14); pointer-events: none; }
@@ -224,6 +224,16 @@ body.v2 .footer { color: #8d9bc4; } body.v2 .footer button.link { color: #cdd7f5
 .u-name { grid-area: name; display: flex; align-items: center; gap: 11px; font-size: 1.45em; }
 .u-name::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--u); box-shadow: 0 0 10px 2px var(--u); flex: none; }
 .u-stat { grid-area: stat; color: #8d9bc4; font-size: 1.08em; }
+.u-stat > span { white-space: nowrap; } .u-stat .ic { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--u); box-shadow: 0 0 7px var(--u); margin: 0 1px 0 4px; }
+/* keyword: the unit's colour at rest, with a light band that can sweep across (see shimmer in army.js) */
+.unit .kw { display: inline-block; color: transparent; -webkit-text-fill-color: transparent; -webkit-background-clip: text; background-clip: text; background-size: 300% 100%; background-position: 100% 0;
+  background-image: linear-gradient(100deg, var(--a) 0%, var(--a) 34%, var(--h2) 50%, var(--a) 66%, var(--a) 100%); }
+/* the smooth gem after a crystal count */
+.g1 { --l: #fff; --m: #cfe8f5; --d: #86b0c6; display: inline-block; width: .46em; height: .46em; margin: 0 0 0 .6em; transform: rotate(45deg); border-radius: .07em; vertical-align: .03em;
+  background: radial-gradient(circle at 30% 28%, var(--l), var(--m) 58%, var(--d));
+  box-shadow: inset .05em .05em .08em rgba(255, 255, 255, .4), inset -.06em -.06em .1em rgba(0, 0, 0, .28), 0 0 .45em var(--m); }
+.u-stat .g1 { width: .5em; height: .5em; margin: 0 .35em 0 .5em; }
+.g1[data-el="water"] { --l: #a6d3ff; --m: #3d8bf0; --d: #1b4fa8; } .g1[data-el="earth"] { --l: #ebc48f; --m: #b9884e; --d: #74492a; } .g1[data-el="fire"] { --l: #ffb590; --m: #ff6a33; --d: #a82c0c; }
 .u-desc { grid-area: desc; color: #6f7ea8; font-size: .95em; line-height: 1.35; min-height: 2.7em; padding-top: 3px; }   /* two lines are always reserved, so every row is the same height */
 .u-n { grid-area: n; min-width: 2.6em; text-align: right; font-size: 2em; font-variant-numeric: tabular-nums; }
 .unit button.el { grid-area: buy; width: 10.5em; padding: 8px 0; font-size: 1.1em; white-space: nowrap; text-align: center; }   /* the same size for every unit, with some room inside */
@@ -240,7 +250,13 @@ body.v2 .footer { color: #8d9bc4; } body.v2 .footer button.link { color: #cdd7f5
 .target .arrow:disabled { color: #4a5578; border-color: rgba(190, 205, 255, .12); cursor: default; }
 .target .arrow:focus-visible { outline: 2px solid #cdd7f5; outline-offset: 2px; }
 
-.dust-n { position: relative; z-index: 1; font-size: 1.2em; letter-spacing: .04em; font-variant-numeric: tabular-nums; margin-top: 10px; }
+.echo-total { align-self: center; display: flex; align-items: center; gap: .45em; margin-top: 18px; font-size: 2.1em; letter-spacing: .04em; font-variant-numeric: tabular-nums; color: #dfe6ff; text-shadow: 0 0 14px rgba(190, 205, 255, .55); }
+/* the Echoes icon: a square within a square within a square */
+.echo-ico { width: .95em; height: .95em; flex: none; overflow: visible; filter: drop-shadow(0 0 .22em rgba(190, 205, 255, .6)); vertical-align: -.1em; }
+.echo-ico rect { fill: none; stroke: #e9eefc; stroke-width: 1.5; }
+.echo-ico .e1 { stroke-opacity: .4; }
+.c-panel p .echo-ico { margin-left: .4em; width: .85em; height: .85em; }
+.l2-tab .echo-ico { display: none; }
 .tree { position: relative; flex: 1; width: min(560px, 100%); min-height: 260px; }
 .tree svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tree line { stroke: rgba(170, 190, 255, .25); stroke-width: 1; vector-effect: non-scaling-stroke; }

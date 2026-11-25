@@ -14,7 +14,7 @@ FE.module(function (FE) {
       crystals: Object.fromEntries(ids.map(k => [k, 0])),
       layer2: false,        // the first crystal opens layer 2
       units: Object.fromEntries(ids.map(k => [k, 0])),   // layer 2: how many of each tier 1 unit you have
-      stardust: 0,          // spent on the skill tree; units grant it when they die in combat (and orbiting bodies, see below)
+      stardust: 0,          // (shown to the player as Echoes) spent on the skill tree; units grant it when they die in combat (and orbiting bodies, see below)
       affinity: Object.fromEntries(ids.map(k => [k, false])),   // Elemental Affinity, per element: permanent, never reset
       stabilizer: false,    // Star Stabilizer (reward for Breach the Surface): stars may reach tier 4
       cleared: {},          // maps beaten

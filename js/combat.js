@@ -9,7 +9,7 @@
  * sleepers do nothing, melee enemies charge whatever they notice, the mage zaps from range.
  *
  * Units out on an expedition are taken out of state.units when you venture forth (state.expedition) and only come back
- * as survivors. Stardust from a death is added to the state at once. What you destroy on a map is kept in state.mapProg. */
+ * as survivors. Echoes from a death are added to the state at once. What you destroy on a map is kept in state.mapProg. */
 FE.module(function (FE) {
   const $ = FE.$, TAU = Math.PI * 2;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -151,7 +151,7 @@ FE.module(function (FE) {
     FE.render(); FE.save();
   }
 
-  // units that were out when the page was closed count as retreated: all of them are lost, and all of them give their stardust.
+  // units that were out when the page was closed count as retreated: all of them are lost, and all of them give their echoes.
   // (If the battle had not started yet, nothing happened to them: they simply come home.)
   FE.recoverExpedition = function () {
     const s = FE.state, ex = s.expedition;
@@ -160,7 +160,7 @@ FE.module(function (FE) {
     let n = 0, d = 0;
     FE.UNITS.forEach(u => { n += ex[u.id] || 0; d += (ex[u.id] || 0) * u.dust; });
     s.stardust += d; s.expedition = null; s.expStarted = false;
-    if (n) setTimeout(() => FE.toast(`Your ${n} units were still out in battle. They were abandoned: +${FE.fmt(d)} stardust.`, 6000), 600);
+    if (n) setTimeout(() => FE.toast(`Your ${n} units were still out in battle. They were abandoned: +${FE.fmt(d)} ${FE.echoWord(d)}.`, 6000), 600);
   };
 
   // Retreat before the battle began: nothing is lost, the units just come home
@@ -175,7 +175,7 @@ FE.module(function (FE) {
   function retreat() {
     const s = FE.state, n = roster.length, d = totalDust(roster);
     s.stardust += d; dustGained += d; s.expedition = null; s.expStarted = false;
-    FE.toast(n ? `${n} unit${n === 1 ? '' : 's'} abandoned: +${FE.fmt(d)} stardust.` : 'You left the field.', 4200);
+    FE.toast(n ? `${n} unit${n === 1 ? '' : 's'} abandoned: +${FE.fmt(d)} ${FE.echoWord(d)}.` : 'You left the field.', 4200);
     leave();
   }
 
@@ -196,7 +196,7 @@ FE.module(function (FE) {
         : map.reward ? `<p class="dim">${FE.REWARDS[map.reward].name} (already claimed)</p>`
         : '';                                                                    // (maps marked placeholder have no reward yet: nothing is shown)
       panel(`<h3>${map.title}</h3>
-        <p>stardust gained: <span class="dust">${FE.fmt(dustGained)}</span></p>
+        <p>echoes gained: <span class="dust">${FE.fmt(dustGained)}</span>${FE.echoIcon}</p>
         ${roster.length ? `<p class="dim">${dustGained === 0 ? 'every unit survived.' : `${roster.length} unit${roster.length === 1 ? '' : 's'} survived.`}</p>` : '<p class="dim">no one survived.</p>'}
         ${report()}
         ${rewardHtml}
@@ -210,7 +210,7 @@ FE.module(function (FE) {
       };
     } else {
       s.expedition = null; s.expStarted = false; FE.save(); FE.render();
-      panel(`<h3>Your army fell</h3><p>stardust gained: <span class="dust">${FE.fmt(dustGained)}</span></p>
+      panel(`<h3>Your army fell</h3><p>echoes gained: <span class="dust">${FE.fmt(dustGained)}</span>${FE.echoIcon}</p>
         ${report()}
         ${s.mapProg[map.id] ? '<p class="rep">what you destroyed stays destroyed.</p>' : ''}
         <div class="btns"><button class="el" id="p-back" type="button">Back</button></div>`);
@@ -227,7 +227,7 @@ FE.module(function (FE) {
     const aux = walls.filter(e => e !== main).sort((x, y) => x.cx - y.cx);
     const w = walls.map(e => ({ e, d: wallHit[e.i] || 0, n: e === main ? 'main wall' : `auxiliary wall ${aux.indexOf(e) + 1}` })).filter(x => x.d > 0)
       .sort((x, y) => (x.e === main ? -1 : y.e === main ? 1 : x.e.cx - y.e.cx))
-      .map(x => `${x.n}: ${FE.fmt(x.d)} damage (${x.e.dead ? 'destroyed' : `${FE.fmt(x.e.hp)}/${FE.fmt(x.e.max)}`})`);
+      .map(x => `${x.n}: ${FE.fmt(x.d)} damage (${x.e.dead ? 'destroyed' : `${FE.fmt(x.e.hp)} of ${FE.fmt(x.e.max)} left`})`);
     const col = (h, l) => `<div><b>${h}</b>${l.length ? l.map(t => `<p class="rep">${t}</p>`).join('') : '<p class="rep">none</p>'}</div>`;
     return `<div class="rep-table">${col('enemies killed', k)}${col('damage to walls', w)}</div>`;
   }
@@ -242,7 +242,7 @@ FE.module(function (FE) {
     const n = roster.length, d = totalDust(roster);
     panel(`<h3>Retreat?</h3>
       <p>Abandon your ${n} unit${n === 1 ? '' : 's'}? They are lost for good.</p>
-      <p>You would gain <span class="dust">${FE.fmt(d)}</span> stardust from them.</p>
+      <p>You would gain <span class="dust">${FE.fmt(d)}</span> ${FE.echoWord(d)} from them.</p>
       <div class="btns"><button class="el" id="p-yes" type="button">Abandon them</button><button class="el" id="p-no" type="button">Keep fighting</button></div>`);
     $('p-yes').onclick = retreat;
     $('p-no').onclick = closePanel;

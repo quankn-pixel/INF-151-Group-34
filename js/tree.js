@@ -1,4 +1,4 @@
-/* tree.js - layer 2, the Stardust tab: a small skill tree bought with stardust. One root at the bottom, branches above it.
+/* tree.js - layer 2, the Echoes tab: a small skill tree bought with echoes. One root at the bottom, branches above it.
  * Skills last for good. */
 FE.module(function (FE) {
   const $ = FE.$, NS = 'http://www.w3.org/2000/svg';
@@ -36,12 +36,11 @@ FE.module(function (FE) {
 
   FE.renderTree = function () {
     const st = FE.state;
-    text($('dust-n'), `stardust: ${FE.fmt(st.stardust)}`);
     FE.SKILLS.forEach(s => {
       const b = $('node-' + s.id), owned = FE.has(s.id), avail = FE.skillAvail(s), can = avail && st.stardust >= s.cost;
       b.classList.toggle('owned', owned); b.classList.toggle('avail', avail); b.classList.toggle('can', can);
       b.disabled = !can;
-      text(b.querySelector('.n-cost'), owned ? 'condensed' : s.soon ? 'coming soon' : `${s.cost} stardust`);
+      text(b.querySelector('.n-cost'), owned ? 'condensed' : s.soon ? 'coming soon' : `${s.cost} ${FE.echoWord(s.cost)}`);
       if (s.req) $('tl-' + s.id).setAttribute('class', owned ? 'on' : FE.has(s.req) ? 'next' : '');
     });
   };

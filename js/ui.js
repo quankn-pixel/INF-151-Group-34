@@ -109,7 +109,7 @@ FE.module(function (FE) {
       $('store-rows').appendChild(r);
     });
 
-    // layer 2: two tabs on the left (army / stardust), units on the right
+    // layer 2: two tabs on the left (army / echoes), units on the right
     const setTab = t => {
       $('pane-army').hidden = t !== 'army'; $('pane-dust').hidden = t !== 'stardust';
       if (t === 'army') FE.scatterDots();
@@ -267,7 +267,8 @@ FE.module(function (FE) {
     up.hidden = FE.view !== 1 || !s.layer2;                       // no link to a layer that is not open yet
     up.classList.toggle('unlocked', s.layer2);
     up.setAttribute('aria-disabled', String(!s.layer2));
-    FE.ELEMENTS.forEach(({ id }) => text('cr-' + id, `${id} crystals: ${FE.fmt(s.crystals[id])}`));
+    FE.ELEMENTS.forEach(({ id }) => { const el = $('cr-' + id), h = `${id} crystals: ${FE.fmt(s.crystals[id])}${FE.gemHtml(id)}`; if (el._h !== h) { el._h = h; el.innerHTML = h; } });
+    { const el = $('echo-total'), h = `Echoes: ${FE.fmt(s.stardust)}${FE.echoIcon}`; if (el._h !== h) { el._h = h; el.innerHTML = h; } }
     FE.renderHud();
     FE.renderPanel();
     FE.renderArmy();

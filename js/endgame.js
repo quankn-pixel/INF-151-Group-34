@@ -284,7 +284,7 @@ FE.module(function (FE) {
     h += `<p>${s.center ? 'The heart of the galaxy.' : `Element: ${s.el}`}<br>Danger: ${s.tier}<br>Defenders: ${forces(mapFor(sel))}<br>Yield when taken: ${FE.fmt(s.yield)} ${s.center ? 'of every element' : s.el}/s</p>`;
     if (owned(sel)) h += '<p class="good">Taken. It is feeding you.</p>';
     else if (!reachable(sel)) h += '<p class="dim">Out of reach. Take a linked system first.</p>';
-    else h += '<button type="button" data-act="invade">Invade: send your army into battle</button><p class="dim">Survivors come home. Fallen units are gone, but give stardust.</p>';
+    else h += '<button type="button" data-act="invade">Invade: send your army into battle</button><p class="dim">Survivors come home. Fallen units are gone, but give echoes.</p>';
     return h;
   }
   function conquestClick(x, y) { sel = -1; SYS.forEach((s, i) => { const [nx, ny] = gp(s); if (Math.hypot(x - nx, y - ny) < 22) sel = i; }); }
@@ -347,7 +347,7 @@ FE.module(function (FE) {
       if (id === 'crystals') { const el = pick(IDS), c = 1 + Math.floor(n / 2); FE.state.crystals[el] += c; FE.state.layer2 = true; out.push(`${c} ${el} crystal${c > 1 ? 's' : ''}`); }
       else if (id === 'buff') { const m = Math.min(4, 2 + n * .25); if (!FE.buffOn() || FE.state.buff.mult < m) FE.state.buff = { mult: m, end: Date.now() + 600000 }; out.push(`all production ×${m} for 10 minutes`); }
       else if (id === 'stock') { IDS.forEach(k => { FE.state.els[k].count += Math.max(5000 * (n + 1), FE.rate(k) * 900); }); out.push('a stockpile of every element (15 minutes of production)'); }
-      else if (id === 'dust') { FE.state.stardust += 20 * (n + 1); out.push(`${20 * (n + 1)} stardust`); }
+      else if (id === 'dust') { FE.state.stardust += 20 * (n + 1); out.push(`${20 * (n + 1)} echoes`); }
       else { const opt = IDS.filter(k => S().unlocked[k] && S().planets[k] < PL_MAX); if (opt.length) { const k = pick(opt); S().planets[k]++; out.push(`a free ${PL[k].name} planet`); } else q--; }
     }
     S().wins++; S().n++; S().nextAt = Date.now() + 240000 + rand(0, 60000);
@@ -476,7 +476,7 @@ FE.module(function (FE) {
     if (cvs.clientWidth !== W || cvs.clientHeight !== H) fit();
     if (!W) return;
     if (C().path === 'conquest') {
-      drawGalaxy(); $('eg-title').textContent = 'The Galaxy'; text('eg-res', `army ${FE.fmt(armyCount())} · stardust ${FE.fmt(FE.state.stardust)}`);
+      drawGalaxy(); $('eg-title').textContent = 'The Galaxy'; text('eg-res', `army ${FE.fmt(armyCount())} · echoes ${FE.fmt(FE.state.stardust)}`);
       const html = sideConquest(); if (html !== sideSig) { sideSig = html; side.innerHTML = html; }
     } else {
       stepDef(dt); drawDef(); $('eg-title').textContent = 'Your Star System'; text('eg-res', `planets ${IDS.reduce((n, k) => n + S().planets[k], 0)}`);

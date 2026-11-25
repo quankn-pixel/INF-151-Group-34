@@ -11,28 +11,28 @@
 
 <div id="pages">
 
-  <!-- ===== layer 2: above layer 1. Left: army / stardust tabs. Right: units. ===== -->
+  <!-- ===== layer 2: above layer 1. Left: army / echoes tabs. Right: units. ===== -->
   <section class="page" id="page2" aria-label="layer 2" aria-hidden="true">
     <div class="l2-left">
       <div class="l2-tabs" role="tablist">
         <button class="l2-tab active" id="l2t-army" type="button" role="tab" aria-selected="true">Army</button>
-        <button class="l2-tab" id="l2t-stardust" type="button" role="tab" aria-selected="false">Stardust</button>
+        <button class="l2-tab" id="l2t-stardust" type="button" role="tab" aria-selected="false">Echoes</button>
       </div>
+      <div class="echo-total" id="echo-total"></div>
       <div class="l2-pane" id="pane-army">
         <canvas id="army-cv" aria-hidden="true"></canvas>
         <div class="crystals" id="crystals"></div>
       </div>
       <div class="l2-pane" id="pane-dust" hidden>
-        <div class="dust-n" id="dust-n"></div>
         <div class="tree" id="tree"></div>
       </div>
     </div>
     <div class="l2-right">
-      <h2 class="tier-label">Tier 1 Units <span>(1 stardust on death)</span></h2>
+      <h2 class="tier-label">Tier 1 Units <span>(1 echo on death)</span></h2>
       <div class="units" id="units"></div>
       <div class="venture">
         <button class="el wide" id="btn-venture" type="button" aria-describedby="venture-tip">Venture Forth</button>
-        <span class="tip" id="venture-tip" role="tooltip">All units are sent into combat. <b>Units killed in combat are lost for good</b>, but grant stardust when they die.</span>
+        <span class="tip" id="venture-tip" role="tooltip">All units are sent into combat. <b>Units killed in combat are lost for good</b>, but grant echoes when they die.</span>
         <!-- TESTING ONLY: the arrows pick which map Venture Forth goes to (see FE.cycleTarget in army.js). Shown once TESTING ONLY is pressed in settings. -->
         <div class="target" id="tgt" hidden>
           <button class="arrow" id="tgt-prev" type="button" aria-label="Previous map">&#9664;&#xFE0E;</button>

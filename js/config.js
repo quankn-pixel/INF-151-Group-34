@@ -96,7 +96,7 @@ FE.module(function (FE) {
   FE.MINI = { unlock: 5, cooldown: 120 };   // upgrades bought before they open; seconds before the same game can be played again
   FE.MINI_BOOST_MAX = 1;                    // meteors: the permanent production bonus stops at +100%
   FE.ROGUE = { base: 1 / 1800, luckMax: 6 }; // per second chance of a rogue star colliding with yours (free tier); each point of luck adds a share
-  // bodies caught in orbit: they last `min` minutes, multiply all production, and pay stardust (per minute, and once when caught)
+  // bodies caught in orbit: they last `min` minutes, multiply all production, and pay echoes (per minute, and once when caught)
   FE.ORBITERS = {
     moon:   { name: 'moon',   min: 8,  mult: 1.25, dustMin: 1, dustNow: 0, r: 7 },
     planet: { name: 'planet', min: 12, mult: 1.5,  dustMin: 2, dustNow: 0, r: 13 },
@@ -104,21 +104,27 @@ FE.module(function (FE) {
   };
   FE.MAX_ORBITERS = 6;
 
-  // ---- layer 2: tier 1 units (Army tab) and stardust skills (Stardust tab) ----
+  // ---- layer 2: tier 1 units (Army tab) and echo skills (Echoes tab) ----
   // per: units one crystal of that element makes. hp / atk: health and damage. Every unit attacks UNIT_APS times a second.
-  // dust: stardust a unit grants when it dies (or is abandoned with a retreat). blurb: the short line under the unit's stats.
+  // dust: echoes a unit grants when it dies (or is abandoned with a retreat). blurb: the short line under the unit's stats.
   // Water does not attack while an ally nearby is hurt: it heals that ally instead (see FE.COMBAT.heal*).
   FE.UNIT_APS = 1;
   FE.UNITS = [
+    // blurb: *words between stars* are the keywords that shimmer on the unit page
     { id: 'air',   name: 'Speck of Air',   per: 3, hp: 1, atk: 1, dust: 1, blurb: 'Swarm your enemies.' },
-    { id: 'water', name: 'Speck of Water', per: 1, hp: 3, atk: 1, dust: 1, blurb: 'Heals hurt allies nearby instead of attacking.' },
-    { id: 'earth', name: 'Speck of Earth', per: 1, hp: 5, atk: 1, dust: 1, blurb: 'Slow to fall. Soaks up the hits.' },
-    { id: 'fire',  name: 'Speck of Fire',  per: 1, hp: 1, atk: 4, dust: 1, blurb: 'Hits hard, burns out fast.' }
+    { id: 'water', name: 'Speck of Water', per: 1, hp: 3, atk: 2, dust: 1, blurb: 'A well-rounded unit. Can *heal* allies by throwing water at them.' },
+    { id: 'earth', name: 'Speck of Earth', per: 1, hp: 5, atk: 1, dust: 1, blurb: '*Tanky* and reliable. Enemies target them first, since they\u2019re the biggest.' },
+    { id: 'fire',  name: 'Speck of Fire',  per: 1, hp: 1, atk: 5, dust: 1, blurb: '*Powerful* but fragile, and works best behind other units.' }
   ];
   FE.POWER_MULT = 2;                  // the Powerful Units skill multiplies every unit's health and damage by this
   const NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-  // "Swarm your enemies. One crystal makes three specks of air, instead of one." (only said of a unit that makes more than one)
-  FE.unitBlurb = u => u.per > 1 ? `${u.blurb} One crystal makes ${NUM[u.per] || u.per} specks of ${u.id}, instead of one.` : u.blurb;
+  // "Swarm your enemies. One crystal makes *three* specks of air, instead of one." (only said of a unit that makes more than one)
+  FE.unitBlurb = u => u.per > 1 ? `${u.blurb} One crystal makes *${NUM[u.per] || u.per}* specks of ${u.id}, instead of one.` : u.blurb;
+  FE.NUM_WORD = n => NUM[n] || String(n);
+  // Echoes (what units leave behind when they die, spent on the skill tree). The icon is a square within a square within a square.
+  FE.echoIcon = '<svg class="echo-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="1.5" width="21" height="21" rx="2.5" class="e1"/><rect x="5.6" y="5.6" width="12.8" height="12.8" class="e2"/><rect x="9.6" y="9.6" width="4.8" height="4.8" class="e3"/></svg>';
+  FE.echoWord = n => n === 1 ? 'echo' : 'echoes';
+  FE.gemHtml = id => `<i class="g1" data-el="${id}"></i>`;       // the smooth gem that follows every crystal count
 
   // ---- combat ----
   // Everything on a battlefield is measured in map units, and one unit is the same size on every map, so a bigger map
